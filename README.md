@@ -160,6 +160,10 @@ Phase 42 adds a privacy-conscious analytics ledger at `/api/v1/analytics` with
 allowlisted events, sanitized metadata, authenticated/anonymous capture, and a
 moderator/admin summary that excludes starter and official seeded accounts.
 
+Phase 43 adds a private alpha task plan, evidence-comprehension prompts, tester
+exit criteria, and a privacy-conscious feedback template in
+`infrastructure/alpha`.
+
 ## Docker development
 
 Start the development stack with source bind mounts and watch mode:
