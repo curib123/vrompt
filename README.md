@@ -131,6 +131,12 @@ screen-reader status/error announcements. Phase 33 adds behavioral backend
 coverage across the core domain and evidence/storage boundaries. Phase 34 adds
 an opt-in real-AppModule workflow test; run it with `RUN_INTEGRATION_TESTS=true`
 against an isolated test database using `npm run test:integration --workspace @vrompt/api`.
+Phase 35 adds a Playwright mobile browser journey covering Google-only sign-in,
+profile setup, prompt and version publishing, evidence invariants, search,
+copy/save/follow actions, variants, attribution, and notifications. Run it
+against the mocked API boundary with `START_E2E_SERVER=true npm run test:e2e
+--workspace @vrompt/web`; set `PLAYWRIGHT_EXECUTABLE_PATH` when using an
+existing local Chromium binary.
 
 ## Docker development
 
