@@ -144,6 +144,9 @@ Phase 38 upgrades the edge to HTTPS-ready Nginx with HTTP redirect, TLS
 termination, security headers, API rate limiting, compression, safe static
 caching, WebSocket-compatible proxying, 16 MB upload limits, and a Certbot
 renewal runbook in `infrastructure/https`.
+Phase 39 adds PR quality gates with real database/cache services, immutable
+GHCR image publishing, one-shot Prisma migration images, SSH deployment and
+rollback scripts, and a health-gated GitHub Actions release workflow.
 
 ## Docker development
 

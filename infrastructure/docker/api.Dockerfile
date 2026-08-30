@@ -27,6 +27,12 @@ FROM build AS production-dependencies
 RUN npm prune --omit=dev \
   && rm -rf node_modules/prisma apps/api/node_modules
 
+FROM build AS migration
+
+ENV NODE_ENV=production
+
+CMD ["npm", "run", "prisma:deploy", "--workspace", "@vrompt/api"]
+
 FROM node:20-bookworm-slim AS production
 
 ENV NODE_ENV=production
