@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import {
   CollectionVisibility,
   PromptRepositoryStatus,
@@ -6,6 +6,7 @@ import {
 } from '@prisma/client';
 
 import { PrismaService } from '../prisma/prisma.service';
+import { slugify } from '../common/slug';
 
 @Injectable()
 export class ActivityService {
@@ -80,5 +81,33 @@ export class ActivityService {
       total,
       hasNextPage: page * safePageSize < total,
     };
+  }
+
+  async repositoryHistory(slug: string, viewerId?: string) {
+    const repository = await this.prismaService.promptRepository.findUnique({
+      where: { slug: slugify(slug) },
+      select: { id: true, ownerId: true, status: true, visibility: true },
+    });
+    if (
+      !repository ||
+      repository.status !== PromptRepositoryStatus.ACTIVE ||
+      (repository.visibility === PromptVisibility.PRIVATE &&
+        repository.ownerId !== viewerId)
+    ) {
+      throw new NotFoundException('Repository not found');
+    }
+
+    return this.prismaService.activityEvent.findMany({
+      where: { promptRepositoryId: repository.id },
+      orderBy: { createdAt: 'desc' },
+      take: 50,
+      select: {
+        id: true,
+        type: true,
+        metadata: true,
+        createdAt: true,
+        actor: { select: { username: true } },
+      },
+    });
   }
 }

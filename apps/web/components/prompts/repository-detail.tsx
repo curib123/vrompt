@@ -25,6 +25,7 @@ import type {
   PromptLineageResponse,
   CommentItem,
   CommentsResponse,
+  RepositoryActivityResponse,
 } from '@/lib/api';
 
 export function RepositoryDetail({ slug }: { slug: string }) {
@@ -372,7 +373,7 @@ export function RepositoryDetail({ slug }: { slug: string }) {
           },
           {
             content: (
-              <CommentsSection
+              <ActivityTab
                 accessToken={accessToken}
                 repositorySlug={slug}
                 userId={user?.id}
@@ -426,6 +427,98 @@ function OverviewTab({ repository }: { repository: PromptRepositoryDetail }) {
       <InfoCard label="Updated" value={formatDate(repository.updatedAt)} />
     </div>
   );
+}
+
+function ActivityTab({
+  accessToken,
+  repositorySlug,
+  userId,
+}: {
+  accessToken: string | null;
+  repositorySlug: string;
+  userId?: string;
+}) {
+  const [events, setEvents] = useState<RepositoryActivityResponse[]>([]);
+
+  useEffect(() => {
+    let active = true;
+    void apiRequest<RepositoryActivityResponse[]>(
+      `/prompt-repositories/${encodeURIComponent(repositorySlug)}/activity`,
+    )
+      .then((response) => {
+        if (active) setEvents(response);
+      })
+      .catch(() => {
+        if (active) setEvents([]);
+      });
+    return () => {
+      active = false;
+    };
+  }, [repositorySlug]);
+
+  return (
+    <div className="grid gap-6">
+      <Card>
+        <div className="space-y-2">
+          <Badge>Repository history</Badge>
+          <h2 className="text-2xl font-semibold">
+            Useful changes, kept visible.
+          </h2>
+        </div>
+        {events.length === 0 ? (
+          <p className="mt-5 text-sm text-zinc-500">
+            No recorded repository activity yet.
+          </p>
+        ) : (
+          <div className="mt-5 grid gap-3">
+            {events.map((event) => (
+              <div
+                className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-zinc-200 px-4 py-3 dark:border-zinc-800"
+                key={event.id}
+              >
+                <p className="text-sm">
+                  <Link
+                    className="font-mono font-semibold underline"
+                    href={`/u/${event.actor.username}`}
+                  >
+                    @{event.actor.username}
+                  </Link>{' '}
+                  {activityLabel(event.type, event.metadata)}
+                </p>
+                <time
+                  className="text-xs text-zinc-500"
+                  dateTime={event.createdAt}
+                >
+                  {formatDateTime(event.createdAt)}
+                </time>
+              </div>
+            ))}
+          </div>
+        )}
+      </Card>
+      <CommentsSection
+        accessToken={accessToken}
+        repositorySlug={repositorySlug}
+        userId={userId}
+      />
+    </div>
+  );
+}
+
+function activityLabel(
+  type: RepositoryActivityResponse['type'],
+  metadata: Record<string, unknown> | null,
+) {
+  if (type === 'REPOSITORY_CREATED') return 'created this repository.';
+  if (type === 'VERSION_PUBLISHED') {
+    const version =
+      typeof metadata?.versionNumber === 'number'
+        ? `Version ${metadata.versionNumber}`
+        : 'a new version';
+    return `published ${version}.`;
+  }
+  if (type === 'VARIANT_CREATED') return 'created a Variant.';
+  return 'created a public collection.';
 }
 
 function CommentsSection({

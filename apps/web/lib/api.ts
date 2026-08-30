@@ -174,6 +174,18 @@ export interface ActivityFeedResponse {
   hasNextPage: boolean;
 }
 
+export interface RepositoryActivityResponse {
+  id: string;
+  type:
+    | 'REPOSITORY_CREATED'
+    | 'VERSION_PUBLISHED'
+    | 'VARIANT_CREATED'
+    | 'COLLECTION_CREATED';
+  metadata: Record<string, unknown> | null;
+  createdAt: string;
+  actor: { username: string };
+}
+
 export interface NotificationsResponse {
   items: Array<{
     id: string;

@@ -1,6 +1,7 @@
 import {
   Controller,
   Get,
+  Param,
   ParseIntPipe,
   Query,
   UseGuards,
@@ -9,19 +10,29 @@ import {
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { AccessTokenGuard } from '../auth/guards/access-token.guard';
+import { OptionalAccessTokenGuard } from '../auth/guards/optional-access-token.guard';
 import { ActivityService } from './activity.service';
 
-@Controller('feed')
-@UseGuards(AccessTokenGuard)
+@Controller()
 export class ActivityController {
   constructor(private readonly activityService: ActivityService) {}
 
-  @Get()
+  @Get('feed')
+  @UseGuards(AccessTokenGuard)
   feed(
     @CurrentUser() user: AuthenticatedUser,
     @Query('page', new ParseIntPipe({ optional: true })) page?: number,
     @Query('pageSize', new ParseIntPipe({ optional: true })) pageSize?: number,
   ) {
     return this.activityService.feed(user.id, page, pageSize);
+  }
+
+  @Get('prompt-repositories/:slug/activity')
+  @UseGuards(OptionalAccessTokenGuard)
+  repositoryHistory(
+    @Param('slug') slug: string,
+    @CurrentUser() user?: AuthenticatedUser,
+  ) {
+    return this.activityService.repositoryHistory(slug, user?.id);
   }
 }
