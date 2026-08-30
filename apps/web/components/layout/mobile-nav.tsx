@@ -210,7 +210,7 @@ export function MobileNav() {
                     Login
                   </Link>
                   <Link
-                    className="inline-flex min-h-11 items-center justify-center whitespace-nowrap rounded-full bg-[#0D0D0D] px-3 py-2 text-sm font-medium text-white transition hover:bg-[#1A1A1A] dark:bg-white dark:text-[#0D0D0D] dark:hover:bg-[#E6E6E6]"
+                    className="inline-flex min-h-11 items-center justify-center whitespace-nowrap rounded-full bg-[#0D0D0D] px-3 py-2 text-sm font-medium !text-white transition hover:bg-[#1A1A1A] dark:bg-white dark:!text-[#0D0D0D] dark:hover:bg-[#E6E6E6]"
                     href="/register"
                     onClick={closeDrawer}
                   >

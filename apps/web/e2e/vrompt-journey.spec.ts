@@ -230,7 +230,9 @@ test('opens the mobile navigation drawer from the left-side hamburger', async ({
   });
   await expect(closeButton).toBeFocused();
   await expect(drawer.getByRole('link', { name: 'Explore' })).toBeVisible();
-  await expect(drawer.getByRole('link', { name: 'Join Vrompt' })).toBeVisible();
+  const joinLink = drawer.getByRole('link', { name: 'Join Vrompt' });
+  await expect(joinLink).toBeVisible();
+  await expect(joinLink).toHaveCSS('color', 'rgb(255, 255, 255)');
   await expect(drawer.getByRole('link', { name: 'Create' })).toHaveCount(0);
   await expect(drawer.getByRole('link', { name: 'Saved' })).toHaveCount(0);
   await expect(drawer.getByRole('link', { name: 'Settings' })).toHaveCount(0);
