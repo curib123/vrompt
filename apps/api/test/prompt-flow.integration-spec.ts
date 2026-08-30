@@ -144,6 +144,20 @@ describeIntegration('Prompt workflow integration', () => {
       'Version two evidence',
     );
 
+    const publicDetail = await request(app.getHttpServer())
+      .get(`/api/v1/prompt-repositories/${slug}`)
+      .expect(200);
+    expect(publicDetail.body.visibility).toBe('PUBLIC');
+    expect(publicDetail.body.currentVersion.content).toContain(
+      'implementation plan',
+    );
+
+    const anonymousCopy = await request(app.getHttpServer())
+      .post(`/api/v1/prompt-repositories/${slug}/copy`)
+      .send({ clientKey: `anonymous-integration-${Date.now()}` })
+      .expect(201);
+    expect(anonymousCopy.body.content).toContain('implementation plan');
+
     await request(app.getHttpServer())
       .get(`/api/v1/search?q=${encodeURIComponent(slug)}`)
       .expect(200);

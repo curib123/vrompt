@@ -299,21 +299,42 @@ export function RepositoryDetail({ slug }: { slug: string }) {
                     ? 'Liked'
                     : 'Like'}
               </Button>
-            ) : null}
-            <Link
-              className={getButtonClasses('secondary')}
-              href={`/create?variantFrom=${encodeURIComponent(slug)}`}
-            >
-              Create variation
-            </Link>
+            ) : (
+              <Link
+                className={getButtonClasses('secondary')}
+                href={`/login?next=${encodeURIComponent(`/p/${slug}`)}`}
+              >
+                Sign in to Like
+              </Link>
+            )}
+            {user ? (
+              <Link
+                className={getButtonClasses('secondary')}
+                href={`/create?variantFrom=${encodeURIComponent(slug)}`}
+              >
+                Create variation
+              </Link>
+            ) : (
+              <Link
+                className={getButtonClasses('secondary')}
+                href={`/login?next=${encodeURIComponent(`/create?variantFrom=${slug}`)}`}
+              >
+                Sign in to Create
+              </Link>
+            )}
             <ReportRepositoryButton repositoryId={repository.id} />
           </div>
           <p className="relative mt-3 text-xs text-zinc-400">
             {copyState === 'failed'
               ? 'Could not copy the prompt. Please try again.'
-              : `${repository.copyCount} shares - ${repository.saveCount} saves - ${repository.likeCount} likes`}
+              : `${repository.copyCount} copies - ${repository.saveCount} saves - ${repository.likeCount} likes`}
             {saveState === 'failed' ? ' Could not save; try again.' : ''}
             {likeState === 'failed' ? ' Could not like; try again.' : ''}
+          </p>
+          <p className="relative max-w-2xl text-xs leading-5 text-zinc-400">
+            {user
+              ? 'You are signed in. Save, like, discuss, follow creators, and publish your own prompts.'
+              : 'Read and copy this prompt freely. Sign in to save, like, discuss, follow creators, or publish your own prompts.'}
           </p>
         </div>
       </Card>
