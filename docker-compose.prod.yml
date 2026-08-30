@@ -12,6 +12,13 @@ services:
         condition: service_healthy
     ports:
       - '80:80'
+      - '443:443'
+    environment:
+      VROMPT_DOMAIN: ${VROMPT_DOMAIN:?VROMPT_DOMAIN is required}
+      VROMPT_TLS_CERT_PATH: ${VROMPT_TLS_CERT_PATH:?VROMPT_TLS_CERT_PATH is required}
+      VROMPT_TLS_KEY_PATH: ${VROMPT_TLS_KEY_PATH:?VROMPT_TLS_KEY_PATH is required}
+    volumes:
+      - ${VROMPT_LETSENCRYPT_DIR:?VROMPT_LETSENCRYPT_DIR is required}:/etc/letsencrypt:ro
     networks:
       - edge
       - backend

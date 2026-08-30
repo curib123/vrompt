@@ -140,6 +140,10 @@ existing local Chromium binary.
 Phase 37 adds an Ubuntu VPS bootstrap, Docker log rotation, firewall and
 Fail2ban setup, automatic security updates, swap provisioning, and a
 non-root deployment runbook in `infrastructure/vps`.
+Phase 38 upgrades the edge to HTTPS-ready Nginx with HTTP redirect, TLS
+termination, security headers, API rate limiting, compression, safe static
+caching, WebSocket-compatible proxying, 16 MB upload limits, and a Certbot
+renewal runbook in `infrastructure/https`.
 
 ## Docker development
 
