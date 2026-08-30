@@ -3,7 +3,7 @@ FROM node:20-bookworm-slim AS dependencies
 WORKDIR /workspace
 
 RUN apt-get update \
-  && apt-get install -y --no-install-recommends openssl \
+  && apt-get install -y --no-install-recommends openssl procps \
   && rm -rf /var/lib/apt/lists/*
 
 COPY package.json package-lock.json turbo.json ./

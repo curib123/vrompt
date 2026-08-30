@@ -177,6 +177,11 @@ Phase 46 adds the final launch audit command and release sign-off checklist in
 from external production prerequisites and does not claim launch readiness by
 itself.
 
+The development seed now creates exactly 1,000 public prompt repositories plus
+100 connected demo creators, versions, tags, variants, collections, follows,
+saves, likes, comments, notifications, activity, and analytics. Run it with
+`docker compose -f docker-compose.yml -f docker-compose.dev.yml --profile seed run --rm vrompt-seed`.
+
 ## Docker development
 
 Start the development stack with source bind mounts and watch mode:
