@@ -72,6 +72,12 @@ and collection shelves, follower/following counts, and local avatar uploads.
 Local uploads are served by the API from `/media`; production storage can use
 the existing environment-aware adapter configuration.
 
+### Categories and tags
+
+Phase 8 seeds the official category set and exposes public category listing plus
+tag search/autocomplete. Signed-in users can create normalized tags, while
+category and tag edits are reserved for admins for future moderation tooling.
+
 ## Docker development
 
 Start the full local stack with:
