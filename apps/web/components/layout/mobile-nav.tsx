@@ -9,7 +9,11 @@ import { BrandLockup } from '@/components/brand/brand-mark';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/components/providers/auth-provider';
 import { cn } from '@/lib/cn';
-import { primaryRoutes, secondaryRoutes } from '@/lib/routes';
+import {
+  primaryRoutes,
+  publicPrimaryRoutes,
+  secondaryRoutes,
+} from '@/lib/routes';
 
 export function MobileNav() {
   const pathname = usePathname();
@@ -65,6 +69,10 @@ export function MobileNav() {
     setOpen(false);
     triggerRef.current?.focus();
   }
+
+  const visibleRoutes = user
+    ? [...primaryRoutes, ...secondaryRoutes.slice(0, 2)]
+    : publicPrimaryRoutes;
 
   return (
     <div className="lg:hidden">
@@ -131,8 +139,7 @@ export function MobileNav() {
               <p className="px-3 pb-2 text-[0.62rem] font-semibold uppercase tracking-[0.24em] text-[#4D4D4D] dark:text-zinc-400">
                 Explore Vrompt
               </p>
-              {[...primaryRoutes, ...secondaryRoutes.slice(0, 2)].map(
-                (route) => (
+              {visibleRoutes.map((route) => (
                   <Link
                     className={cn(
                       'group flex min-h-12 items-center gap-3 rounded-2xl px-3.5 py-3 text-base font-medium transition',
@@ -155,8 +162,7 @@ export function MobileNav() {
                     />
                     {route.label}
                   </Link>
-                ),
-              )}
+                ))}
             </nav>
             <div className="grid shrink-0 gap-3 border-t border-[#E6E6E6] pt-4 dark:border-[#1A1A1A]">
               <div className="rounded-2xl bg-[#0D0D0D] px-4 py-4 text-white shadow-[0_14px_28px_rgba(13,13,13,0.18)] dark:border dark:border-[#4D4D4D] dark:bg-[#1A1A1A] dark:shadow-none">

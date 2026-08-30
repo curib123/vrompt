@@ -163,6 +163,35 @@ test('prioritizes Google sign-in on the mobile login screen', async ({
   );
 });
 
+test('keeps the signed-out desktop navigation focused', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.route(`${apiOrigin}/**`, async (route) => {
+    const url = new URL(route.request().url());
+    if (url.pathname === '/api/v1/auth/refresh') {
+      await route.fulfill({ status: 401, json: { message: 'Signed out' } });
+      return;
+    }
+    await route.abort();
+  });
+
+  await page.goto('/');
+
+  const navigation = page.getByRole('navigation', {
+    name: 'Primary navigation',
+  });
+  await expect(navigation.getByRole('link', { name: 'Home' })).toBeVisible();
+  await expect(navigation.getByRole('link', { name: 'Explore' })).toBeVisible();
+  await expect(navigation.getByRole('link', { name: 'Search' })).toBeVisible();
+  await expect(navigation.getByRole('link', { name: 'Create' })).toHaveCount(0);
+  await expect(navigation.getByRole('link', { name: 'Saved' })).toHaveCount(0);
+  await expect(navigation.getByRole('link', { name: 'Following' })).toHaveCount(
+    0,
+  );
+  const header = page.getByRole('banner');
+  await expect(header.getByRole('link', { name: 'Login' })).toBeVisible();
+  await expect(header.getByRole('link', { name: 'Join Vrompt' })).toBeVisible();
+});
+
 test('opens the mobile navigation drawer from the left-side hamburger', async ({
   page,
 }) => {
@@ -202,6 +231,9 @@ test('opens the mobile navigation drawer from the left-side hamburger', async ({
   await expect(closeButton).toBeFocused();
   await expect(drawer.getByRole('link', { name: 'Explore' })).toBeVisible();
   await expect(drawer.getByRole('link', { name: 'Join Vrompt' })).toBeVisible();
+  await expect(drawer.getByRole('link', { name: 'Create' })).toHaveCount(0);
+  await expect(drawer.getByRole('link', { name: 'Saved' })).toHaveCount(0);
+  await expect(drawer.getByRole('link', { name: 'Settings' })).toHaveCount(0);
 
   await expect
     .poll(async () => (await drawer.boundingBox())?.x)
