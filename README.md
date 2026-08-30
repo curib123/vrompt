@@ -137,6 +137,9 @@ copy/save/follow actions, variants, attribution, and notifications. Run it
 against the mocked API boundary with `START_E2E_SERVER=true npm run test:e2e
 --workspace @vrompt/web`; set `PLAYWRIGHT_EXECUTABLE_PATH` when using an
 existing local Chromium binary.
+Phase 37 adds an Ubuntu VPS bootstrap, Docker log rotation, firewall and
+Fail2ban setup, automatic security updates, swap provisioning, and a
+non-root deployment runbook in `infrastructure/vps`.
 
 ## Docker development
 
