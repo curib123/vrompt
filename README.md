@@ -58,11 +58,22 @@ npm run prisma:seed --workspace @vrompt/api
 
 ### Google authentication
 
-Phase 6 uses Google OAuth only. Create a Google OAuth Web application client,
-add `http://localhost:4000/api/v1/auth/google/callback` as an authorized
-redirect URI, and set `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` in `.env`.
-Basic Google OAuth does not require a paid Google Cloud plan. Additional profile
+Phase 6 uses Google sign-in only. In Google Cloud Console, open the **same OAuth
+2.0 Web client** whose client ID is in `.env`, then add this exact authorized
+redirect URI (including the port and path, with no trailing slash):
+
+`http://localhost:4000/api/v1/auth/google/callback`
+
+Set `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` in `.env`, then open Vrompt at
+`http://localhost:3000` rather than `127.0.0.1` or another hostname. The
+frontend page (`/auth/callback`) is not the Google redirect URI; the API
+receives Google's response and sends the user back to the frontend. Basic
+Google sign-in does not require a paid Google Cloud plan. Additional profile
 details can be added later inside Vrompt.
+
+For a deployed site, replace the local values with the public API callback URL,
+for example `https://api.example.com/api/v1/auth/google/callback`, and register
+that exact URL in the same Google OAuth client.
 
 ### User profiles
 
