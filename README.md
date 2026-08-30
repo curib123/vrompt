@@ -168,6 +168,10 @@ Phase 44 adds controlled-beta support intake, severity guidance, moderation and
 abuse handling, daily operator checks, rollback guidance, and a redacted report
 template in `infrastructure/beta`.
 
+Phase 45 adds the MVP validation runbook and a data-pending validation report
+template in `infrastructure/validation`, including cohort, conversion,
+retention, evidence comprehension, quality, and launch decision gates.
+
 ## Docker development
 
 Start the development stack with source bind mounts and watch mode:
