@@ -37,6 +37,9 @@ export function RepositoryDetail({ slug }: { slug: string }) {
   const [saveState, setSaveState] = useState<'idle' | 'saving' | 'failed'>(
     'idle',
   );
+  const [likeState, setLikeState] = useState<'idle' | 'liking' | 'failed'>(
+    'idle',
+  );
   const [selectedImage, setSelectedImage] = useState<PromptEvidenceImage>();
   const [selectedVersion, setSelectedVersion] = useState<PromptVersionDetail>();
 
@@ -153,6 +156,36 @@ export function RepositoryDetail({ slug }: { slug: string }) {
     }
   }
 
+  async function toggleLike() {
+    if (!user || likeState === 'liking') {
+      return;
+    }
+
+    setLikeState('liking');
+
+    try {
+      const result = await apiRequest<{ liked: boolean; likeCount: number }>(
+        `/prompt-repositories/${encodeURIComponent(slug)}/like`,
+        {
+          accessToken: accessToken ?? undefined,
+          method: repository?.isLiked ? 'DELETE' : 'POST',
+        },
+      );
+      setRepository((current) =>
+        current
+          ? {
+              ...current,
+              isLiked: result.liked,
+              likeCount: result.likeCount,
+            }
+          : current,
+      );
+      setLikeState('idle');
+    } catch {
+      setLikeState('failed');
+    }
+  }
+
   return (
     <div className="grid gap-8">
       <Card className="relative overflow-hidden border-[#0D0D0D] bg-[#0D0D0D] text-white dark:border-white">
@@ -232,6 +265,20 @@ export function RepositoryDetail({ slug }: { slug: string }) {
                 Sign in to Save
               </Link>
             )}
+            {user ? (
+              <Button
+                disabled={likeState === 'liking'}
+                onClick={() => void toggleLike()}
+                type="button"
+                variant="secondary"
+              >
+                {likeState === 'liking'
+                  ? 'Liking...'
+                  : repository.isLiked
+                    ? 'Liked'
+                    : 'Like'}
+              </Button>
+            ) : null}
             <Link
               className={getButtonClasses('secondary')}
               href={`/create?variantFrom=${encodeURIComponent(slug)}`}
@@ -245,8 +292,9 @@ export function RepositoryDetail({ slug }: { slug: string }) {
           <p className="relative mt-3 text-xs text-zinc-400">
             {copyState === 'failed'
               ? 'Clipboard access failed. Check browser permissions and try again.'
-              : `${repository.copyCount} copies - ${repository.saveCount} saves`}
+              : `${repository.copyCount} copies - ${repository.saveCount} saves - ${repository.likeCount} likes`}
             {saveState === 'failed' ? ' Save failed; try again.' : ''}
+            {likeState === 'failed' ? ' Like failed; try again.' : ''}
           </p>
         </div>
       </Card>

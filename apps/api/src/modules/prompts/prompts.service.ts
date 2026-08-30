@@ -158,7 +158,7 @@ export class PromptsService {
     }
 
     if (!viewerId) {
-      return { ...repository, isSaved: false };
+      return { ...repository, isSaved: false, isLiked: false };
     }
 
     const bookmark = await this.prismaService.bookmark.findUnique({
@@ -170,8 +170,21 @@ export class PromptsService {
       },
       select: { userId: true },
     });
+    const like = await this.prismaService.like.findUnique({
+      where: {
+        userId_promptRepositoryId: {
+          userId: viewerId,
+          promptRepositoryId: repository.id,
+        },
+      },
+      select: { userId: true },
+    });
 
-    return { ...repository, isSaved: Boolean(bookmark) };
+    return {
+      ...repository,
+      isSaved: Boolean(bookmark),
+      isLiked: Boolean(like),
+    };
   }
 
   async copyBySlug(
@@ -563,6 +576,7 @@ export class PromptsService {
     status: true,
     copyCount: true,
     saveCount: true,
+    likeCount: true,
     license: true,
     createdAt: true,
     updatedAt: true,

@@ -159,7 +159,9 @@ export interface PromptRepositoryDetail {
   updatedAt: string;
   copyCount: number;
   saveCount: number;
+  likeCount: number;
   isSaved: boolean;
+  isLiked: boolean;
   variantCount: number;
   sourcePromptId: string | null;
   rootPromptId: string | null;
