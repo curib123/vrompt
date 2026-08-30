@@ -120,6 +120,20 @@ export interface SearchResponse {
   hasNextPage: boolean;
 }
 
+export interface SitemapResponse {
+  prompts: Array<{
+    slug: string;
+    updatedAt: string;
+    owner: { username: string };
+  }>;
+  profiles: Array<{ username: string; updatedAt: string }>;
+  collections: Array<{
+    slug: string;
+    updatedAt: string;
+    owner: { username: string };
+  }>;
+}
+
 export interface ExploreRepository {
   id: string;
   title: string;
@@ -504,6 +518,16 @@ export async function fetchApiHealth(): Promise<ApiHealthResponse | null> {
 export async function fetchExploreData(): Promise<ExploreResponse | null> {
   try {
     return await apiRequest<ExploreResponse>('/search/explore');
+  } catch {
+    return null;
+  }
+}
+
+export async function fetchSearchData(
+  params: URLSearchParams,
+): Promise<SearchResponse | null> {
+  try {
+    return await apiRequest<SearchResponse>(`/search?${params.toString()}`);
   } catch {
     return null;
   }

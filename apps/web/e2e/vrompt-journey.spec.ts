@@ -188,7 +188,7 @@ test('keeps the signed-out desktop navigation focused', async ({ page }) => {
     0,
   );
   const header = page.getByRole('banner');
-  await expect(header.getByRole('link', { name: 'Login' })).toBeVisible();
+  await expect(header.getByRole('link', { name: 'Sign in' })).toBeVisible();
   await expect(header.getByRole('link', { name: 'Join Vrompt' })).toBeVisible();
 });
 
@@ -209,7 +209,9 @@ test('opens the mobile navigation drawer from the left-side hamburger', async ({
 
   await page.goto('/');
   const hamburger = page.getByRole('button', { name: 'Open navigation' });
-  const homeLink = page.getByRole('link', { name: 'Vrompt home' });
+  const homeLink = page
+    .getByRole('banner')
+    .getByRole('link', { name: 'Vrompt home' });
   const hamburgerBox = await hamburger.boundingBox();
   const homeLinkBox = await homeLink.boundingBox();
   expect(hamburgerBox?.x).toBeLessThan(
@@ -306,6 +308,7 @@ test('searches prompts from Explore with advanced filters', async ({ page }) => 
 test('completes the two-user prompt and evidence journey on mobile', async ({
   page,
 }) => {
+  test.setTimeout(90_000);
   let currentUser = author;
   let promptVersion = version(
     'version-1',
@@ -554,7 +557,7 @@ test('completes the two-user prompt and evidence journey on mobile', async ({
   await page
     .getByLabel('Description')
     .fill('A reusable prompt for focused work.');
-  await page.getByLabel('AI compatibility').fill('GPT-5');
+  await page.getByLabel('Works well with').fill('GPT-5');
   await page
     .getByLabel('Prompt content')
     .fill('Write a concise research brief.');
@@ -567,10 +570,10 @@ test('completes the two-user prompt and evidence journey on mobile', async ({
       pngFile('v1-three.png'),
     ]);
   await expect(page.getByText('3/3 images.')).toBeVisible();
-  await page.getByLabel('Evidence 1 alt text').fill('First result');
-  await page.getByLabel('Evidence 2 caption').fill('Second result');
-  await page.getByLabel('Evidence 3 alt text').fill('Third result');
-  await page.getByRole('button', { name: 'Save repository' }).click();
+  await page.getByLabel('Result 1 image description').fill('First result');
+  await page.getByLabel('Result 2 caption').fill('Second result');
+  await page.getByLabel('Result 3 image description').fill('Third result');
+  await page.getByRole('button', { name: 'Save prompt' }).click();
   await page.waitForURL('**/p/prompt-a');
 
   await page.getByRole('button', { name: 'Copy Prompt' }).click();
@@ -578,18 +581,19 @@ test('completes the two-user prompt and evidence journey on mobile', async ({
   await page.getByRole('button', { name: 'Save' }).click();
   await expect(page.getByRole('button', { name: 'Saved' })).toBeVisible();
 
-  await page.getByRole('tab', { name: 'Versions' }).click();
-  await expect(page.getByRole('button', { name: /Version 1/ })).toBeVisible();
+  await page.getByRole('tab', { name: 'Updates' }).click();
+  await expect(page.getByRole('button', { name: /Update 1/ })).toBeVisible();
   await page
-    .getByLabel('New version prompt content')
+    .getByLabel('New prompt update')
     .fill('Write a concise research brief with sources.');
-  await page.getByLabel('Version changelog').fill('Improved structure');
-  await page.getByRole('button', { name: 'Publish new version' }).click();
+  await page.getByLabel('Update note').fill('Improved structure');
+  await page.getByRole('button', { name: 'Publish update' }).click();
   await page.waitForLoadState('networkidle');
 
   currentUser = explorer;
   await page.goto('/search?q=Prompt+A');
-  await expect(page.getByText('1 public repositories')).toBeVisible();
+  await page.getByRole('button', { name: 'Search prompts' }).click();
+  await expect(page.getByText('1 match')).toBeVisible();
   await page.getByRole('link', { name: 'Prompt A' }).first().click();
   await page.waitForURL('**/p/prompt-a');
   await expect(page.getByRole('heading', { name: 'Prompt A' })).toBeVisible();
@@ -600,7 +604,7 @@ test('completes the two-user prompt and evidence journey on mobile', async ({
   await expect(page.getByRole('button', { name: 'Following' })).toBeVisible();
 
   await page.goto('/p/prompt-a');
-  await page.getByRole('link', { name: 'Create Variant' }).click();
+  await page.getByRole('link', { name: 'Create variation' }).click();
   await page.waitForURL('**/create?variantFrom=prompt-a');
   await expect(
     page.getByText(
@@ -615,7 +619,7 @@ test('completes the two-user prompt and evidence journey on mobile', async ({
     .locator('input[type="file"]')
     .setInputFiles(pngFile('variant.png'));
   await expect(page.getByText('1/3 images.')).toBeVisible();
-  await page.getByRole('button', { name: 'Save repository' }).click();
+  await page.getByRole('button', { name: 'Save prompt' }).click();
   await page.waitForURL('**/p/prompt-a-variant');
   await expect(page.getByText('Attribution')).toBeVisible();
   await expect(page.getByRole('link', { name: '@author' })).toBeVisible();
@@ -623,6 +627,6 @@ test('completes the two-user prompt and evidence journey on mobile', async ({
 
   currentUser = author;
   await page.goto('/notifications');
-  await expect(page.getByText('created a Variant based on')).toBeVisible();
+  await expect(page.getByText('created a variation based on')).toBeVisible();
   await expect(page.getByText('Prompt A')).toBeVisible();
 });

@@ -211,6 +211,39 @@ export class SearchService {
     };
   }
 
+  async sitemap() {
+    const [prompts, profiles, collections] = await Promise.all([
+      this.prismaService.promptRepository.findMany({
+        where: {
+          status: PromptRepositoryStatus.ACTIVE,
+          visibility: PromptVisibility.PUBLIC,
+        },
+        orderBy: { updatedAt: 'desc' },
+        select: {
+          slug: true,
+          updatedAt: true,
+          owner: { select: { username: true } },
+        },
+      }),
+      this.prismaService.user.findMany({
+        where: { status: 'ACTIVE' },
+        orderBy: { updatedAt: 'desc' },
+        select: { username: true, updatedAt: true },
+      }),
+      this.prismaService.collection.findMany({
+        where: { visibility: 'PUBLIC', archivedAt: null },
+        orderBy: { updatedAt: 'desc' },
+        select: {
+          slug: true,
+          updatedAt: true,
+          owner: { select: { username: true } },
+        },
+      }),
+    ]);
+
+    return { prompts, profiles, collections };
+  }
+
   private orderBy(sort: SearchQueryDto['sort'], hasQuery: boolean) {
     switch (sort) {
       case 'newest':

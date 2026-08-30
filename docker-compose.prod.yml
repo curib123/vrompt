@@ -35,12 +35,14 @@ services:
       dockerfile: infrastructure/docker/web.Dockerfile
       args:
         NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-/api/v1}
+        NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-${WEB_ORIGIN}}
     container_name: vrompt-web
     restart: unless-stopped
     environment:
       NODE_ENV: production
       HOSTNAME: 0.0.0.0
       PORT: 3000
+      NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-${WEB_ORIGIN}}
       INTERNAL_API_BASE_URL: http://vrompt-api:4000/api/v1
     expose:
       - '3000'

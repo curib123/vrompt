@@ -29,4 +29,29 @@ describe('SearchService', () => {
     );
     expect(count).toHaveBeenCalled();
   });
+
+  it('builds the sitemap index from public content only', async () => {
+    const promptFindMany = jest.fn().mockResolvedValue([]);
+    const userFindMany = jest.fn().mockResolvedValue([]);
+    const collectionFindMany = jest.fn().mockResolvedValue([]);
+    const prisma = {
+      promptRepository: { findMany: promptFindMany },
+      user: { findMany: userFindMany },
+      collection: { findMany: collectionFindMany },
+    };
+
+    await expect(
+      new SearchService(prisma as unknown as PrismaService).sitemap(),
+    ).resolves.toEqual({ prompts: [], profiles: [], collections: [] });
+    expect(promptFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { status: 'ACTIVE', visibility: 'PUBLIC' },
+      }),
+    );
+    expect(collectionFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { visibility: 'PUBLIC', archivedAt: null },
+      }),
+    );
+  });
 });

@@ -14,9 +14,15 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { apiRequest, getMediaUrl } from '@/lib/api';
 import type { ApiError, ProfileResponse } from '@/lib/api';
 
-export function ProfileView({ username }: { username: string }) {
+export function ProfileView({
+  username,
+  initialProfile = null,
+}: {
+  username: string;
+  initialProfile?: ProfileResponse | null;
+}) {
   const { accessToken, isLoading, user } = useAuth();
-  const [profile, setProfile] = useState<ProfileResponse | null>(null);
+  const [profile, setProfile] = useState<ProfileResponse | null>(initialProfile);
   const [error, setError] = useState<string | null>(null);
   const [followState, setFollowState] = useState<'idle' | 'saving' | 'failed'>(
     'idle',

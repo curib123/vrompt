@@ -1,13 +1,20 @@
 import Link from 'next/link';
+import type { Metadata } from 'next';
 
 import { BrandLockup, BrandMark } from '@/components/brand/brand-mark';
 import { Badge } from '@/components/ui/badge';
-import { Card } from '@/components/ui/card';
 import { getButtonClasses } from '@/components/ui/button';
+import { createPageMetadata, siteConfig } from '@/lib/seo';
+
+export const metadata: Metadata = createPageMetadata({
+  title: 'Vrompt — High-Quality AI Prompts',
+  description: siteConfig.description,
+  path: '/',
+});
 
 export default function HomePage() {
   return (
-    <div className="grid gap-20 sm:gap-28">
+    <div className="grid gap-16 sm:gap-24">
       <section className="relative isolate overflow-hidden rounded-[2rem] bg-[#0D0D0D] px-5 py-6 text-white shadow-[0_24px_70px_rgba(13,13,13,0.16)] sm:px-10 sm:py-10 lg:px-16 lg:py-14">
         <div className="pointer-events-none absolute -right-28 -top-32 size-[28rem] rounded-full border-[3rem] border-white/[0.07]" />
         <div className="pointer-events-none absolute -bottom-40 left-[42%] size-[30rem] rounded-full border border-white/[0.12]" />
@@ -44,18 +51,16 @@ export default function HomePage() {
               <Link
                 className={getButtonClasses(
                   'ghost',
-                  'w-full !text-white hover:bg-white/10 sm:w-auto',
+                  'w-full border border-white/25 !text-white hover:bg-white/10 sm:w-auto',
                 )}
                 href="/register"
               >
                 Join Vrompt
               </Link>
             </div>
-            <div className="flex flex-wrap gap-x-6 gap-y-2 text-xs font-medium uppercase tracking-[0.2em] text-zinc-500">
-              <span>Discover</span>
-              <span>Copy</span>
-              <span>Make it yours</span>
-            </div>
+            <p className="text-xs font-medium uppercase tracking-[0.16em] text-zinc-400">
+              Browse and copy free · Join to save and share
+            </p>
           </div>
 
           <div className="relative rounded-[1.75rem] border border-white/15 bg-white/[0.08] p-3 backdrop-blur sm:p-4">
@@ -106,7 +111,7 @@ export default function HomePage() {
             refined, and made easier to use.
           </p>
         </div>
-        <div className="grid gap-3 sm:grid-cols-3">
+        <div className="grid overflow-hidden rounded-[2rem] border border-[#E6E6E6] bg-white shadow-[0_18px_50px_rgba(13,13,13,0.05)] [&>article+article]:border-t [&>article+article]:border-[#E6E6E6] sm:grid-cols-3 sm:[&>article+article]:border-l sm:[&>article+article]:border-t-0 dark:border-[#1A1A1A] dark:bg-[#1A1A1A] dark:[&>article+article]:border-[#4D4D4D]">
           <ValueCard
             number="01"
             text="Search by goal, topic, or workflow and find a useful starting point faster."
@@ -128,10 +133,10 @@ export default function HomePage() {
       <section className="grid gap-5 rounded-[2rem] border border-[#E6E6E6] bg-white p-5 shadow-[0_18px_50px_rgba(13,13,13,0.06)] sm:grid-cols-[1fr_auto] sm:items-center sm:p-8 dark:border-[#1A1A1A] dark:bg-[#1A1A1A]">
         <div className="grid gap-3">
           <p className="font-mono text-xs uppercase tracking-[0.24em] text-zinc-500">
-            Built for curious people
+            Made for every level
           </p>
           <h2 className="max-w-2xl text-3xl font-semibold leading-tight tracking-[-0.06em] sm:text-5xl">
-            Prompt engineers, creators, and everyday AI users.
+            Start with experience, not a blank page.
           </h2>
           <p className="max-w-2xl text-sm leading-7 text-zinc-600 dark:text-zinc-400">
             Browse freely. Copy a strong starting point. Join when you are
@@ -142,7 +147,7 @@ export default function HomePage() {
           className={getButtonClasses('primary', 'w-full sm:w-auto')}
           href="/explore"
         >
-          See what is inside
+          Browse popular prompts
         </Link>
       </section>
     </div>
@@ -159,7 +164,7 @@ function ValueCard({
   title: string;
 }) {
   return (
-    <Card className="grid content-start gap-8 rounded-[1.35rem] p-5 sm:p-6">
+    <article className="grid min-h-56 content-between gap-8 p-5 sm:min-h-64 sm:p-6">
       <span className="font-mono text-xs text-zinc-500">{number}</span>
       <div className="grid gap-3">
         <h3 className="text-2xl font-semibold tracking-[-0.05em]">{title}</h3>
@@ -167,6 +172,6 @@ function ValueCard({
           {text}
         </p>
       </div>
-    </Card>
+    </article>
   );
 }

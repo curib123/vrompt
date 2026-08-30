@@ -7,6 +7,7 @@ export default defineConfig({
   reporter: 'list',
   use: {
     baseURL: process.env.PLAYWRIGHT_BASE_URL ?? 'http://localhost:3000',
+    permissions: ['clipboard-read', 'clipboard-write'],
     ...(process.env.PLAYWRIGHT_EXECUTABLE_PATH
       ? {
           launchOptions: {

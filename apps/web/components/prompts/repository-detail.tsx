@@ -30,10 +30,16 @@ import type {
   RepositoryActivityResponse,
 } from '@/lib/api';
 
-export function RepositoryDetail({ slug }: { slug: string }) {
+export function RepositoryDetail({
+  slug,
+  initialRepository = null,
+}: {
+  slug: string;
+  initialRepository?: PromptRepositoryDetail | null;
+}) {
   const { accessToken, isLoading, user } = useAuth();
   const [repository, setRepository] = useState<PromptRepositoryDetail | null>(
-    null,
+    initialRepository,
   );
   const [error, setError] = useState<string | null>(null);
   const [copyState, setCopyState] = useState<
@@ -87,7 +93,7 @@ export function RepositoryDetail({ slug }: { slug: string }) {
     };
   }, [accessToken, isLoading, slug]);
 
-  if (isLoading || (!repository && !error)) {
+  if (!repository && (isLoading || !error)) {
     return (
       <Card>
         <p className="text-sm text-zinc-500">Loading prompt...</p>

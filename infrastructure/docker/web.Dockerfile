@@ -16,7 +16,9 @@ FROM dependencies AS build
 COPY . .
 
 ARG NEXT_PUBLIC_API_BASE_URL=/api/v1
+ARG NEXT_PUBLIC_SITE_URL=http://localhost:3000
 ENV NEXT_PUBLIC_API_BASE_URL=${NEXT_PUBLIC_API_BASE_URL}
+ENV NEXT_PUBLIC_SITE_URL=${NEXT_PUBLIC_SITE_URL}
 
 RUN npm run build --workspace @vrompt/web
 

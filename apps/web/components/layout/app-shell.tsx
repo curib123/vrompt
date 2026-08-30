@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 
 import { PageContainer } from '@/components/layout/page-container';
+import { SiteFooter } from '@/components/layout/site-footer';
 import { SiteHeader } from '@/components/layout/site-header';
 
 export function AppShell({ children }: { children: ReactNode }) {
@@ -14,9 +15,10 @@ export function AppShell({ children }: { children: ReactNode }) {
         Skip to main content
       </a>
       <SiteHeader />
-      <main className="py-6 sm:py-12" id="main-content">
+      <main className="page-reveal py-6 sm:py-12" id="main-content">
         <PageContainer>{children}</PageContainer>
       </main>
+      <SiteFooter />
     </div>
   );
 }

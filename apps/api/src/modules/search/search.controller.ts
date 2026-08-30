@@ -12,6 +12,11 @@ export class SearchController {
     return this.searchService.explore();
   }
 
+  @Get('/sitemap')
+  sitemap() {
+    return this.searchService.sitemap();
+  }
+
   @Get()
   search(@Query() input: SearchQueryDto) {
     return this.searchService.search(input);

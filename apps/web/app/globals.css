@@ -77,6 +77,21 @@ textarea {
   background-size: 32px 32px;
 }
 
+@keyframes page-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.page-reveal {
+  animation: page-reveal 360ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
 @keyframes drawer-fade-in {
   from {
     opacity: 0;
@@ -106,6 +121,7 @@ textarea {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .page-reveal,
   .drawer-backdrop,
   .drawer-panel {
     animation: none;

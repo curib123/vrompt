@@ -14,12 +14,16 @@ import type { CollectionDetail } from '@/lib/api';
 export function CollectionDetailView({
   username,
   slug,
+  initialCollection = null,
 }: {
   username: string;
   slug: string;
+  initialCollection?: CollectionDetail | null;
 }) {
   const { accessToken, isLoading } = useAuth();
-  const [collection, setCollection] = useState<CollectionDetail | null>(null);
+  const [collection, setCollection] = useState<CollectionDetail | null>(
+    initialCollection,
+  );
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {

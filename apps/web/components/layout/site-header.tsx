@@ -23,7 +23,7 @@ export function SiteHeader() {
 
   return (
     <header className="sticky top-0 z-30 border-b border-[#E6E6E6]/90 bg-white/95 backdrop-blur dark:border-[#1A1A1A] dark:bg-[#0D0D0D]/95">
-      <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-3 py-3 sm:gap-4 sm:px-6 sm:py-4 lg:px-8">
+      <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-3 sm:gap-4 sm:px-6 sm:py-4 lg:px-8">
         <div className="hidden w-full items-center justify-between gap-4 lg:flex">
           <div className="flex items-center gap-3">
             <Link
@@ -72,7 +72,11 @@ export function SiteHeader() {
               : null}
             <div className="mx-1 h-6 w-px bg-[#E6E6E6] dark:bg-[#1A1A1A]" />
             {isLoading ? (
-              <span className="px-4 py-2 text-sm text-zinc-500">Loading...</span>
+              <span
+                aria-label="Checking your account"
+                className="h-10 w-28 animate-pulse rounded-full bg-[#E6E6E6] dark:bg-[#1A1A1A]"
+                role="status"
+              />
             ) : user ? (
               <>
                 <Link
@@ -92,7 +96,7 @@ export function SiteHeader() {
             ) : (
               <>
                 <Link className={getButtonClasses('ghost')} href="/login">
-                  Login
+                  Sign in
                 </Link>
                 <Link
                   className={getButtonClasses('primary', 'whitespace-nowrap')}
@@ -113,6 +117,36 @@ export function SiteHeader() {
           >
             <BrandLockup compact />
           </Link>
+          <div className="ml-auto flex min-w-0 items-center">
+            {isLoading ? (
+              <span
+                aria-label="Checking your account"
+                className="size-10 animate-pulse rounded-full bg-[#E6E6E6] dark:bg-[#1A1A1A]"
+                role="status"
+              />
+            ) : user ? (
+              <Link
+                aria-label="Open your profile"
+                className="rounded-full focus-visible:outline-offset-2"
+                href={`/u/${user.username}`}
+              >
+                <Avatar
+                  className="size-10 border-[#0D0D0D] bg-[#E6E6E6]"
+                  name={user.username}
+                />
+              </Link>
+            ) : (
+              <Link
+                className={getButtonClasses(
+                  'primary',
+                  'min-h-10 whitespace-nowrap px-4 py-2',
+                )}
+                href="/register"
+              >
+                Join
+              </Link>
+            )}
+          </div>
         </div>
       </div>
     </header>

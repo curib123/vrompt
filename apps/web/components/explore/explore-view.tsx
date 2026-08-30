@@ -12,11 +12,19 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { apiRequest } from '@/lib/api';
 import type { ExploreRepository, ExploreResponse } from '@/lib/api';
 
-export function ExploreView() {
-  const [explore, setExplore] = useState<ExploreResponse | null>(null);
+export function ExploreView({
+  initialExplore = null,
+}: {
+  initialExplore?: ExploreResponse | null;
+}) {
+  const [explore, setExplore] = useState<ExploreResponse | null>(
+    initialExplore,
+  );
   const [error, setError] = useState(false);
 
   useEffect(() => {
+    if (initialExplore) return;
+
     let active = true;
     void apiRequest<ExploreResponse>('/search/explore')
       .then((response) => {
@@ -28,7 +36,7 @@ export function ExploreView() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [initialExplore]);
 
   if (!explore) {
     return error ? (
@@ -44,12 +52,12 @@ export function ExploreView() {
   }
 
   return (
-    <div className="grid gap-10">
-      <Card className="relative overflow-hidden !border-[#0D0D0D] !bg-[#0D0D0D] !text-white dark:!border-white">
+    <div className="grid gap-14">
+      <Card className="relative overflow-hidden rounded-[2rem] !border-[#0D0D0D] !bg-[#0D0D0D] p-5 !text-white dark:!border-white sm:p-8">
         <div className="pointer-events-none absolute -right-24 -top-28 size-80 rounded-full border-[40px] border-white/10" />
         <div className="relative max-w-4xl space-y-5">
           <Badge className="border-white/40 !text-white">Discover</Badge>
-          <h1 className="text-4xl font-semibold leading-[0.95] tracking-[-0.07em] !text-white sm:text-7xl">
+          <h1 className="max-w-3xl text-4xl font-semibold leading-[0.95] tracking-[-0.07em] !text-white sm:text-6xl">
             Useful prompts, less wandering.
           </h1>
           <p className="max-w-2xl text-base leading-8 !text-zinc-200">
@@ -127,12 +135,22 @@ export function ExploreView() {
               </div>
             </details>
           </form>
-          <Link
-            className="inline-flex text-sm font-semibold !text-white underline underline-offset-4"
-            href="/search"
-          >
-            Search all prompts
-          </Link>
+          {explore.categories.length > 0 ? (
+            <div className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              <span className="shrink-0 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-zinc-400">
+                Browse by topic
+              </span>
+              {explore.categories.slice(0, 6).map((category) => (
+                <Link
+                  className="shrink-0 rounded-full border border-white/20 px-3 py-2 text-xs font-medium !text-white transition hover:border-white hover:bg-white/10"
+                  href={`/search?category=${encodeURIComponent(category.slug)}`}
+                  key={category.id}
+                >
+                  {category.name}
+                </Link>
+              ))}
+            </div>
+          ) : null}
         </div>
       </Card>
       <ExploreSection items={explore.featured} title="Featured" />
@@ -159,7 +177,7 @@ export function ExploreView() {
         />
       </div>
       <section className="grid gap-5">
-        <SectionHeading title="Categories" />
+        <SectionHeading showSwipe={false} title="Categories" />
         <div className="flex flex-wrap gap-3">
           {explore.categories.map((category) => (
             <Link
@@ -174,7 +192,7 @@ export function ExploreView() {
       </section>
       {explore.starterCollections.length > 0 ? (
         <section className="grid gap-5">
-          <SectionHeading title="Starter collections" />
+          <SectionHeading showSwipe={false} title="Starter collections" />
           <div className="grid gap-4 md:grid-cols-2">
             {explore.starterCollections.map((collection) => (
               <Link
@@ -216,8 +234,8 @@ function ExploreSection({
           No prompts in this view yet.
         </p>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2">
-          {items.slice(0, 6).map((item) => (
+        <div className="grid auto-cols-[minmax(17rem,85vw)] grid-flow-col gap-4 overflow-x-auto overscroll-x-contain pb-3 pr-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:auto-cols-auto md:grid-flow-row md:grid-cols-2 md:overflow-visible md:pb-0 md:pr-0">
+          {items.slice(0, 4).map((item) => (
             <RepositoryCard item={item} key={item.id} metric={metric} />
           ))}
         </div>
@@ -242,8 +260,8 @@ function RepositoryCard({
           ? item.variantCount
           : item.likeCount;
   return (
-    <Link href={`/p/${item.slug}`}>
-      <Card className="h-full transition hover:-translate-y-0.5 hover:border-black dark:hover:border-white">
+    <Link className="snap-start" href={`/p/${item.slug}`}>
+      <Card className="h-full min-h-52 transition hover:-translate-y-0.5 hover:border-black dark:hover:border-white">
         <div className="flex flex-wrap gap-2">
           {item.category ? <Badge>{item.category.name}</Badge> : null}
           {item.owner.accountType !== 'REAL' ? (
@@ -272,25 +290,44 @@ function RepositoryCard({
   );
 }
 
-function SectionHeading({ title }: { title: string }) {
+function SectionHeading({
+  showSwipe = true,
+  title,
+}: {
+  showSwipe?: boolean;
+  title: string;
+}) {
   return (
-    <div>
-      <p className="font-mono text-xs uppercase tracking-[0.24em] text-zinc-500">
-        Prompt library
-      </p>
-      <h2 className="mt-2 text-3xl font-semibold tracking-[-0.05em]">
-        {title}
-      </h2>
+    <div className="flex items-end justify-between gap-4">
+      <div>
+        <p className="font-mono text-xs uppercase tracking-[0.24em] text-zinc-500">
+          Prompt library
+        </p>
+        <h2 className="mt-2 text-3xl font-semibold tracking-[-0.05em]">
+          {title}
+        </h2>
+      </div>
+      {showSwipe ? (
+        <p className="pb-1 text-xs font-medium text-zinc-500 md:hidden">
+          Swipe to browse
+        </p>
+      ) : null}
     </div>
   );
 }
 function ExploreSkeleton() {
   return (
-    <div className="grid gap-8">
-      <Skeleton className="h-72 rounded-[1.5rem]" />
-      <div className="grid gap-4 md:grid-cols-2">
-        <Skeleton className="h-56 rounded-[1.5rem]" />
-        <Skeleton className="h-56 rounded-[1.5rem]" />
+    <div className="grid gap-10" role="status">
+      <span className="sr-only">Loading prompt recommendations</span>
+      <div className="grid min-h-72 content-center gap-4 rounded-[2rem] bg-[#0D0D0D] p-5 sm:p-8">
+        <Skeleton className="h-5 w-28 bg-white/15" />
+        <Skeleton className="h-12 w-full max-w-xl bg-white/15" />
+        <Skeleton className="h-5 w-full max-w-lg bg-white/15" />
+        <Skeleton className="mt-3 h-16 w-full bg-white/15" />
+      </div>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Skeleton className="h-48 rounded-[1.5rem]" />
+        <Skeleton className="hidden h-48 rounded-[1.5rem] sm:block" />
       </div>
     </div>
   );
