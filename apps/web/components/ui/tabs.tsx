@@ -35,8 +35,8 @@ export function Tabs({ items }: { items: TabItem[] }) {
               className={cn(
                 'min-h-11 shrink-0 rounded-full px-4 py-2 text-sm transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black dark:focus-visible:outline-white',
                 isSelected
-                  ? 'bg-black text-white dark:bg-white dark:text-black'
-                  : 'text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-900',
+                  ? 'bg-[#0D0D0D] !text-white dark:bg-white dark:!text-[#0D0D0D]'
+                  : '!text-[#4D4D4D] hover:bg-[#E6E6E6] dark:!text-zinc-300 dark:hover:bg-[#1A1A1A]',
               )}
               id={`${idPrefix}-${item.id}-tab`}
               key={item.id}

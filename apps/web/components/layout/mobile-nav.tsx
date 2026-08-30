@@ -35,8 +35,8 @@ export function MobileNav() {
                 className={cn(
                   'rounded-2xl px-4 py-3 text-sm transition',
                   pathname === route.href
-                    ? 'bg-black text-white dark:bg-white dark:text-black'
-                    : 'text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-900',
+                    ? 'bg-[#0D0D0D] !text-white dark:bg-white dark:!text-[#0D0D0D]'
+                    : '!text-[#4D4D4D] hover:bg-[#E6E6E6] dark:!text-zinc-300 dark:hover:bg-[#1A1A1A]',
                 )}
                 href={route.href as Route}
                 key={route.href}
