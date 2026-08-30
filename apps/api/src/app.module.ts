@@ -3,6 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 
 import { envValidationSchema } from './config/env.schema';
 import { AuditModule } from './modules/audit/audit.module';
+import { ActivityModule } from './modules/activity/activity.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { BookmarksModule } from './modules/bookmarks/bookmarks.module';
 import { CategoriesModule } from './modules/categories/categories.module';
@@ -53,6 +54,7 @@ import { UsersModule } from './modules/users/users.module';
     ReportsModule,
     ModerationModule,
     AuditModule,
+    ActivityModule,
   ],
 })
 export class AppModule {}

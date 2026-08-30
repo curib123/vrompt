@@ -32,7 +32,7 @@ export class CollectionsService {
     }
 
     try {
-      return await this.prismaService.collection.create({
+      const collection = await this.prismaService.collection.create({
         data: {
           ownerId,
           name,
@@ -42,6 +42,17 @@ export class CollectionsService {
         },
         select: this.collectionSelect,
       });
+      if (collection.visibility === 'PUBLIC') {
+        await this.prismaService.activityEvent.create({
+          data: {
+            actorId: ownerId,
+            collectionId: collection.id,
+            type: 'COLLECTION_CREATED',
+            metadata: { name: collection.name },
+          },
+        });
+      }
+      return collection;
     } catch (error: unknown) {
       if (
         error instanceof Prisma.PrismaClientKnownRequestError &&

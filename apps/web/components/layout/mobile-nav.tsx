@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import type { Route } from 'next';
 import { usePathname } from 'next/navigation';
 
 import { Button } from '@/components/ui/button';
@@ -33,7 +34,7 @@ export function MobileNav() {
                     ? 'bg-black text-white dark:bg-white dark:text-black'
                     : 'text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-900',
                 )}
-                href={route.href}
+                href={route.href as Route}
                 key={route.href}
                 onClick={() => setOpen(false)}
               >

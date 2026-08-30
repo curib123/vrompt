@@ -120,6 +120,15 @@ export class PromptsService {
           });
         }
 
+        await transaction.activityEvent.create({
+          data: {
+            actorId: ownerId,
+            promptRepositoryId: repository.id,
+            type: 'REPOSITORY_CREATED',
+            metadata: { title: repository.slug },
+          },
+        });
+
         return {
           id: repository.id,
           slug: repository.slug,
@@ -360,6 +369,17 @@ export class PromptsService {
             data: { currentVersionId: version.id },
           });
 
+          if (versionStatus === PromptVersionStatus.PUBLISHED) {
+            await transaction.activityEvent.create({
+              data: {
+                actorId,
+                promptRepositoryId: repository.id,
+                type: 'VERSION_PUBLISHED',
+                metadata: { versionNumber: version.versionNumber },
+              },
+            });
+          }
+
           return version;
         },
         { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
@@ -391,6 +411,14 @@ export class PromptsService {
       await transaction.promptRepository.update({
         where: { id: created.id },
         data: { sourcePromptId: source.id, rootPromptId },
+      });
+      await transaction.activityEvent.create({
+        data: {
+          actorId,
+          promptRepositoryId: created.id,
+          type: 'VARIANT_CREATED',
+          metadata: { sourcePromptId: source.id },
+        },
       });
       await transaction.promptRepository.update({
         where: { id: source.id },

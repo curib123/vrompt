@@ -5,6 +5,7 @@ export const primaryRoutes = [
   { href: '/create', label: 'Create' },
   { href: '/saved', label: 'Saved' },
   { href: '/collections', label: 'Collections' },
+  { href: '/following', label: 'Following' },
 ] as const;
 
 export const secondaryRoutes = [

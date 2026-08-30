@@ -150,6 +150,30 @@ export interface ExploreResponse {
   }>;
 }
 
+export interface ActivityFeedResponse {
+  items: Array<{
+    id: string;
+    type:
+      | 'REPOSITORY_CREATED'
+      | 'VERSION_PUBLISHED'
+      | 'VARIANT_CREATED'
+      | 'COLLECTION_CREATED';
+    metadata: Record<string, unknown> | null;
+    createdAt: string;
+    actor: { username: string };
+    promptRepository: { title: string; slug: string } | null;
+    collection: {
+      name: string;
+      slug: string;
+      owner: { username: string };
+    } | null;
+  }>;
+  page: number;
+  pageSize: number;
+  total: number;
+  hasNextPage: boolean;
+}
+
 interface ProfileSummary {
   id: string;
   username: string;

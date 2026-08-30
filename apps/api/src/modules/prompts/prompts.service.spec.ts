@@ -17,6 +17,7 @@ describe('PromptsService', () => {
         update: jest.fn().mockResolvedValue(undefined),
       },
       promptTag: { createMany: jest.fn().mockResolvedValue(undefined) },
+      activityEvent: { create: jest.fn().mockResolvedValue(undefined) },
     };
     const prismaService = {
       category: {
@@ -73,6 +74,7 @@ describe('PromptsService', () => {
           .mockResolvedValue({ id: 'version-4', versionNumber: 4 }),
       },
       promptRepository: { update: jest.fn().mockResolvedValue(undefined) },
+      activityEvent: { create: jest.fn().mockResolvedValue(undefined) },
     };
     const prismaService = {
       promptRepository: {
