@@ -93,6 +93,31 @@ export interface CollectionDetail {
   items: CollectionItem[];
 }
 
+export interface SearchResult {
+  id: string;
+  title: string;
+  slug: string;
+  description: string | null;
+  aiCompatibility: string | null;
+  visibility: 'PUBLIC' | 'UNLISTED' | 'PRIVATE';
+  copyCount: number;
+  saveCount: number;
+  likeCount: number;
+  variantCount: number;
+  updatedAt: string;
+  owner: { username: string };
+  category: { name: string; slug: string } | null;
+  promptTags: { tag: { name: string; slug: string } }[];
+}
+
+export interface SearchResponse {
+  items: SearchResult[];
+  page: number;
+  pageSize: number;
+  total: number;
+  hasNextPage: boolean;
+}
+
 interface ProfileSummary {
   id: string;
   username: string;

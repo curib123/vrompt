@@ -1,11 +1,21 @@
-import { RoutePlaceholder } from '@/components/route-placeholder';
+import { SearchView } from '@/components/search/search-view';
 
-export default function SearchPage() {
+export default async function SearchPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const params = await searchParams;
+  const value = (key: string) => {
+    const item = params[key];
+    return Array.isArray(item) ? item[0] : item;
+  };
   return (
-    <RoutePlaceholder
-      description="Search routing and page composition are ready so filters, query state, and results can drop in during the search phase."
-      eyebrow="Search"
-      title="Search Vrompt"
+    <SearchView
+      initialAi={value('ai')}
+      initialCategory={value('category')}
+      initialQuery={value('q')}
+      initialSort={value('sort')}
     />
   );
 }
