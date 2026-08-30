@@ -1,6 +1,6 @@
 # Vrompt
 
-Vrompt is the repository for AI prompts. This workspace contains the Phase 1 through Phase 28 MVP foundation: a TypeScript monorepo, a Next.js frontend shell, a NestJS API shell, a normalized Prisma/PostgreSQL data model, media storage adapters, Google-only authentication, user profiles, prompt organization, repository creation, repository detail pages, copy tracking, immutable prompt versions, Create Variant, Variant Lineage, saved prompt repositories, repository likes, community comments, creator follows, prompt collections, repository search, repository-first Explore, a repository-first homepage, a followed-creator activity feed, in-app notifications, repository activity history, user reporting, role-protected moderation, and admin audit logs.
+Vrompt is the repository for AI prompts. This workspace contains the Phase 1 through Phase 29 MVP foundation: a TypeScript monorepo, a Next.js frontend shell, a NestJS API shell, a normalized Prisma/PostgreSQL data model, media storage adapters, Google-only authentication, user profiles, prompt organization, repository creation, repository detail pages, copy tracking, immutable prompt versions, Create Variant, Variant Lineage, saved prompt repositories, repository likes, community comments, creator follows, prompt collections, repository search, repository-first Explore, a repository-first homepage, a followed-creator activity feed, in-app notifications, repository activity history, user reporting, role-protected moderation, admin audit logs, and an API security baseline.
 
 ## Workspace layout
 
@@ -118,6 +118,9 @@ Phase 27 adds moderator/admin report queues, hide/restore/suspend actions,
 evidence-image moderation support, and auditable moderation operations.
 Phase 28 adds admin-only, filterable, paginated audit-log viewing backed by the
 immutable administrative records created by moderation actions.
+Phase 29 adds strict CORS origin checks, security response headers, auth
+throttling, query-safe request logging, secure production cookies, and
+signature-validated evidence uploads with path-safe filenames.
 
 ## Docker development
 

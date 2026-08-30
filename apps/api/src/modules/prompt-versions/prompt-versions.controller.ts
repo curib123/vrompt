@@ -31,9 +31,13 @@ export class PromptVersionsController {
     FileInterceptor('file', {
       limits: { fileSize: 5 * 1024 * 1024 },
       fileFilter: (_request, file, callback) => {
-        if (!file.mimetype.startsWith('image/')) {
+        if (
+          !['image/jpeg', 'image/png', 'image/webp'].includes(file.mimetype)
+        ) {
           callback(
-            new BadRequestException('Evidence files must be images'),
+            new BadRequestException(
+              'Evidence files must be JPEG, PNG, or WebP images',
+            ),
             false,
           );
           return;

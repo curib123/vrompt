@@ -28,10 +28,15 @@ export class AuthController {
   ) {}
 
   @Get('google')
-  google(@Res() response: Response) {
+  google(@Req() request: Request, @Res() response: Response) {
     const state = randomBytes(32).toString('base64url');
 
     try {
+      this.authService.assertAuthRateLimit(
+        `google-start:${this.clientIp(request)}`,
+        20,
+        15 * 60,
+      );
       response.cookie(GOOGLE_STATE_COOKIE, state, {
         ...this.cookieOptions(5 * 60 * 1000),
         maxAge: 5 * 60 * 1000,
@@ -61,6 +66,11 @@ export class AuthController {
     }
 
     try {
+      await this.authService.assertAuthRateLimit(
+        `google-callback:${this.clientIp(request)}`,
+        20,
+        15 * 60,
+      );
       const session = await this.authService.exchangeGoogleCode(code);
       this.setRefreshCookie(
         response,
@@ -79,6 +89,11 @@ export class AuthController {
     @Req() request: Request,
     @Res({ passthrough: true }) response: Response,
   ) {
+    await this.authService.assertAuthRateLimit(
+      `refresh:${this.clientIp(request)}`,
+      30,
+      60,
+    );
     const refreshToken = this.getRefreshCookie(request);
     const session = await this.authService.refresh(refreshToken);
     this.setRefreshCookie(
@@ -135,6 +150,10 @@ export class AuthController {
       ?.slice(name.length + 1);
   }
 
+  private clientIp(request: Request) {
+    return request.ip || request.socket.remoteAddress || 'unknown';
+  }
+
   private matchesState(expected: string, received: string) {
     const expectedBuffer = Buffer.from(expected);
     const receivedBuffer = Buffer.from(received);
@@ -160,7 +179,9 @@ export class AuthController {
 
     return {
       httpOnly: true,
-      secure: this.configService.get<boolean>('AUTH_COOKIE_SECURE', false),
+      secure:
+        this.configService.get<string>('NODE_ENV') === 'production' ||
+        this.configService.get<boolean>('AUTH_COOKIE_SECURE', false),
       sameSite: sameSite as 'lax' | 'strict' | 'none',
       path: '/api/v1/auth',
       ...(maxAge ? { maxAge } : {}),

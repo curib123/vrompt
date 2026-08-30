@@ -37,7 +37,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
     this.logger.error(
       JSON.stringify({
         method: request.method,
-        path: request.url,
+        path: request.path,
         statusCode,
         message,
       }),
@@ -45,7 +45,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
 
     response.status(statusCode).json({
       statusCode,
-      path: request.url,
+      path: request.path,
       method: request.method,
       timestamp: new Date().toISOString(),
       message,

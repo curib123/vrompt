@@ -16,20 +16,60 @@ async function bootstrap() {
 
   app.enableShutdownHooks();
   app.enableCors({
-    origin: configService.get<string>('WEB_ORIGIN', 'http://localhost:3000'),
+    origin: (origin, callback) => {
+      if (!origin) {
+        callback(null, true);
+        return;
+      }
+
+      const allowedOrigins = configService
+        .get<string>('WEB_ORIGIN', 'http://localhost:3000')
+        .split(',')
+        .map((value) => value.trim().replace(/\/$/, ''))
+        .filter(Boolean);
+
+      callback(null, allowedOrigins.includes(origin));
+    },
     credentials: true,
   });
-  app
-    .getHttpAdapter()
-    .getInstance()
-    .use(
-      '/media',
-      express.static(
-        resolve(
-          configService.get<string>('MEDIA_STORAGE_LOCAL_DIR', './storage'),
-        ),
+  const httpServer = app.getHttpAdapter().getInstance();
+  httpServer.use(
+    (
+      _request: express.Request,
+      response: express.Response,
+      next: express.NextFunction,
+    ) => {
+      response.setHeader('X-Content-Type-Options', 'nosniff');
+      response.setHeader('X-Frame-Options', 'DENY');
+      response.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+      response.setHeader(
+        'Permissions-Policy',
+        'camera=(), microphone=(), geolocation=()',
+      );
+      response.setHeader(
+        'Content-Security-Policy',
+        "default-src 'none'; frame-ancestors 'none'; base-uri 'none'",
+      );
+
+      if (configService.get<string>('NODE_ENV') === 'production') {
+        response.setHeader(
+          'Strict-Transport-Security',
+          'max-age=31536000; includeSubDomains',
+        );
+      }
+
+      next();
+    },
+  );
+  httpServer.use(
+    '/media',
+    express.static(
+      resolve(
+        configService.get<string>('MEDIA_STORAGE_LOCAL_DIR', './storage'),
       ),
-    );
+      { dotfiles: 'deny', index: false },
+    ),
+  );
   app.setGlobalPrefix(configService.get<string>('API_PREFIX', 'api/v1'));
   app.useGlobalPipes(
     new ValidationPipe({

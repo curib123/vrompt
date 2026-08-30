@@ -11,6 +11,7 @@ import type { MediaUploadInput } from '../../common/media-storage/media-storage.
 import { RedisService } from '../../common/redis.service';
 import { TooManyRequestsException } from '../../../common/exceptions/too-many-requests.exception';
 import { PrismaService } from '../../prisma/prisma.service';
+import { assertSupportedImageSignature } from '../../../common/security/image-signature';
 
 export const MAX_PROMPT_EVIDENCE_IMAGES = 3;
 
@@ -41,6 +42,14 @@ export class PromptEvidenceImageService {
   ) {}
 
   async addImage(promptVersionId: string, input: AddPromptEvidenceImageInput) {
+    if (
+      input.fileSize > 5 * 1024 * 1024 ||
+      input.buffer.length > 5 * 1024 * 1024
+    ) {
+      throw new BadRequestException('Evidence images must be 5 MB or smaller');
+    }
+    assertSupportedImageSignature(input.mimeType, input.buffer);
+
     const version = await this.prismaService.promptVersion.findUnique({
       where: { id: promptVersionId },
       select: { repository: { select: { ownerId: true } } },
@@ -90,7 +99,7 @@ export class PromptEvidenceImageService {
               storageProvider: storedMedia.provider,
               storageKey: storedMedia.storageKey,
               secureUrl: storedMedia.secureUrl,
-              originalFilename: input.originalFilename,
+              originalFilename: this.safeFilename(input.originalFilename),
               mimeType: input.mimeType,
               fileSize: input.fileSize,
               width: input.width,
@@ -237,5 +246,15 @@ export class PromptEvidenceImageService {
 
       // A Redis outage should not make local development uploads unusable.
     }
+  }
+
+  private safeFilename(filename: string) {
+    return (
+      filename
+        .split(/[\\/]/)
+        .pop()
+        ?.replace(/[\u0000-\u001f\u007f]/g, '')
+        .slice(0, 255) || 'evidence-image'
+    );
   }
 }

@@ -23,7 +23,8 @@ export class RequestLoggingInterceptor implements NestInterceptor {
         this.logger.log(
           JSON.stringify({
             method: request.method,
-            path: request.url,
+            // Query strings can contain OAuth codes or other credentials.
+            path: request.path,
             statusCode: response.statusCode,
             durationMs: Date.now() - startedAt,
           }),

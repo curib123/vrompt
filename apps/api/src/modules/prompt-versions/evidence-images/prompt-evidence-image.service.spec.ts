@@ -44,10 +44,10 @@ describe('PromptEvidenceImageService', () => {
     await expect(
       service.addImage('version-id', {
         actorId: 'owner-id',
-        buffer: Buffer.from('image'),
+        buffer: Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
         contentType: 'image/png',
         filename: 'preview.png',
-        fileSize: 5,
+        fileSize: 8,
         mimeType: 'image/png',
         originalFilename: 'preview.png',
       }),

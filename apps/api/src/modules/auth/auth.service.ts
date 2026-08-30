@@ -10,6 +10,8 @@ import { OAuth2Client } from 'google-auth-library';
 import { createHash, randomBytes } from 'node:crypto';
 
 import { PrismaService } from '../prisma/prisma.service';
+import { RedisService } from '../common/redis.service';
+import { TooManyRequestsException } from '../../common/exceptions/too-many-requests.exception';
 import type { AuthSession, AuthenticatedUser } from './auth.types';
 
 export interface GoogleIdentity {
@@ -25,7 +27,28 @@ export class AuthService {
     private readonly configService: ConfigService,
     private readonly jwtService: JwtService,
     private readonly prismaService: PrismaService,
+    private readonly redisService: RedisService,
   ) {}
+
+  async assertAuthRateLimit(key: string, limit: number, ttlSeconds: number) {
+    try {
+      const count = await this.redisService.increment(
+        `auth:${key}`,
+        ttlSeconds,
+      );
+      if (count > limit) {
+        throw new TooManyRequestsException(
+          'Too many authentication attempts. Try again later.',
+        );
+      }
+    } catch (error: unknown) {
+      if (error instanceof TooManyRequestsException) {
+        throw error;
+      }
+
+      // Redis is an optional local-development dependency; auth remains available if it is down.
+    }
+  }
 
   getGoogleAuthorizationUrl(state: string) {
     const client = this.googleClient();

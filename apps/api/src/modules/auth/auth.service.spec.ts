@@ -4,6 +4,7 @@ import { Test } from '@nestjs/testing';
 import { UserRole, UserStatus } from '@prisma/client';
 
 import { PrismaService } from '../prisma/prisma.service';
+import { RedisService } from '../common/redis.service';
 import { AuthService } from './auth.service';
 
 describe('AuthService', () => {
@@ -52,6 +53,7 @@ describe('AuthService', () => {
       prismaService,
       configService,
       jwtService,
+      { increment: jest.fn().mockResolvedValue(1) },
     );
 
     const session = await service.authenticateGoogle({
@@ -99,6 +101,7 @@ describe('AuthService', () => {
       prismaService,
       configService,
       jwtService,
+      { increment: jest.fn().mockResolvedValue(1) },
     );
 
     const session = await service.refresh('raw-refresh-token');
@@ -130,6 +133,7 @@ describe('AuthService', () => {
       prismaService,
       configService,
       jwtService,
+      { increment: jest.fn().mockResolvedValue(1) },
     );
 
     await service.authenticateGoogle({
@@ -155,6 +159,7 @@ async function createService(
   prismaService: object,
   configService: object,
   jwtService: object,
+  redisService: object,
 ) {
   const moduleRef = await Test.createTestingModule({
     providers: [
@@ -162,6 +167,7 @@ async function createService(
       { provide: ConfigService, useValue: configService },
       { provide: JwtService, useValue: jwtService },
       { provide: PrismaService, useValue: prismaService },
+      { provide: RedisService, useValue: redisService },
     ],
   }).compile();
 
