@@ -3,6 +3,7 @@ import { Global, Module } from '@nestjs/common';
 import { CloudinaryStorageAdapter } from './cloudinary-storage.adapter';
 import { LocalStorageAdapter } from './local-storage.adapter';
 import { MediaStorageService } from './media-storage.service';
+import { MetricsService } from '../metrics.service';
 
 @Global()
 @Module({
@@ -10,7 +11,8 @@ import { MediaStorageService } from './media-storage.service';
     CloudinaryStorageAdapter,
     LocalStorageAdapter,
     MediaStorageService,
+    MetricsService,
   ],
-  exports: [MediaStorageService],
+  exports: [MediaStorageService, MetricsService],
 })
 export class MediaStorageModule {}

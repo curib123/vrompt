@@ -4,6 +4,7 @@ import { StorageProvider } from '@prisma/client';
 
 import { CloudinaryStorageAdapter } from './cloudinary-storage.adapter';
 import { LocalStorageAdapter } from './local-storage.adapter';
+import { MetricsService } from '../metrics.service';
 import type {
   MediaStorageAdapter,
   MediaUploadInput,
@@ -17,6 +18,7 @@ export class MediaStorageService {
     private readonly configService: ConfigService,
     localStorageAdapter: LocalStorageAdapter,
     cloudinaryStorageAdapter: CloudinaryStorageAdapter,
+    private readonly metricsService: MetricsService,
   ) {
     this.adapters = new Map<StorageProvider, MediaStorageAdapter>([
       [StorageProvider.LOCAL, localStorageAdapter],
@@ -60,7 +62,18 @@ export class MediaStorageService {
       );
     }
 
-    return adapter.upload(input);
+    const startedAt = Date.now();
+
+    return adapter
+      .upload(input)
+      .then((result) => {
+        this.metricsService.recordEvidenceUpload(Date.now() - startedAt);
+        return result;
+      })
+      .catch((error: unknown) => {
+        this.metricsService.recordStorageError();
+        throw error;
+      });
   }
 
   delete(storageKey: string, provider = this.provider) {
@@ -72,6 +85,9 @@ export class MediaStorageService {
       );
     }
 
-    return adapter.delete(storageKey);
+    return adapter.delete(storageKey).catch((error: unknown) => {
+      this.metricsService.recordStorageError();
+      throw error;
+    });
   }
 }

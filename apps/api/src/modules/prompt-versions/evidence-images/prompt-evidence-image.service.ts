@@ -3,11 +3,13 @@ import {
   ForbiddenException,
   Injectable,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 
 import { MediaStorageService } from '../../common/media-storage/media-storage.service';
 import type { MediaUploadInput } from '../../common/media-storage/media-storage.types';
+import { MetricsService } from '../../common/metrics.service';
 import { RedisService } from '../../common/redis.service';
 import { TooManyRequestsException } from '../../../common/exceptions/too-many-requests.exception';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -39,6 +41,7 @@ export class PromptEvidenceImageService {
     private readonly prismaService: PrismaService,
     private readonly mediaStorageService: MediaStorageService,
     private readonly redisService: RedisService,
+    @Optional() private readonly metricsService?: MetricsService,
   ) {}
 
   async addImage(promptVersionId: string, input: AddPromptEvidenceImageInput) {
@@ -46,9 +49,15 @@ export class PromptEvidenceImageService {
       input.fileSize > 5 * 1024 * 1024 ||
       input.buffer.length > 5 * 1024 * 1024
     ) {
+      this.metricsService?.recordEvidenceRejection('oversized');
       throw new BadRequestException('Evidence images must be 5 MB or smaller');
     }
-    assertSupportedImageSignature(input.mimeType, input.buffer);
+    try {
+      assertSupportedImageSignature(input.mimeType, input.buffer);
+    } catch (error: unknown) {
+      this.metricsService?.recordEvidenceRejection('file-type');
+      throw error;
+    }
 
     const version = await this.prismaService.promptVersion.findUnique({
       where: { id: promptVersionId },

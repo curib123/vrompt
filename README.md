@@ -151,6 +151,11 @@ Phase 40 adds encrypted off-VPS PostgreSQL backup, checksum verification,
 failure alerts, disposable restore testing, production restore safeguards, and
 Cloudinary asset recovery guidance in `infrastructure/backups`.
 
+Phase 41 adds aggregate API request, latency, authentication, evidence upload,
+and storage metrics, plus a public health check and VPS monitoring script in
+`infrastructure/monitoring`. Metrics intentionally exclude secrets and
+identifiers; counters reset when the API restarts.
+
 ## Docker development
 
 Start the development stack with source bind mounts and watch mode:

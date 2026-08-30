@@ -1,6 +1,7 @@
 import {
   CallHandler,
   ExecutionContext,
+  HttpException,
   Injectable,
   Logger,
   NestInterceptor,
@@ -8,9 +9,13 @@ import {
 import type { Request, Response } from 'express';
 import { tap } from 'rxjs/operators';
 
+import { MetricsService } from '../../modules/common/metrics.service';
+
 @Injectable()
 export class RequestLoggingInterceptor implements NestInterceptor {
   private readonly logger = new Logger(RequestLoggingInterceptor.name);
+
+  constructor(private readonly metricsService: MetricsService) {}
 
   intercept(context: ExecutionContext, next: CallHandler) {
     const http = context.switchToHttp();
@@ -19,17 +24,37 @@ export class RequestLoggingInterceptor implements NestInterceptor {
     const startedAt = Date.now();
 
     return next.handle().pipe(
-      tap(() => {
-        this.logger.log(
-          JSON.stringify({
-            method: request.method,
-            // Query strings can contain OAuth codes or other credentials.
-            path: request.path,
-            statusCode: response.statusCode,
-            durationMs: Date.now() - startedAt,
-          }),
-        );
+      tap({
+        next: () =>
+          this.recordResponse(
+            request.method,
+            request.path,
+            response.statusCode,
+            startedAt,
+          ),
+        error: (error: unknown) =>
+          this.recordResponse(
+            request.method,
+            request.path,
+            error instanceof HttpException
+              ? error.getStatus()
+              : response.statusCode >= 400
+                ? response.statusCode
+                : 500,
+            startedAt,
+          ),
       }),
     );
+  }
+
+  private recordResponse(
+    method: string,
+    path: string,
+    statusCode: number,
+    startedAt: number,
+  ) {
+    const durationMs = Date.now() - startedAt;
+    this.metricsService.recordRequest(path, statusCode, durationMs);
+    this.logger.log(JSON.stringify({ method, path, statusCode, durationMs }));
   }
 }

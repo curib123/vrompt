@@ -8,6 +8,7 @@ import { resolve } from 'node:path';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { RequestLoggingInterceptor } from './common/interceptors/request-logging.interceptor';
 import { AppModule } from './app.module';
+import { MetricsService } from './modules/common/metrics.service';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { bufferLogs: true });
@@ -80,7 +81,9 @@ async function bootstrap() {
     }),
   );
   app.useGlobalFilters(new HttpExceptionFilter());
-  app.useGlobalInterceptors(new RequestLoggingInterceptor());
+  app.useGlobalInterceptors(
+    new RequestLoggingInterceptor(app.get(MetricsService)),
+  );
 
   if (configService.get<string>('SWAGGER_ENABLED', 'true') === 'true') {
     const swaggerConfig = new DocumentBuilder()
