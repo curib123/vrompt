@@ -132,6 +132,37 @@ function pngFile(name: string) {
 
 test.use({ viewport: { width: 390, height: 844 } });
 
+test('prioritizes Google sign-in on the mobile login screen', async ({
+  page,
+}) => {
+  await page.route(`${apiOrigin}/**`, async (route) => {
+    const url = new URL(route.request().url());
+    if (url.pathname === '/api/v1/auth/refresh') {
+      await route.fulfill({ status: 401, json: { message: 'Signed out' } });
+      return;
+    }
+    await route.abort();
+  });
+
+  await page.goto('/login');
+
+  const googleButton = page.getByRole('button', {
+    name: 'Continue with Google',
+  });
+  const benefitsHeading = page.getByRole('heading', {
+    name: 'Keep the prompts that move your work forward.',
+  });
+  await expect(googleButton).toBeVisible();
+  await expect(page.getByText('Nothing here yet')).toHaveCount(0);
+  await expect(page.getByText(/coming soon/i)).toHaveCount(0);
+
+  const googleButtonBox = await googleButton.boundingBox();
+  const benefitsHeadingBox = await benefitsHeading.boundingBox();
+  expect(googleButtonBox?.y).toBeLessThan(
+    benefitsHeadingBox?.y ?? Number.POSITIVE_INFINITY,
+  );
+});
+
 test('opens the mobile navigation drawer from the left-side hamburger', async ({
   page,
 }) => {
