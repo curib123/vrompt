@@ -25,15 +25,15 @@ export function FoundationShowcase() {
     <>
       <Card className="grid gap-8 lg:grid-cols-[1.2fr_0.8fr]">
         <div className="space-y-6">
-          <Badge>Component foundation</Badge>
+          <Badge>Vrompt system</Badge>
           <div className="space-y-4">
             <h2 className="text-3xl font-semibold tracking-tight">
               Built for repositories, not generic dashboards.
             </h2>
             <p className="max-w-2xl text-sm leading-7 text-zinc-600 dark:text-zinc-400">
-              Phase 2 focuses on robust UI primitives, responsive structure, and
-              accessible interactions so the actual Vrompt experience can layer in
-              cleanly afterward.
+              A focused set of primitives for a fast, collaborative, and trusted
+              prompt workspace. Every interaction keeps the brand quiet and the
+              work in front.
             </p>
           </div>
           <div className="flex flex-wrap gap-3">

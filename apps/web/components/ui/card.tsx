@@ -10,7 +10,7 @@ export function Card({
   return (
     <section
       className={cn(
-        'rounded-[2rem] border border-zinc-200 bg-white/90 p-6 shadow-[0_12px_40px_rgba(0,0,0,0.06)] backdrop-blur dark:border-zinc-800 dark:bg-zinc-950/90',
+        'rounded-[1.5rem] border border-[#D4D4D4] bg-white/95 p-6 shadow-[0_18px_50px_rgba(13,13,13,0.06)] backdrop-blur dark:border-zinc-800 dark:bg-[#1A1A1A]/95',
         className,
       )}
       {...props}

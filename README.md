@@ -16,6 +16,13 @@ infrastructure/
   docker/     Container definitions
 apps/api/prisma/
               PostgreSQL schema, migrations, and seed infrastructure
+
+## Brand Identity
+
+Vrompt uses the angular V mark with the tagline `SHARE. PROMPT. EVOLVE.`. The
+visual system is monochrome and editorial: Inter for interface typography,
+near-black `#0D0D0D` for emphasis, charcoal `#1A1A1A`, mid-gray `#4D4D4D`,
+soft gray `#E6E6E6`, and white `#FFFFFF`.
 ```
 
 ## Requirements

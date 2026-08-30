@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { IBM_Plex_Mono, Space_Grotesk } from 'next/font/google';
+import { IBM_Plex_Mono, Inter } from 'next/font/google';
 import type { ReactNode } from 'react';
 
 import { AppShell } from '@/components/layout/app-shell';
@@ -7,9 +7,10 @@ import { AppProviders } from '@/components/providers/app-providers';
 
 import './globals.css';
 
-const displayFont = Space_Grotesk({
+const displayFont = Inter({
   subsets: ['latin'],
   variable: '--font-display',
+  weight: ['400', '500', '600', '700'],
 });
 
 const monoFont = IBM_Plex_Mono({
@@ -20,7 +21,8 @@ const monoFont = IBM_Plex_Mono({
 
 export const metadata: Metadata = {
   title: 'Vrompt',
-  description: 'The repository for AI prompts.',
+  description: 'Share. Prompt. Evolve.',
+  icons: { icon: '/vrompt-mark.svg' },
 };
 
 export default function RootLayout({

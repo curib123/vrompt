@@ -12,9 +12,9 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 
 const variantClasses: Record<ButtonVariant, string> = {
   primary:
-    'bg-black text-white hover:bg-zinc-800 focus-visible:outline-black dark:bg-white dark:text-black dark:hover:bg-zinc-200',
+    'bg-[#0D0D0D] text-white hover:bg-[#1A1A1A] focus-visible:outline-black dark:bg-white dark:text-[#0D0D0D] dark:hover:bg-[#E6E6E6]',
   secondary:
-    'border border-zinc-300 bg-white text-black hover:border-black hover:bg-zinc-100 focus-visible:outline-black dark:border-zinc-700 dark:bg-zinc-950 dark:text-white dark:hover:border-white dark:hover:bg-zinc-900',
+    'border border-[#BDBDBD] bg-white text-[#0D0D0D] hover:border-[#0D0D0D] hover:bg-[#E6E6E6] focus-visible:outline-black dark:border-zinc-700 dark:bg-[#1A1A1A] dark:text-white dark:hover:border-white dark:hover:bg-zinc-900',
   ghost:
     'bg-transparent text-black hover:bg-zinc-100 focus-visible:outline-black dark:text-white dark:hover:bg-zinc-900',
 };
@@ -27,18 +27,20 @@ export function getButtonClasses(variant: ButtonVariant, className?: string) {
   );
 }
 
-export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
-  { children, className, type = 'button', variant = 'primary', ...props },
-  ref,
-) {
-  return (
-    <button
-      className={getButtonClasses(variant, className)}
-      ref={ref}
-      type={type}
-      {...props}
-    >
-      {children}
-    </button>
-  );
-});
+export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
+  function Button(
+    { children, className, type = 'button', variant = 'primary', ...props },
+    ref,
+  ) {
+    return (
+      <button
+        className={getButtonClasses(variant, className)}
+        ref={ref}
+        type={type}
+        {...props}
+      >
+        {children}
+      </button>
+    );
+  },
+);

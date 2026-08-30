@@ -3,12 +3,17 @@
 @theme inline {
   --font-sans: var(--font-display);
   --font-mono: var(--font-mono);
-  --color-background: #ffffff;
-  --color-foreground: #0a0a0a;
+  --color-background: #f7f7f7;
+  --color-foreground: #0d0d0d;
 }
 
 :root {
   color-scheme: light dark;
+  --brand-ink: #0d0d0d;
+  --brand-charcoal: #1a1a1a;
+  --brand-mid: #4d4d4d;
+  --brand-soft: #e6e6e6;
+  --brand-paper: #ffffff;
 }
 
 * {
@@ -21,6 +26,7 @@ html {
 
 body {
   margin: 0;
+  background: var(--brand-paper);
   font-family: var(--font-display), sans-serif;
 }
 
@@ -36,8 +42,8 @@ textarea {
 }
 
 ::selection {
-  background: #0a0a0a;
-  color: #ffffff;
+  background: var(--brand-ink);
+  color: var(--brand-paper);
 }
 
 @media (prefers-color-scheme: dark) {

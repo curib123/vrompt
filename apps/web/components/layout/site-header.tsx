@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
+import { BrandLockup } from '@/components/brand/brand-mark';
 import { MobileNav } from '@/components/layout/mobile-nav';
 import { useAuth } from '@/components/providers/auth-provider';
 import { Avatar } from '@/components/ui/avatar';
@@ -19,11 +20,11 @@ export function SiteHeader() {
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8">
         <div className="flex items-center gap-3">
           <Link
-            className="inline-flex items-center gap-3 rounded-full border border-zinc-200 px-4 py-2 text-sm font-semibold tracking-[0.28em] text-black transition hover:border-black dark:border-zinc-800 dark:text-white dark:hover:border-white"
+            aria-label="Vrompt home"
+            className="inline-flex rounded-2xl border border-zinc-200 bg-white px-3 py-2 transition hover:border-[#0D0D0D] dark:border-zinc-800 dark:bg-zinc-950 dark:hover:border-white"
             href="/"
           >
-            <span className="inline-flex size-2 rounded-full bg-black dark:bg-white" />
-            VROMPT
+            <BrandLockup compact />
           </Link>
           <nav
             aria-label="Primary navigation"
@@ -71,7 +72,10 @@ export function SiteHeader() {
               <Button onClick={() => void logout()} variant="ghost">
                 Log out
               </Button>
-              <Avatar name={user.username} />
+              <Avatar
+                className="border-[#0D0D0D] bg-[#E6E6E6]"
+                name={user.username}
+              />
             </>
           ) : (
             <>
@@ -81,7 +85,10 @@ export function SiteHeader() {
               <Link className={getButtonClasses('primary')} href="/register">
                 Join Vrompt
               </Link>
-              <Avatar name="Prompt Owner" />
+              <Avatar
+                className="border-[#0D0D0D] bg-[#E6E6E6]"
+                name="Prompt Owner"
+              />
             </>
           )}
         </div>
