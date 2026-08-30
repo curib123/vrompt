@@ -228,6 +228,22 @@ export interface ModerationReport {
   reporter: { username: string };
 }
 
+export interface AuditResponse {
+  items: Array<{
+    id: string;
+    action: string;
+    targetType: string;
+    targetId: string | null;
+    metadata: Record<string, unknown> | null;
+    createdAt: string;
+    actor: { username: string } | null;
+  }>;
+  page: number;
+  pageSize: number;
+  total: number;
+  hasNextPage: boolean;
+}
+
 interface ProfileSummary {
   id: string;
   username: string;
