@@ -77,7 +77,7 @@ export function RepositoryDetail({ slug }: { slug: string }) {
       .catch(() => {
         if (active) {
           setError(
-            'This repository is private, unavailable, or does not exist.',
+            'This prompt is private, unavailable, or does not exist.',
           );
         }
       });
@@ -90,7 +90,7 @@ export function RepositoryDetail({ slug }: { slug: string }) {
   if (isLoading || (!repository && !error)) {
     return (
       <Card>
-        <p className="text-sm text-zinc-500">Loading repository...</p>
+        <p className="text-sm text-zinc-500">Loading prompt...</p>
       </Card>
     );
   }
@@ -100,8 +100,8 @@ export function RepositoryDetail({ slug }: { slug: string }) {
       <EmptyState
         actionHref="/explore"
         actionLabel="Explore prompts"
-        description={error ?? 'Repository unavailable.'}
-        title="Repository unavailable"
+        description={error ?? 'Prompt unavailable.'}
+        title="Prompt unavailable"
       />
     );
   }
@@ -224,7 +224,7 @@ export function RepositoryDetail({ slug }: { slug: string }) {
               ) : null}
               {activeVersion ? (
                 <Badge className="border-white/30 text-zinc-300">
-                  {selectedVersion ? 'Previous' : 'Current'} Version{' '}
+                  {selectedVersion ? 'Earlier' : 'Current'} update{' '}
                   {activeVersion.versionNumber}
                 </Badge>
               ) : null}
@@ -234,7 +234,7 @@ export function RepositoryDetail({ slug }: { slug: string }) {
                 {repository.title}
               </h1>
               <p className="mt-4 max-w-2xl text-base leading-8 text-zinc-300">
-                {repository.description || 'A reusable prompt repository.'}
+                {repository.description || 'A reusable prompt.'}
               </p>
             </div>
             <Link
@@ -304,7 +304,7 @@ export function RepositoryDetail({ slug }: { slug: string }) {
               className={getButtonClasses('secondary')}
               href={`/create?variantFrom=${encodeURIComponent(slug)}`}
             >
-              Create Variant
+              Create variation
             </Link>
             <Button disabled type="button" variant="secondary">
               Share
@@ -313,10 +313,10 @@ export function RepositoryDetail({ slug }: { slug: string }) {
           </div>
           <p className="relative mt-3 text-xs text-zinc-400">
             {copyState === 'failed'
-              ? 'Clipboard access failed. Check browser permissions and try again.'
-              : `${repository.copyCount} copies - ${repository.saveCount} saves - ${repository.likeCount} likes`}
-            {saveState === 'failed' ? ' Save failed; try again.' : ''}
-            {likeState === 'failed' ? ' Like failed; try again.' : ''}
+              ? 'Could not copy the prompt. Please try again.'
+              : `${repository.copyCount} shares - ${repository.saveCount} saves - ${repository.likeCount} likes`}
+            {saveState === 'failed' ? ' Could not save; try again.' : ''}
+            {likeState === 'failed' ? ' Could not like; try again.' : ''}
           </p>
         </div>
       </Card>
@@ -372,7 +372,7 @@ export function RepositoryDetail({ slug }: { slug: string }) {
               />
             ),
             id: 'versions',
-            label: 'Versions',
+            label: 'Updates',
           },
           {
             content: (
@@ -388,7 +388,7 @@ export function RepositoryDetail({ slug }: { slug: string }) {
           {
             content: <LineageTab repositorySlug={slug} />,
             id: 'variants',
-            label: 'Variants',
+            label: 'Variations',
           },
           {
             content: (
@@ -399,7 +399,7 @@ export function RepositoryDetail({ slug }: { slug: string }) {
               />
             ),
             id: 'activity',
-            label: 'Activity',
+            label: 'History',
           },
         ]}
       />
@@ -414,11 +414,11 @@ export function RepositoryDetail({ slug }: { slug: string }) {
 
       <Modal
         description={
-          selectedImage?.caption || selectedImage?.altText || 'Evidence image'
+          selectedImage?.caption || selectedImage?.altText || 'Result image'
         }
         onClose={() => setSelectedImage(undefined)}
         open={Boolean(selectedImage)}
-        title={selectedImage?.originalFilename || 'Evidence image'}
+        title={selectedImage?.originalFilename || 'Result image'}
       >
         {selectedImage ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -479,14 +479,14 @@ function ActivityTab({
     <div className="grid gap-6">
       <Card>
         <div className="space-y-2">
-          <Badge>Repository history</Badge>
+          <Badge>Prompt history</Badge>
           <h2 className="text-2xl font-semibold">
             Useful changes, kept visible.
           </h2>
         </div>
         {events.length === 0 ? (
           <p className="mt-5 text-sm text-zinc-500">
-            No recorded repository activity yet.
+            No history to show yet.
           </p>
         ) : (
           <div className="mt-5 grid gap-3">
@@ -528,15 +528,15 @@ function activityLabel(
   type: RepositoryActivityResponse['type'],
   metadata: Record<string, unknown> | null,
 ) {
-  if (type === 'REPOSITORY_CREATED') return 'created this repository.';
+  if (type === 'REPOSITORY_CREATED') return 'created this prompt.';
   if (type === 'VERSION_PUBLISHED') {
     const version =
       typeof metadata?.versionNumber === 'number'
-        ? `Version ${metadata.versionNumber}`
-        : 'a new version';
+        ? `Update ${metadata.versionNumber}`
+        : 'a new update';
     return `published ${version}.`;
   }
-  if (type === 'VARIANT_CREATED') return 'created a Variant.';
+  if (type === 'VARIANT_CREATED') return 'created a variation.';
   return 'created a public collection.';
 }
 
@@ -668,8 +668,7 @@ function CommentsSection({
         <Badge>Community activity</Badge>
         <h2 className="text-2xl font-semibold">Discuss this prompt.</h2>
         <p className="text-sm leading-6 text-zinc-600 dark:text-zinc-400">
-          Share implementation notes, ask questions, and help the repository
-          evolve.
+          Share helpful notes, ask questions, and help this prompt evolve.
         </p>
       </div>
       {userId ? (
@@ -884,7 +883,7 @@ function PromptTab({ content }: { content: string }) {
         <span className="font-mono text-xs uppercase tracking-[0.2em] text-zinc-400">
           Current prompt
         </span>
-        <span className="text-xs text-zinc-500">Read-only preview</span>
+        <span className="text-xs text-zinc-500">Preview</span>
       </div>
       <pre className="overflow-x-auto whitespace-pre-wrap p-6 font-mono text-sm leading-8 text-zinc-200">
         {content}
@@ -944,9 +943,9 @@ function VersionsTab({
     <div className="grid gap-5">
       <Card>
         <div className="space-y-2">
-          <Badge>Version history</Badge>
+          <Badge>Update history</Badge>
           <h2 className="mt-2 text-2xl font-semibold">
-            Immutable prompt versions.
+            Published updates stay clear and easy to compare.
           </h2>
         </div>
         <div className="mt-5 grid gap-2">
@@ -958,15 +957,15 @@ function VersionsTab({
               type="button"
             >
               <span>
-                <strong>Version {version.versionNumber}</strong>
+                <strong>Update {version.versionNumber}</strong>
                 <span className="ml-3 text-sm text-zinc-500">
-                  {version.changelog || 'No changelog'}
+                  {version.changelog || 'No update note'}
                 </span>
               </span>
               <Badge>
                 {version.versionNumber === currentVersion?.versionNumber
-                  ? 'Current Version'
-                  : 'Previous Version'}
+                  ? 'Current update'
+                  : 'Earlier update'}
               </Badge>
             </button>
           ))}
@@ -977,16 +976,16 @@ function VersionsTab({
           <div className="space-y-2">
             <Badge>Basic comparison</Badge>
             <h2 className="text-2xl font-semibold">
-              Previous Version vs Current Version
+              Earlier update vs current update
             </h2>
           </div>
           <div className="mt-5 grid gap-4 md:grid-cols-2">
             <CodeBlock
-              label={`Previous Version ${comparison.versionNumber}`}
+              label={`Earlier update ${comparison.versionNumber}`}
               value={comparison.content}
             />
             <CodeBlock
-              label={`Current Version ${currentVersion.versionNumber}`}
+              label={`Current update ${currentVersion.versionNumber}`}
               value={currentVersion.content}
             />
           </div>
@@ -1029,7 +1028,7 @@ function NewVersionForm({
       setError(
         submitError instanceof Error
           ? submitError.message
-          : 'Version could not be created.',
+          : 'Update could not be created.',
       );
       setSaving(false);
     }
@@ -1038,13 +1037,13 @@ function NewVersionForm({
   return (
     <Card>
       <div className="space-y-2">
-        <Badge>Create new version</Badge>
+        <Badge>Create an update</Badge>
         <h2 className="text-2xl font-semibold">
-          Keep the repository evolving.
+          Keep your prompt growing.
         </h2>
         <p className="text-sm leading-6 text-zinc-600 dark:text-zinc-400">
-          Published versions remain immutable. This editor creates the next
-          version and keeps older evidence attached to its original version.
+          Published updates stay unchanged. Add a new update when you want to
+          improve the prompt while keeping earlier results available.
         </p>
       </div>
       <form
@@ -1052,13 +1051,13 @@ function NewVersionForm({
         onSubmit={(event) => void submit(event)}
       >
         <Textarea
-          aria-label="New version prompt content"
+          aria-label="New prompt update"
           onChange={(event) => setContent(event.target.value)}
           required
           value={content}
         />
         <Input
-          aria-label="Version changelog"
+          aria-label="Update note"
           maxLength={1000}
           onChange={(event) => setChangelog(event.target.value)}
           placeholder="What changed?"
@@ -1068,7 +1067,7 @@ function NewVersionForm({
         {error ? <p className="text-sm text-red-600">{error}</p> : null}
         <div className="flex justify-end">
           <Button disabled={saving} type="submit">
-            {saving ? 'Publishing...' : 'Publish new version'}
+            {saving ? 'Publishing...' : 'Publish update'}
           </Button>
         </div>
       </form>
@@ -1099,7 +1098,7 @@ function ExamplesTab({
       {evidenceImages.length > 0 ? (
         <Card>
           <div className="space-y-2">
-            <Badge>Evidence</Badge>
+            <Badge>Results</Badge>
             <h2 className="text-2xl font-semibold">Observed results</h2>
           </div>
           <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3">
@@ -1129,11 +1128,11 @@ function ExamplesTab({
         </Card>
       ) : null}
       <p className="text-sm leading-6 text-zinc-500">
-        AI results may vary by model, settings, and model version.
+        Results can vary depending on the AI tool and settings you use.
       </p>
       {examples.length === 0 && evidenceImages.length === 0 ? (
         <EmptyState
-          description="Examples and evidence can be added when this repository evolves."
+          description="Add examples or results as this prompt grows."
           title="No examples yet"
         />
       ) : null}
@@ -1168,7 +1167,7 @@ function LineageTab({ repositorySlug }: { repositorySlug: string }) {
   if (!lineage) {
     return (
       <Card>
-        <p className="text-sm text-zinc-500">Loading Variant Lineage...</p>
+        <p className="text-sm text-zinc-500">Loading prompt evolution...</p>
       </Card>
     );
   }
@@ -1177,13 +1176,13 @@ function LineageTab({ repositorySlug }: { repositorySlug: string }) {
     <Card>
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div className="space-y-2">
-          <Badge>Variant Lineage</Badge>
+          <Badge>Prompt evolution</Badge>
           <h2 className="text-2xl font-semibold">
             Prompt evolution, kept readable.
           </h2>
         </div>
         <p className="text-sm text-zinc-500">
-          {lineage.variantCount} direct Variants
+          {lineage.variantCount} direct variations
         </p>
       </div>
       {lineage.root ? (
@@ -1194,7 +1193,9 @@ function LineageTab({ repositorySlug }: { repositorySlug: string }) {
           />{' '}
         </div>
       ) : (
-        <p className="mt-6 text-sm text-zinc-500">No lineage is available.</p>
+        <p className="mt-6 text-sm text-zinc-500">
+          No evolution history is available yet.
+        </p>
       )}
     </Card>
   );
@@ -1218,7 +1219,7 @@ function LineageItem({
       >
         <span>
           <span className="font-mono text-xs text-zinc-500">
-            {depth === 0 ? 'Original' : 'Variant'}
+            {depth === 0 ? 'Original' : 'Variation'}
           </span>
           <strong className="ml-3">{node.title}</strong>
           <span className="ml-2 text-sm text-zinc-500">

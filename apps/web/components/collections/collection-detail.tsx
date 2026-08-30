@@ -76,7 +76,7 @@ export function CollectionDetailView({
       </Card>
       {collection.items.length === 0 ? (
         <EmptyState
-          description="Prompt repositories will appear here as the collection grows."
+          description="Prompts will appear here as the collection grows."
           title="This collection is empty"
         />
       ) : (
@@ -96,7 +96,7 @@ export function CollectionDetailView({
                 </h2>
                 <p className="mt-2 line-clamp-2 text-sm leading-7 text-zinc-600 dark:text-zinc-400">
                   {item.promptRepository.description ||
-                    'A reusable prompt repository.'}
+                    'A reusable prompt.'}
                 </p>
               </Card>
             </Link>

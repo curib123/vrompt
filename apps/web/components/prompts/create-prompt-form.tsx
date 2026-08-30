@@ -82,7 +82,7 @@ export function CreatePromptForm({ variantFrom }: { variantFrom?: string }) {
     )
       .then((source) => {
         const sourceVersion = source.currentVersion;
-        setTitle(`${source.title} Variant`);
+        setTitle(`${source.title} variation`);
         setDescription(source.description ?? '');
         setContent(sourceVersion?.content ?? '');
         setCategorySlug(source.category?.slug ?? '');
@@ -93,7 +93,7 @@ export function CreatePromptForm({ variantFrom }: { variantFrom?: string }) {
           `Prefilled from ${source.title}. Attribution will be kept automatically.`,
         );
       })
-      .catch(() => setError('The source repository could not be loaded.'));
+      .catch(() => setError('The original prompt could not be loaded.'));
   }, [accessToken, variantFrom]);
 
   const isDirty = Boolean(
@@ -127,7 +127,7 @@ export function CreatePromptForm({ variantFrom }: { variantFrom?: string }) {
     const available = 3 - evidence.length;
 
     if (available <= 0) {
-      setError('Version 1 already has the maximum of 3 evidence images.');
+      setError('Your first update already has the maximum of 3 result images.');
       return;
     }
 
@@ -199,7 +199,7 @@ export function CreatePromptForm({ variantFrom }: { variantFrom?: string }) {
 
     if (!accessToken) {
       setError(
-        'Your session expired. Sign in again before creating a repository.',
+        'Your session expired. Sign in again before creating a prompt.',
       );
       return;
     }
@@ -257,7 +257,7 @@ export function CreatePromptForm({ variantFrom }: { variantFrom?: string }) {
           );
         } catch (uploadError: unknown) {
           throw new Error(
-            `Repository saved, but evidence image ${index + 1} failed: ${
+            `Prompt saved, but result image ${index + 1} failed: ${
               uploadError instanceof Error
                 ? uploadError.message
                 : 'upload error'
@@ -266,13 +266,13 @@ export function CreatePromptForm({ variantFrom }: { variantFrom?: string }) {
         }
       }
 
-      setMessage('Repository and Version 1 saved.');
+      setMessage('Prompt and first update saved.');
       router.push(`/p/${repository.slug}`);
     } catch (submitError: unknown) {
       setError(
         submitError instanceof Error
           ? submitError.message
-          : 'Repository could not be saved.',
+          : 'Prompt could not be saved.',
       );
     } finally {
       setIsSaving(false);
@@ -285,14 +285,14 @@ export function CreatePromptForm({ variantFrom }: { variantFrom?: string }) {
         <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
           <div className="space-y-3">
             <Badge className="border-white/30 text-zinc-300">
-              Create repository
+              Create prompt
             </Badge>
             <h1 className="text-4xl font-semibold tracking-[-0.06em] sm:text-6xl">
               Make the useful thing reusable.
             </h1>
             <p className="max-w-2xl text-sm leading-7 text-zinc-300">
-              Start with a strong prompt. Version 1, variables, examples, and
-              evidence stay together from the first save.
+              Start with a strong prompt. Your first update, reusable inputs,
+              examples, and results stay together from the first save.
             </p>
           </div>
           <Button
@@ -309,7 +309,7 @@ export function CreatePromptForm({ variantFrom }: { variantFrom?: string }) {
               Preview
             </p>
             <h2 className="mt-4 text-2xl font-semibold">
-              {title || 'Untitled repository'}
+              {title || 'Untitled prompt'}
             </h2>
             <p className="mt-4 whitespace-pre-wrap text-sm leading-7 text-zinc-200">
               {content || 'Your prompt content will appear here.'}
@@ -322,7 +322,7 @@ export function CreatePromptForm({ variantFrom }: { variantFrom?: string }) {
         <>
           <Card className="grid gap-6">
             <div className="space-y-2">
-              <Badge>Repository identity</Badge>
+              <Badge>Prompt details</Badge>
               <h2 className="text-2xl font-semibold tracking-tight">
                 Name the starting point.
               </h2>
@@ -337,8 +337,8 @@ export function CreatePromptForm({ variantFrom }: { variantFrom?: string }) {
                 />
               </FormField>
               <FormField
-                description="Optional. A safe slug is generated from the title."
-                label="Slug"
+                description="Optional. A readable link name is created from the title if you leave this blank."
+                label="Link name"
               >
                 <Input
                   maxLength={180}
@@ -361,7 +361,7 @@ export function CreatePromptForm({ variantFrom }: { variantFrom?: string }) {
                   value={categorySlug}
                 />
               </FormField>
-              <FormField label="AI compatibility">
+              <FormField label="Works well with">
                 <Input
                   maxLength={120}
                   onChange={(event) => setAiCompatibility(event.target.value)}
@@ -379,11 +379,11 @@ export function CreatePromptForm({ variantFrom }: { variantFrom?: string }) {
             <div className="space-y-2">
               <Badge>Prompt content</Badge>
               <h2 className="text-2xl font-semibold tracking-tight">
-                Write Version 1.
+                Write your first update.
               </h2>
             </div>
             <FormField
-              description="Stored as immutable Version 1 content after this save."
+              description="This becomes the first published update of your prompt."
               label="Prompt content"
             >
               <Textarea
@@ -562,13 +562,13 @@ export function CreatePromptForm({ variantFrom }: { variantFrom?: string }) {
           <Card className="grid gap-6">
             <div className="flex items-start justify-between gap-4">
               <div className="space-y-2">
-                <Badge>Evidence images</Badge>
+                <Badge>Results images</Badge>
                 <h2 className="text-2xl font-semibold tracking-tight">
                   Show the result.
                 </h2>
                 <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                  {evidence.length}/3 images. Optional captions and alt text
-                  stay with Version 1.
+                  {evidence.length}/3 images. Optional captions and image
+                  descriptions stay with your first update.
                 </p>
               </div>
             </div>
@@ -600,23 +600,23 @@ export function CreatePromptForm({ variantFrom }: { variantFrom?: string }) {
                 {/* Object URLs are used here for an immediate local draft preview. */}
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  alt={image.altText || `Evidence image ${index + 1}`}
+                  alt={image.altText || `Result image ${index + 1}`}
                   className="aspect-square w-32 rounded-2xl object-cover"
                   src={image.preview}
                 />
                 <div className="grid gap-3">
                   <Input
-                    aria-label={`Evidence ${index + 1} alt text`}
+                    aria-label={`Result ${index + 1} image description`}
                     onChange={(event) =>
                       updateEvidence(setEvidence, index, {
                         altText: event.target.value,
                       })
                     }
-                    placeholder="Alt text (optional)"
+                    placeholder="Image description (optional)"
                     value={image.altText}
                   />
                   <Input
-                    aria-label={`Evidence ${index + 1} caption`}
+                    aria-label={`Result ${index + 1} caption`}
                     onChange={(event) =>
                       updateEvidence(setEvidence, index, {
                         caption: event.target.value,
@@ -628,7 +628,7 @@ export function CreatePromptForm({ variantFrom }: { variantFrom?: string }) {
                 </div>
                 <div className="flex gap-2 sm:flex-col">
                   <Button
-                    aria-label={`Move evidence image ${index + 1} up`}
+                    aria-label={`Move result image ${index + 1} up`}
                     disabled={index === 0}
                     onClick={() => moveEvidence(index, -1)}
                     type="button"
@@ -637,7 +637,7 @@ export function CreatePromptForm({ variantFrom }: { variantFrom?: string }) {
                     Up
                   </Button>
                   <Button
-                    aria-label={`Move evidence image ${index + 1} down`}
+                    aria-label={`Move result image ${index + 1} down`}
                     disabled={index === evidence.length - 1}
                     onClick={() => moveEvidence(index, 1)}
                     type="button"
@@ -646,7 +646,7 @@ export function CreatePromptForm({ variantFrom }: { variantFrom?: string }) {
                     Down
                   </Button>
                   <Button
-                    aria-label={`Remove evidence image ${index + 1}`}
+                    aria-label={`Remove result image ${index + 1}`}
                     onClick={() => removeEvidence(index)}
                     type="button"
                     variant="ghost"
@@ -681,12 +681,12 @@ export function CreatePromptForm({ variantFrom }: { variantFrom?: string }) {
               className="text-sm font-semibold underline"
               href={`/p/${created.slug}`}
             >
-              Open the saved repository
+              Open your saved prompt
             </Link>
           ) : null}
           <div className="flex justify-end">
             <Button disabled={isSaving} type="submit">
-              {isSaving ? 'Saving repository...' : 'Save repository'}
+              {isSaving ? 'Saving prompt...' : 'Save prompt'}
             </Button>
           </div>
         </>

@@ -33,10 +33,10 @@ export function RoutePlaceholder({
           {actions ?? (
             <>
               <Link className={getButtonClasses('primary')} href="/explore">
-                Explore the foundation
+                Explore prompts
               </Link>
               <Link className={getButtonClasses('secondary')} href="/create">
-                Open the editor shell
+                Create a prompt
               </Link>
             </>
           )}
@@ -45,8 +45,8 @@ export function RoutePlaceholder({
       <EmptyState
         actionHref="/"
         actionLabel="Return home"
-        description="This route is intentionally ready for real data and workflows later, without shipping repository features too early."
-        title={`${title} is waiting for product logic.`}
+        description="This space is ready for the next experience. Check back soon, or explore prompts that are already available."
+        title={`${title} is coming soon.`}
       />
     </div>
   );

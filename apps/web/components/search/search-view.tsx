@@ -87,7 +87,7 @@ export function SearchView({
           </h1>
           <p className="max-w-2xl text-base leading-8 text-zinc-300">
             Search titles, descriptions, prompt content, creators, categories,
-            and tags across public Vrompt repositories.
+            and tags across Vrompt.
           </p>
         </div>
       </Card>
@@ -96,14 +96,14 @@ export function SearchView({
           <Input
             aria-label="Search query"
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Try: onboarding assistant, research, JSON..."
+            placeholder="Try: onboarding assistant, research, weekly planning..."
             value={query}
           />
           <div className="grid gap-4 sm:grid-cols-3">
             <Input
               aria-label="Category filter"
               onChange={(event) => setCategory(event.target.value)}
-              placeholder="Category slug"
+              placeholder="Category"
               value={category}
             />
             <Input
@@ -130,7 +130,7 @@ export function SearchView({
             </select>
           </div>
           <div className="flex justify-end">
-            <Button type="submit">Search repositories</Button>
+            <Button type="submit">Search prompts</Button>
           </div>
         </form>
       </Card>
@@ -147,15 +147,15 @@ export function SearchView({
         <EmptyState
           actionHref="/create"
           actionLabel="Create a prompt"
-          description="Try a broader query or create the repository you wish existed."
-          title="No repositories found"
+          description="Try a broader search, or create the prompt you wish existed."
+          title="No prompts found"
         />
       ) : null}
       {result && result.items.length > 0 ? (
         <>
           <div className="flex items-center justify-between gap-3">
             <p className="text-sm text-zinc-500">
-              {result.total} public repositories
+              {result.total} public prompts
             </p>
             <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">
               Page {result.page}
@@ -204,7 +204,7 @@ function ResultCard({ item, query }: { item: SearchResult; query: string }) {
         </h2>
         <p className="mt-3 line-clamp-3 text-sm leading-7 text-zinc-600 dark:text-zinc-400">
           {highlight(
-            item.description || 'A reusable prompt repository.',
+            item.description || 'A reusable prompt.',
             query,
           )}
         </p>

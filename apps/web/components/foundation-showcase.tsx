@@ -25,20 +25,20 @@ export function FoundationShowcase() {
     <>
       <Card className="grid gap-8 lg:grid-cols-[1.2fr_0.8fr]">
         <div className="space-y-6">
-          <Badge>Vrompt system</Badge>
+          <Badge>Vrompt essentials</Badge>
           <div className="space-y-4">
             <h2 className="text-3xl font-semibold tracking-tight">
-              Built for repositories, not generic dashboards.
+              Built for prompts, not generic dashboards.
             </h2>
             <p className="max-w-2xl text-sm leading-7 text-zinc-600 dark:text-zinc-400">
               A focused set of primitives for a fast, collaborative, and trusted
-              prompt workspace. Every interaction keeps the brand quiet and the
+              prompt space. Every interaction keeps the brand quiet and the
               work in front.
             </p>
           </div>
           <div className="flex flex-wrap gap-3">
-            <Button onClick={() => pushToast({ title: 'Toast ready', description: 'Transient feedback is wired into the app shell.' })}>
-              Trigger toast
+            <Button onClick={() => pushToast({ title: 'Message ready', description: 'Helpful updates will appear here.' })}>
+              Show a message
             </Button>
             <Button onClick={() => setModalOpen(true)} variant="secondary">
               Open modal
@@ -46,7 +46,7 @@ export function FoundationShowcase() {
             <Dropdown
               items={[
                 {
-                  label: 'Open search shell',
+                  label: 'Open search view',
                   onSelect: () =>
                     pushToast({
                       title: 'Dropdown ready',
@@ -65,8 +65,8 @@ export function FoundationShowcase() {
             />
           </div>
           <div className="flex flex-wrap gap-3">
-            <Tooltip label="Keyboard focus and hover both reveal this tooltip.">
-              <Button variant="ghost">Tooltip trigger</Button>
+            <Tooltip label="Helpful guidance appears when you focus or hover.">
+              <Button variant="ghost">Show guidance</Button>
             </Tooltip>
             <Avatar name="Prompt Curator" />
             <Badge>Monochrome</Badge>
@@ -74,13 +74,13 @@ export function FoundationShowcase() {
         </div>
         <FieldGroup className="rounded-[2rem] border border-zinc-200 p-5 dark:border-zinc-800">
           <FormField
-            description="Placeholder editor controls are real form primitives, ready for validation later."
+            description="Add the details people need to understand and reuse this prompt."
             label="Prompt title"
           >
             <Input placeholder="Ship the Vrompt foundation" />
           </FormField>
           <FormField label="Prompt description">
-            <Textarea placeholder="Describe what makes this prompt repository worth saving." />
+            <Textarea placeholder="Describe what makes this prompt worth saving." />
           </FormField>
           <div className="flex gap-3">
             <Button className="flex-1">Primary action</Button>
@@ -104,11 +104,11 @@ export function FoundationShowcase() {
                   <Skeleton className="h-24 w-full" />
                 </Card>
                 <Card className="space-y-3">
-                  <p className="text-sm font-medium">Pagination</p>
+                  <p className="text-sm font-medium">Page controls</p>
                   <Pagination currentPage={1} totalPages={12} />
                 </Card>
                 <Card className="space-y-3">
-                  <p className="text-sm font-medium">Status badges</p>
+                  <p className="text-sm font-medium">Helpful labels</p>
                   <div className="flex flex-wrap gap-2">
                     <Badge>Draft-ready</Badge>
                     <Badge>Accessible</Badge>
@@ -120,12 +120,12 @@ export function FoundationShowcase() {
           },
           {
             id: 'routes',
-            label: 'Routes',
+            label: 'Explore views',
             content: (
               <Card className="space-y-4">
                 <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                  Placeholder routes are already wired for the MVP path:
-                  discover, create, save, collect, and manage prompts.
+                  Explore, create, save, collect, and manage prompts from one
+                  focused place.
                 </p>
                 <div className="grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
                   {[
@@ -156,12 +156,12 @@ export function FoundationShowcase() {
         description="The modal is keyboard-dismissible and intentionally styled to match the monochrome Vrompt brand."
         onClose={() => setModalOpen(false)}
         open={modalOpen}
-        title="Modal foundation"
+        title="Modal example"
       >
         <div className="space-y-4">
           <p className="text-sm leading-7 text-zinc-600 dark:text-zinc-400">
-            Use this shell for publish confirmation, unsaved-change prompts, and
-            repository actions in later phases.
+            Use this window for publish confirmation, unsaved-change prompts,
+            and prompt actions.
           </p>
           <Button onClick={() => setModalOpen(false)}>Close modal</Button>
         </div>

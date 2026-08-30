@@ -13,7 +13,7 @@ const reasons = [
   ['SPAM', 'Spam'],
   ['SCAM', 'Scam'],
   ['MISLEADING', 'Misleading'],
-  ['MISLEADING_EVIDENCE', 'Misleading evidence'],
+  ['MISLEADING_EVIDENCE', 'Misleading results'],
   ['COPYRIGHT', 'Copyright'],
   ['HARASSMENT', 'Harassment'],
   ['UNSAFE_CONTENT', 'Unsafe content'],
@@ -68,15 +68,15 @@ export function ReportRepositoryButton({
         Report
       </Button>
       <Modal
-        description="Reports help moderators review content. A single report does not automatically remove anything."
+        description="Your report helps us review this prompt. One report does not automatically remove content."
         onClose={() => setOpen(false)}
         open={open}
-        title="Report repository"
+        title="Report prompt"
       >
         <form className="grid gap-4" onSubmit={(event) => void submit(event)}>
           {state === 'sent' ? (
             <p className="text-sm text-zinc-600 dark:text-zinc-400">
-              Thanks. Your report is in the moderator queue.
+              Thanks. Your report has been sent for review.
             </p>
           ) : (
             <>

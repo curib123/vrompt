@@ -101,7 +101,7 @@ export function ModerationView() {
             Review before you remove.
           </h1>
           <p className="max-w-2xl text-base leading-8 text-zinc-300">
-            Open reports are evidence for careful decisions, not automatic
+            Open reports help the team make careful decisions, not automatic
             takedowns.
           </p>
         </div>

@@ -16,13 +16,13 @@ export function PromptOrganizationPanel() {
   return (
     <Card className="grid gap-7">
       <div className="space-y-3">
-        <Badge>Organization layer</Badge>
+        <Badge>Make it easy to find</Badge>
         <h1 className="text-3xl font-semibold tracking-[-0.05em]">
           Give your prompt a home.
         </h1>
         <p className="max-w-2xl text-sm leading-7 text-zinc-600 dark:text-zinc-400">
-          Categories and tags are ready now. The repository editor will connect
-          these selections when Phase 9 adds prompt creation.
+          Choose a category and a few helpful keywords so people can find your
+          prompt.
         </p>
       </div>
       <div className="grid gap-6 sm:grid-cols-2">
@@ -40,10 +40,10 @@ export function PromptOrganizationPanel() {
         </FormField>
       </div>
       <div className="rounded-2xl border border-dashed border-zinc-300 bg-zinc-50 px-4 py-3 text-sm text-zinc-600 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-400">
-        {category ? `Category selected: ${category}` : 'Choose a category'} |{' '}
+        {category ? `Category: ${category}` : 'Choose a category'} |{' '}
         {tags.length > 0
-          ? `${tags.length} tag${tags.length === 1 ? '' : 's'} selected`
-          : 'No tags selected'}
+          ? `${tags.length} keyword${tags.length === 1 ? '' : 's'}`
+          : 'Add a few keywords'}
       </div>
     </Card>
   );

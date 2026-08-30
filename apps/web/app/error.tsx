@@ -22,10 +22,9 @@ export default function Error({
         Error state
       </p>
       <div className="space-y-3">
-        <h1 className="text-3xl font-semibold">Something interrupted the shell.</h1>
+        <h1 className="text-3xl font-semibold">Something went wrong.</h1>
         <p className="max-w-2xl text-sm leading-7 text-zinc-600 dark:text-zinc-400">
-          The frontend foundation includes a recovery path so route-level failures
-          do not strand the user. Try the action below to re-render the page.
+          We hit a temporary problem, but you can return home and keep exploring.
         </p>
       </div>
       <Button onClick={reset}>Try again</Button>

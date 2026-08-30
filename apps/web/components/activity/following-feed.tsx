@@ -55,8 +55,8 @@ export function FollowingFeed() {
             Keep up with useful work.
           </h1>
           <p className="max-w-2xl text-base leading-8 text-zinc-300">
-            A focused stream of repository changes from creators you follow. No
-            status noise, only prompt work.
+            A focused stream of updates from creators you follow. No clutter,
+            just useful prompt work.
           </p>
         </div>
       </Card>
@@ -64,7 +64,7 @@ export function FollowingFeed() {
         <EmptyState
           actionHref="/explore"
           actionLabel="Explore creators"
-          description="Follow creators from their profiles to see meaningful repository activity here."
+          description="Follow creators from their profiles to see their latest prompt updates here."
           title="Your following feed is quiet"
         />
       ) : (
@@ -103,11 +103,11 @@ function ActivityCard({
 }) {
   const action =
     item.type === 'REPOSITORY_CREATED'
-      ? 'published a repository'
+      ? 'published a prompt'
       : item.type === 'VERSION_PUBLISHED'
-        ? 'published a new version'
+        ? 'shared a new update'
         : item.type === 'VARIANT_CREATED'
-          ? 'created a Variant'
+          ? 'created a variation'
           : 'created a public collection';
   const target = item.promptRepository ? (
     <Link
@@ -124,7 +124,7 @@ function ActivityCard({
       {item.collection.name}
     </Link>
   ) : (
-    'a repository'
+    'a prompt'
   );
   return (
     <Card className="flex flex-wrap items-center justify-between gap-4">

@@ -107,7 +107,7 @@ export function CollectionsView() {
             Organize your prompt shelf.
           </h1>
           <p className="mt-3 max-w-2xl text-sm leading-7 text-zinc-300">
-            Curate reusable systems for your work, your team, or the wider
+            Curate reusable prompts for your work, your team, or the wider
             Vrompt community.
           </p>
         </div>
@@ -156,7 +156,7 @@ export function CollectionsView() {
       {error ? <p className="text-sm text-red-600">{error}</p> : null}
       {collections.length === 0 ? (
         <EmptyState
-          description="Create a collection to bring related prompt repositories together."
+          description="Create a collection to bring related prompts together."
           title="No collections yet"
         />
       ) : (

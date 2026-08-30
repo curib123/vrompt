@@ -38,7 +38,7 @@ export function SavedRepositories() {
       })
       .catch(() => {
         if (active) {
-          setError('Saved repositories could not be loaded right now.');
+          setError('Saved prompts could not be loaded right now.');
         }
       });
 
@@ -73,7 +73,7 @@ export function SavedRepositories() {
           : current,
       );
     } catch {
-      setError('That repository could not be removed from your saves.');
+      setError('That prompt could not be removed from your saves.');
     } finally {
       setRemovingSlug(null);
     }
@@ -95,7 +95,7 @@ export function SavedRepositories() {
           <div>
             <Badge className="border-white/30 text-zinc-300">Library</Badge>
             <h1 className="mt-4 text-4xl font-semibold tracking-[-0.06em] sm:text-5xl">
-              Saved repositories
+              Saved prompts
             </h1>
             <p className="mt-3 max-w-xl text-sm leading-7 text-zinc-300">
               Keep useful prompt systems close, then return when you are ready
@@ -128,7 +128,7 @@ export function SavedRepositories() {
         <EmptyState
           actionHref="/explore"
           actionLabel="Explore prompts"
-          description="Save repositories from their detail page and they will appear here."
+          description="Save prompts from their detail page and they will appear here."
           title="Your library is empty"
         />
       ) : (
@@ -162,7 +162,7 @@ export function SavedRepositories() {
                     {repository.title}
                   </h2>
                   <p className="mt-3 line-clamp-3 text-sm leading-7 text-zinc-600 dark:text-zinc-400">
-                    {repository.description || 'A reusable prompt repository.'}
+                    {repository.description || 'A reusable prompt.'}
                   </p>
                 </Link>
                 <div className="mt-6 flex flex-wrap gap-x-4 gap-y-2 text-xs text-zinc-500">

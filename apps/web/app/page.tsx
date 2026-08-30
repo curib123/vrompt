@@ -48,25 +48,27 @@ export default async function HomePage() {
           <BrandLockup compact inverted />
           <div className="space-y-7">
             <p className="text-xs font-medium uppercase tracking-[0.3em] text-zinc-400 dark:text-[#4D4D4D]">
-              Live workspace
+              At a glance
             </p>
             <div className="space-y-1">
               <p className="text-sm text-zinc-400 dark:text-[#4D4D4D]">
-                Frontend
+                Your experience
               </p>
               <p className="text-3xl font-semibold tracking-[-0.05em]">
                 Ready.
               </p>
             </div>
             <div className="space-y-1">
-              <p className="text-sm text-zinc-400 dark:text-[#4D4D4D]">API</p>
+              <p className="text-sm text-zinc-400 dark:text-[#4D4D4D]">
+                Connected services
+              </p>
               <p className="text-3xl font-semibold tracking-[-0.05em]">
-                {apiHealth ? apiHealth.status : 'Unavailable'}
+                {apiHealth ? 'Ready' : 'Unavailable'}
               </p>
               <p className="text-sm leading-6 text-zinc-400 dark:text-[#4D4D4D]">
                 {apiHealth
-                  ? `Postgres ${apiHealth.dependencies.postgres}, Redis ${apiHealth.dependencies.redis}`
-                  : 'Connection will light up automatically once the API is running.'}
+                  ? 'Everything is connected and ready to explore.'
+                  : "We're getting things ready. Please try again in a moment."}
               </p>
             </div>
           </div>
@@ -82,13 +84,12 @@ function HomeDiscovery({ explore }: { explore: ExploreResponse | null }) {
   if (!explore) {
     return (
       <Card className="grid gap-4">
-        <Badge>Repository index</Badge>
+        <Badge>Prompt library</Badge>
         <h2 className="text-3xl font-semibold tracking-[-0.05em]">
-          The repository is warming up.
+          Your prompt library is getting ready.
         </h2>
         <p className="max-w-2xl text-sm leading-7 text-zinc-600 dark:text-zinc-400">
-          Explore and search will light up automatically when the API is
-          available.
+          Explore and search will appear as soon as everything is ready.
         </p>
       </Card>
     );
@@ -96,7 +97,7 @@ function HomeDiscovery({ explore }: { explore: ExploreResponse | null }) {
 
   return (
     <div className="grid gap-10">
-      <HomeSection items={explore.featured} title="Featured repositories" />
+      <HomeSection items={explore.featured} title="Featured prompts" />
       <div className="grid gap-10 lg:grid-cols-2">
         <HomeSection items={explore.popular} title="Popular prompts" />
         <HomeSection items={explore.recentlyUpdated} title="Recently updated" />
@@ -199,10 +200,10 @@ function HomeSection({
                 {item.title}
               </h3>
               <p className="mt-2 line-clamp-2 text-sm leading-6 text-zinc-600 dark:text-zinc-400">
-                {item.description || 'A reusable prompt repository.'}
+                {item.description || 'A reusable prompt.'}
               </p>
               <p className="mt-5 text-xs text-zinc-500">
-                by @{item.owner.username} / {item.copyCount} copies
+                Shared {item.copyCount} times by @{item.owner.username}
               </p>
             </Card>
           </Link>

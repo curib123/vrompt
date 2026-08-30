@@ -25,8 +25,8 @@ export default function RegisterPage() {
             Make ideas reusable.
           </h2>
           <p className="text-sm leading-7 text-zinc-600 dark:text-zinc-400">
-            Google handles authentication. Vrompt only receives your verified
-            identity and creates the minimum account needed to get started.
+            Google securely confirms who you are. Vrompt only uses the details
+            needed to create your account.
           </p>
         </div>
         <Button onClick={beginGoogleLogin}>

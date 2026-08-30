@@ -19,7 +19,7 @@ export function EmptyState({
     <Card className="flex min-h-64 flex-col items-start justify-between gap-6 bg-linear-to-br from-white to-zinc-100 dark:from-zinc-950 dark:to-zinc-900">
       <div className="space-y-3">
         <p className="text-xs font-medium uppercase tracking-[0.3em] text-zinc-500">
-          Empty state
+          Nothing here yet
         </p>
         <h3 className="text-2xl font-semibold text-black dark:text-white">
           {title}

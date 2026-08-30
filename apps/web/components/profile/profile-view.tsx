@@ -168,14 +168,14 @@ export function ProfileView({ username }: { username: string }) {
       </Card>
 
       <div className="grid grid-cols-3 gap-3 sm:gap-5">
-        <StatCard label="Repositories" value={profile.stats.repositories} />
+        <StatCard label="Prompts" value={profile.stats.repositories} />
         <StatCard label="Followers" value={profile.stats.followers} />
         <StatCard label="Following" value={profile.stats.following} />
       </div>
 
       <ContentSection
-        description="Public prompt repositories shared by this creator."
-        title="Public repositories"
+        description="Public prompts shared by this creator."
+        title="Public prompts"
       >
         {profile.repositories.length > 0 ? (
           <div className="grid gap-4 md:grid-cols-2">
@@ -189,7 +189,7 @@ export function ProfileView({ username }: { username: string }) {
                     {repository.title}
                   </h3>
                   <p className="mt-2 line-clamp-2 text-sm leading-6 text-zinc-600 dark:text-zinc-400">
-                    {repository.description || 'A public prompt repository.'}
+                    {repository.description || 'A public prompt.'}
                   </p>
                 </Card>
               </Link>
@@ -197,8 +197,8 @@ export function ProfileView({ username }: { username: string }) {
           </div>
         ) : (
           <EmptyState
-            description="Public repositories will appear here when this creator shares one."
-            title="No public repositories yet"
+            description="Public prompts will appear here when this creator shares one."
+            title="No public prompts yet"
           />
         )}
       </ContentSection>

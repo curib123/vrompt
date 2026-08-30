@@ -101,7 +101,7 @@ export function NotificationsView() {
             </h1>
             <p className="max-w-2xl text-base leading-8 text-zinc-300">
               {notifications.unreadCount} unread notifications from the people
-              and prompt repositories connected to your work.
+              and prompts connected to your work.
             </p>
           </div>
           <Button onClick={() => void markAllRead()} variant="secondary">
@@ -111,7 +111,7 @@ export function NotificationsView() {
       </Card>
       {notifications.items.length === 0 ? (
         <EmptyState
-          description="Likes, comments, follows, and variants will appear here."
+          description="Likes, comments, follows, and variations will appear here."
           title="No notifications yet"
         />
       ) : (
@@ -164,7 +164,7 @@ function NotificationCard({
     ) : item.type === 'COMMENT_REPLIED' ? (
       <>replied to a comment on {repository || 'your prompt'}.</>
     ) : (
-      <>created a Variant based on {repository || 'your prompt'}.</>
+      <>created a variation based on {repository || 'your prompt'}.</>
     );
   return (
     <Card className={item.readAt ? '' : 'border-black dark:border-white'}>

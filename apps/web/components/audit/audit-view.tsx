@@ -69,7 +69,7 @@ export function AuditView() {
             The record stays readable.
           </h1>
           <p className="max-w-2xl text-base leading-8 text-zinc-300">
-            Immutable administrative history for accountability and review.
+            A clear record of important changes for accountability and review.
           </p>
         </div>
       </Card>
@@ -111,7 +111,7 @@ export function AuditView() {
             value={targetType}
           >
             <option value="">All targets</option>
-            <option value="REPOSITORY">Repository</option>
+            <option value="REPOSITORY">Prompt</option>
             <option value="COMMENT">Comment</option>
             <option value="USER">User</option>
             <option value="REPORT">Report</option>

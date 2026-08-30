@@ -32,7 +32,7 @@ export function ExploreView() {
     return error ? (
       <EmptyState
         actionHref="/search"
-        actionLabel="Search repositories"
+        actionLabel="Search prompts"
         description="Explore is unavailable right now."
         title="Discovery unavailable"
       />
@@ -51,14 +51,14 @@ export function ExploreView() {
             Useful prompts, less wandering.
           </h1>
           <p className="text-base leading-8 text-zinc-300">
-            Explore real repository activity, organized by the signals creators
-            and collaborators actually generate.
+            Explore real prompt activity, shaped by what creators and
+            collaborators are sharing.
           </p>
           <Link
             className="inline-flex text-sm font-semibold underline underline-offset-4"
             href="/search"
           >
-            Search the full repository
+            Search all prompts
           </Link>
         </div>
       </Card>
@@ -81,7 +81,7 @@ export function ExploreView() {
         />
         <ExploreSection
           items={explore.mostVariants}
-          title="Most variants"
+          title="Most variations"
           metric="variants"
         />
       </div>
@@ -140,7 +140,7 @@ function ExploreSection({
       <SectionHeading title={title} />
       {items.length === 0 ? (
         <p className="text-sm text-zinc-500">
-          No repositories in this view yet.
+          No prompts in this view yet.
         </p>
       ) : (
         <div className="grid gap-4 md:grid-cols-2">
@@ -177,14 +177,21 @@ function RepositoryCard({
             <Badge>{item.owner.accountType.toLowerCase()}</Badge>
           ) : null}
           <Badge>
-            {value} {metric || 'signals'}
+            {value}{' '}
+            {metric === 'copies'
+              ? 'shares'
+              : metric === 'saves'
+                ? 'saves'
+                : metric === 'variants'
+                  ? 'variations'
+                  : 'likes'}
           </Badge>
         </div>
         <h3 className="mt-4 text-xl font-semibold tracking-tight">
           {item.title}
         </h3>
         <p className="mt-2 line-clamp-2 text-sm leading-6 text-zinc-600 dark:text-zinc-400">
-          {item.description || 'A reusable prompt repository.'}
+            {item.description || 'A reusable prompt.'}
         </p>
         <p className="mt-5 text-xs text-zinc-500">by @{item.owner.username}</p>
       </Card>
@@ -196,7 +203,7 @@ function SectionHeading({ title }: { title: string }) {
   return (
     <div>
       <p className="font-mono text-xs uppercase tracking-[0.24em] text-zinc-500">
-        Repository shelf
+        Prompt library
       </p>
       <h2 className="mt-2 text-3xl font-semibold tracking-[-0.05em]">
         {title}

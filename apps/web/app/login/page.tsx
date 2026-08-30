@@ -28,7 +28,8 @@ export default function LoginPage() {
     if (hasGoogleConfigError) {
       pushToast({
         title: 'Google sign-in needs setup',
-        description: 'Add the Google OAuth values to your .env file first.',
+        description:
+          'Please ask the site owner to finish the Google sign-in setup.',
       });
     }
     beginGoogleLogin();
@@ -38,7 +39,7 @@ export default function LoginPage() {
     <div className="grid gap-8 lg:grid-cols-[1fr_0.9fr]">
       <RoutePlaceholder
         description="Use your Google account to join the prompt community. Vrompt does not store a separate password for your account."
-        eyebrow="Google auth"
+        eyebrow="Secure sign-in"
         title="Sign in to Vrompt"
       />
       <Card className="flex flex-col justify-between gap-10">
@@ -57,8 +58,8 @@ export default function LoginPage() {
             className="rounded-xl border border-[#BDBDBD] bg-[#E6E6E6] p-3 text-sm text-[#4D4D4D]"
             role="status"
           >
-            Google sign-in is not configured yet. Add `GOOGLE_CLIENT_ID` and
-            `GOOGLE_CLIENT_SECRET` to `.env`, or come back later.
+            Google sign-in is not ready yet. Please ask the site owner to
+            finish the sign-in setup.
           </p>
         ) : hasGoogleError ? (
           <p
