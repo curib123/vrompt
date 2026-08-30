@@ -22,6 +22,11 @@ export const envValidationSchema = Joi.object({
     .integer()
     .min(300)
     .default(60 * 60 * 24 * 7),
+  GOOGLE_CLIENT_ID: Joi.string().allow('').default(''),
+  GOOGLE_CLIENT_SECRET: Joi.string().allow('').default(''),
+  GOOGLE_CALLBACK_URL: Joi.string()
+    .uri()
+    .default('http://localhost:4000/api/v1/auth/google/callback'),
   AUTH_COOKIE_SECURE: Joi.boolean().default(false),
   AUTH_COOKIE_SAME_SITE: Joi.string()
     .valid('lax', 'strict', 'none')

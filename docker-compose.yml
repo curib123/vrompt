@@ -45,6 +45,9 @@ services:
       JWT_ACCESS_SECRET: local-docker-access-secret-change-me
       JWT_ACCESS_TTL_SECONDS: '900'
       JWT_REFRESH_TTL_SECONDS: '604800'
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      GOOGLE_CALLBACK_URL: ${GOOGLE_CALLBACK_URL:-http://localhost:4000/api/v1/auth/google/callback}
       AUTH_COOKIE_SECURE: 'false'
       AUTH_COOKIE_SAME_SITE: lax
       MEDIA_STORAGE_PROVIDER: LOCAL

@@ -1,89 +1,88 @@
 'use client';
 
-import { FormEvent, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 
-import { RoutePlaceholder } from '@/components/route-placeholder';
+import { BrandLockup } from '@/components/brand/brand-mark';
 import { useAuth } from '@/components/providers/auth-provider';
+import { RoutePlaceholder } from '@/components/route-placeholder';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { FieldGroup, FormField } from '@/components/ui/form';
-import { Input } from '@/components/ui/input';
 import { useToast } from '@/components/ui/toast';
 
 export default function LoginPage() {
-  const router = useRouter();
-  const { login } = useAuth();
+  const searchParams = useSearchParams();
+  const { beginGoogleLogin } = useAuth();
   const { pushToast } = useToast();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const hasGoogleError = searchParams.get('error') === 'google_auth_failed';
+  const hasGoogleConfigError =
+    searchParams.get('error') === 'google_not_configured';
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setError(null);
-    setIsSubmitting(true);
-
-    try {
-      await login(email, password);
+  function handleGoogleLogin() {
+    if (hasGoogleError) {
       pushToast({
-        title: 'Welcome back',
-        description: 'Your session is active.',
+        title: 'Google sign-in was not completed',
+        description: 'Try again or choose a different Google account.',
       });
-      router.push('/');
-    } catch (submissionError: unknown) {
-      const message =
-        submissionError instanceof Error
-          ? submissionError.message
-          : 'Unable to log in';
-      setError(message);
-    } finally {
-      setIsSubmitting(false);
     }
+    if (hasGoogleConfigError) {
+      pushToast({
+        title: 'Google sign-in needs setup',
+        description: 'Add the Google OAuth values to your .env file first.',
+      });
+    }
+    beginGoogleLogin();
   }
 
   return (
     <div className="grid gap-8 lg:grid-cols-[1fr_0.9fr]">
       <RoutePlaceholder
-        description="Authentication flows are intentionally not implemented yet, but the route, layout, and form primitives are ready for Phase 6."
-        eyebrow="Auth"
-        title="Log in to Vrompt"
+        description="Use your Google account to join the prompt community. Vrompt does not store a separate password for your account."
+        eyebrow="Google auth"
+        title="Sign in to Vrompt"
       />
-      <Card>
-        <form onSubmit={handleSubmit}>
-          <FieldGroup>
-            <FormField label="Email">
-              <Input
-                autoComplete="email"
-                onChange={(event) => setEmail(event.target.value)}
-                placeholder="name@example.com"
-                required
-                type="email"
-                value={email}
-              />
-            </FormField>
-            <FormField label="Password">
-              <Input
-                autoComplete="current-password"
-                minLength={8}
-                onChange={(event) => setPassword(event.target.value)}
-                placeholder="Enter your password"
-                required
-                type="password"
-                value={password}
-              />
-            </FormField>
-            {error ? (
-              <p className="text-sm text-red-600" role="alert">
-                {error}
-              </p>
-            ) : null}
-            <Button disabled={isSubmitting} type="submit">
-              {isSubmitting ? 'Signing in...' : 'Continue'}
-            </Button>
-          </FieldGroup>
-        </form>
+      <Card className="flex flex-col justify-between gap-10">
+        <BrandLockup />
+        <div className="space-y-4">
+          <h2 className="text-2xl font-semibold tracking-[-0.05em]">
+            One account. More ideas.
+          </h2>
+          <p className="text-sm leading-7 text-zinc-600 dark:text-zinc-400">
+            Continue securely with Google. You can add your profile details
+            later, once you are inside Vrompt.
+          </p>
+        </div>
+        {hasGoogleConfigError ? (
+          <p
+            className="rounded-xl border border-[#BDBDBD] bg-[#E6E6E6] p-3 text-sm text-[#4D4D4D]"
+            role="status"
+          >
+            Google sign-in is not configured yet. Add `GOOGLE_CLIENT_ID` and
+            `GOOGLE_CLIENT_SECRET` to `.env`, or come back later.
+          </p>
+        ) : hasGoogleError ? (
+          <p
+            className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700"
+            role="alert"
+          >
+            Google sign-in was not completed. Please try again.
+          </p>
+        ) : null}
+        <Button onClick={handleGoogleLogin}>
+          <span aria-hidden="true" className="text-lg font-semibold">
+            G
+          </span>
+          Continue with Google
+        </Button>
+        <p className="text-sm text-zinc-500">
+          New here?{' '}
+          <Link
+            className="font-semibold text-[#0D0D0D] underline dark:text-white"
+            href="/register"
+          >
+            Create an account
+          </Link>
+        </p>
       </Card>
     </div>
   );

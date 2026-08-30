@@ -1,22 +1,24 @@
 'use client';
 
-import { createContext, useContext, useEffect, useState } from 'react';
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useEffectEvent,
+  useState,
+} from 'react';
 import type { ReactNode } from 'react';
 
-import { apiRequest } from '@/lib/api';
+import { apiRequest, getApiBaseUrl } from '@/lib/api';
 import type { AuthResponse, AuthUser } from '@/lib/api';
 
 interface AuthContextValue {
   accessToken: string | null;
+  beginGoogleLogin: () => void;
   isLoading: boolean;
-  user: AuthUser | null;
-  login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
-  register: (
-    email: string,
-    username: string,
-    password: string,
-  ) => Promise<void>;
+  refreshSession: () => Promise<void>;
+  user: AuthUser | null;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -26,44 +28,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [user, setUser] = useState<AuthUser | null>(null);
 
-  useEffect(() => {
-    let active = true;
-
-    void apiRequest<AuthResponse>('/auth/refresh', { method: 'POST' })
-      .then((session) => {
-        if (active) {
-          setAccessToken(session.accessToken);
-          setUser(session.user);
-        }
-      })
-      .catch(() => undefined)
-      .finally(() => {
-        if (active) {
-          setIsLoading(false);
-        }
-      });
-
-    return () => {
-      active = false;
-    };
-  }, []);
-
-  async function login(email: string, password: string) {
-    const session = await apiRequest<AuthResponse>('/auth/login', {
+  async function refreshSession() {
+    const session = await apiRequest<AuthResponse>('/auth/refresh', {
       method: 'POST',
-      body: JSON.stringify({ email, password }),
     });
     setAccessToken(session.accessToken);
     setUser(session.user);
   }
 
-  async function register(email: string, username: string, password: string) {
-    const session = await apiRequest<AuthResponse>('/auth/register', {
-      method: 'POST',
-      body: JSON.stringify({ email, username, password }),
-    });
-    setAccessToken(session.accessToken);
-    setUser(session.user);
+  const initializeSession = useEffectEvent(async () => {
+    try {
+      await refreshSession();
+    } catch {
+      // A missing or expired refresh cookie simply means the user is signed out.
+    } finally {
+      setIsLoading(false);
+    }
+  });
+
+  useEffect(() => {
+    // The initial session check synchronizes React state with the HttpOnly cookie.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void initializeSession();
+  }, []);
+
+  function beginGoogleLogin() {
+    window.location.replace(`${getApiBaseUrl()}/auth/google`);
   }
 
   async function logout() {
@@ -77,7 +67,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ accessToken, isLoading, user, login, logout, register }}
+      value={{
+        accessToken,
+        beginGoogleLogin,
+        isLoading,
+        logout,
+        refreshSession,
+        user,
+      }}
     >
       {children}
     </AuthContext.Provider>

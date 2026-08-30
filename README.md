@@ -56,6 +56,14 @@ npm run prisma:deploy --workspace @vrompt/api
 npm run prisma:seed --workspace @vrompt/api
 ```
 
+### Google authentication
+
+Phase 6 uses Google OAuth only. Create a Google OAuth Web application client,
+add `http://localhost:4000/api/v1/auth/google/callback` as an authorized
+redirect URI, and set `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` in `.env`.
+Basic Google OAuth does not require a paid Google Cloud plan. Additional profile
+details can be added later inside Vrompt.
+
 ## Docker development
 
 Start the full local stack with:

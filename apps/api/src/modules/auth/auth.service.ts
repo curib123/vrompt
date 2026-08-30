@@ -1,92 +1,137 @@
 import {
-  ConflictException,
   Injectable,
+  ServiceUnavailableException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { Prisma, UserStatus } from '@prisma/client';
+import { OAuth2Client } from 'google-auth-library';
 import { createHash, randomBytes } from 'node:crypto';
-import { compare, hash } from 'bcryptjs';
 
-import { RedisService } from '../common/redis.service';
-import { TooManyRequestsException } from '../../common/exceptions/too-many-requests.exception';
 import { PrismaService } from '../prisma/prisma.service';
 import type { AuthSession, AuthenticatedUser } from './auth.types';
-import type { LoginDto } from './dto/login.dto';
-import type { RegisterDto } from './dto/register.dto';
 
-const LOGIN_LIMIT = 5;
-const LOGIN_WINDOW_SECONDS = 15 * 60;
+export interface GoogleIdentity {
+  avatar?: string;
+  displayName?: string;
+  email: string;
+  subject: string;
+}
 
 @Injectable()
 export class AuthService {
-  private readonly localLoginFailures = new Map<
-    string,
-    { count: number; expiresAt: number }
-  >();
-
   constructor(
     private readonly configService: ConfigService,
     private readonly jwtService: JwtService,
     private readonly prismaService: PrismaService,
-    private readonly redisService: RedisService,
   ) {}
 
-  async register(input: RegisterDto) {
-    const email = this.normalizeEmail(input.email);
-    const username = this.normalizeUsername(input.username);
-    const passwordHash = await hash(input.password, 12);
+  getGoogleAuthorizationUrl(state: string) {
+    const client = this.googleClient();
 
-    try {
-      const user = await this.prismaService.$transaction(
-        async (transaction) => {
-          const createdUser = await transaction.user.create({
-            data: {
-              email,
-              username,
-              passwordHash,
-              profile: { create: {} },
-            },
-            select: this.authUserSelect,
-          });
-
-          return createdUser;
-        },
-      );
-
-      return this.issueSession(this.toAuthenticatedUser(user));
-    } catch (error: unknown) {
-      if (
-        error instanceof Prisma.PrismaClientKnownRequestError &&
-        error.code === 'P2002'
-      ) {
-        throw new ConflictException('Email or username is already registered');
-      }
-
-      throw error;
-    }
+    return client.generateAuthUrl({
+      access_type: 'offline',
+      prompt: 'select_account',
+      scope: ['openid', 'email', 'profile'],
+      state,
+    });
   }
 
-  async login(input: LoginDto, ipAddress: string) {
-    const email = this.normalizeEmail(input.email);
-    const throttleKey = this.loginThrottleKey(email, ipAddress);
-    await this.assertLoginAllowed(throttleKey);
+  async exchangeGoogleCode(code: string) {
+    const client = this.googleClient();
+    const { tokens } = await client.getToken(code);
 
-    const user = await this.prismaService.user.findUnique({
-      where: { email },
-      select: this.authUserSelectWithPassword,
-    });
-    const passwordMatches = user?.passwordHash
-      ? await compare(input.password, user.passwordHash)
-      : false;
-
-    if (!user || user.status !== UserStatus.ACTIVE || !passwordMatches) {
-      await this.recordLoginFailure(throttleKey);
-      throw new UnauthorizedException('Invalid email or password');
+    if (!tokens.id_token) {
+      throw new UnauthorizedException(
+        'Google did not return an identity token',
+      );
     }
 
-    await this.clearLoginFailures(throttleKey);
+    const ticket = await client.verifyIdToken({
+      audience: this.googleClientId,
+      idToken: tokens.id_token,
+    });
+    const payload = ticket.getPayload();
+
+    if (!payload?.sub || !payload.email || payload.email_verified !== true) {
+      throw new UnauthorizedException(
+        'Google account email could not be verified',
+      );
+    }
+
+    return this.authenticateGoogle({
+      avatar: payload.picture,
+      displayName: payload.name,
+      email: payload.email,
+      subject: payload.sub,
+    });
+  }
+
+  async authenticateGoogle(identity: GoogleIdentity) {
+    const email = this.normalizeEmail(identity.email);
+    const user = await this.prismaService.$transaction(async (transaction) => {
+      let existingUser = await transaction.user.findUnique({
+        where: { googleId: identity.subject },
+        select: this.authUserSelect,
+      });
+
+      if (!existingUser) {
+        existingUser = await transaction.user.findUnique({
+          where: { email },
+          select: this.authUserSelect,
+        });
+      }
+
+      if (existingUser && existingUser.status !== UserStatus.ACTIVE) {
+        throw new UnauthorizedException('This account is unavailable');
+      }
+
+      if (existingUser) {
+        const updatedUser = await transaction.user.update({
+          where: { id: existingUser.id },
+          data: { email, googleId: identity.subject },
+          select: this.authUserSelect,
+        });
+
+        await transaction.profile.upsert({
+          where: { userId: existingUser.id },
+          create: {
+            userId: existingUser.id,
+            avatar: identity.avatar,
+            displayName: identity.displayName,
+          },
+          update: {
+            avatar: identity.avatar,
+            displayName: identity.displayName,
+          },
+        });
+
+        return updatedUser;
+      }
+
+      const username = await this.uniqueUsername(
+        transaction,
+        identity.displayName || email.split('@')[0] || 'creator',
+        identity.subject,
+      );
+
+      return transaction.user.create({
+        data: {
+          email,
+          googleId: identity.subject,
+          username,
+          profile: {
+            create: {
+              avatar: identity.avatar,
+              displayName: identity.displayName,
+            },
+          },
+        },
+        select: this.authUserSelect,
+      });
+    });
+
     return this.issueSession(this.toAuthenticatedUser(user));
   }
 
@@ -177,69 +222,55 @@ export class AuthService {
     return { accessToken, refreshToken, refreshExpiresAt, user };
   }
 
-  private async assertLoginAllowed(key: string) {
-    try {
-      const count = await this.redisService.increment(
-        key,
-        LOGIN_WINDOW_SECONDS,
-      );
+  private async uniqueUsername(
+    database: Prisma.TransactionClient,
+    source: string,
+    subject: string,
+  ) {
+    const base =
+      source
+        .toLowerCase()
+        .replace(/[^a-z0-9_]/g, '')
+        .slice(0, 25) || 'creator';
+    const suffix = createHash('sha256')
+      .update(subject)
+      .digest('hex')
+      .slice(0, 6);
+    const candidates = [
+      base,
+      `${base.slice(0, 25 - suffix.length - 1)}_${suffix}`,
+    ];
 
-      if (count > LOGIN_LIMIT) {
-        throw new TooManyRequestsException(
-          'Too many login attempts. Try again later.',
-        );
-      }
-    } catch (error: unknown) {
-      if (error instanceof TooManyRequestsException) {
-        throw error;
-      }
-
-      const current = this.localLoginFailures.get(key);
-      const now = Date.now();
-      const next =
-        current && current.expiresAt > now
-          ? { count: current.count + 1, expiresAt: current.expiresAt }
-          : { count: 1, expiresAt: now + LOGIN_WINDOW_SECONDS * 1000 };
-      this.localLoginFailures.set(key, next);
-
-      if (next.count > LOGIN_LIMIT) {
-        throw new TooManyRequestsException(
-          'Too many login attempts. Try again later.',
-        );
-      }
-    }
-  }
-
-  private async recordLoginFailure(key: string) {
-    if (!this.localLoginFailures.has(key)) {
-      this.localLoginFailures.set(key, {
-        count: 1,
-        expiresAt: Date.now() + LOGIN_WINDOW_SECONDS * 1000,
+    for (const candidate of candidates) {
+      const existing = await database.user.findUnique({
+        where: { username: candidate },
+        select: { id: true },
       });
+
+      if (!existing) {
+        return candidate;
+      }
     }
+
+    return `creator_${suffix}`;
   }
 
-  private async clearLoginFailures(key: string) {
-    this.localLoginFailures.delete(key);
-    try {
-      await this.redisService.delete(key);
-    } catch {
-      // Redis is optional for local development; the in-memory fallback is cleared above.
+  private googleClient() {
+    if (!this.googleClientId || !this.googleClientSecret) {
+      throw new ServiceUnavailableException(
+        'Google sign-in is not configured. Add Google OAuth credentials.',
+      );
     }
+
+    return new OAuth2Client(
+      this.googleClientId,
+      this.googleClientSecret,
+      this.googleCallbackUrl,
+    );
   }
 
   private normalizeEmail(email: string) {
     return email.trim().toLowerCase();
-  }
-
-  private normalizeUsername(username: string) {
-    return username.trim().toLowerCase();
-  }
-
-  private loginThrottleKey(email: string, ipAddress: string) {
-    return `auth:login:${createHash('sha256')
-      .update(`${email}:${ipAddress}`)
-      .digest('hex')}`;
   }
 
   private hashRefreshToken(token: string) {
@@ -260,6 +291,21 @@ export class AuthService {
     };
   }
 
+  private get googleClientId() {
+    return this.configService.get<string>('GOOGLE_CLIENT_ID', '');
+  }
+
+  private get googleClientSecret() {
+    return this.configService.get<string>('GOOGLE_CLIENT_SECRET', '');
+  }
+
+  private get googleCallbackUrl() {
+    return this.configService.get<string>(
+      'GOOGLE_CALLBACK_URL',
+      'http://localhost:4000/api/v1/auth/google/callback',
+    );
+  }
+
   private get refreshTtlSeconds() {
     return this.configService.get<number>('JWT_REFRESH_TTL_SECONDS', 604800);
   }
@@ -268,12 +314,8 @@ export class AuthService {
     id: true,
     email: true,
     username: true,
+    googleId: true,
     role: true,
     status: true,
-  } as const;
-
-  private readonly authUserSelectWithPassword = {
-    ...this.authUserSelect,
-    passwordHash: true,
   } as const;
 }

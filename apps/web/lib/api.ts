@@ -31,7 +31,7 @@ export class ApiError extends Error {
   }
 }
 
-function getApiBaseUrl() {
+export function getApiBaseUrl() {
   return (
     process.env.INTERNAL_API_BASE_URL ??
     process.env.NEXT_PUBLIC_API_BASE_URL ??

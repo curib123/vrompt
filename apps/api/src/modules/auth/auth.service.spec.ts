@@ -2,9 +2,7 @@ import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { Test } from '@nestjs/testing';
 import { UserRole, UserStatus } from '@prisma/client';
-import { compare, hash } from 'bcryptjs';
 
-import { RedisService } from '../common/redis.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuthService } from './auth.service';
 
@@ -13,100 +11,67 @@ describe('AuthService', () => {
     id: 'user-id',
     email: 'owner@example.com',
     username: 'owner',
+    googleId: 'google-subject',
     role: UserRole.USER,
     status: UserStatus.ACTIVE,
   };
   const configService = {
     get: jest.fn((key: string, fallback?: unknown) => {
       const values: Record<string, unknown> = {
+        GOOGLE_CLIENT_ID: 'google-client-id',
+        GOOGLE_CLIENT_SECRET: 'google-client-secret',
+        GOOGLE_CALLBACK_URL:
+          'http://localhost:4000/api/v1/auth/google/callback',
         JWT_REFRESH_TTL_SECONDS: 604800,
       };
       return values[key] ?? fallback;
     }),
   };
   const jwtService = { signAsync: jest.fn().mockResolvedValue('access-token') };
-  const redisService = {
-    increment: jest.fn().mockResolvedValue(1),
-    delete: jest.fn().mockResolvedValue(undefined),
-  };
 
-  it('normalizes registration fields and stores a password hash', async () => {
+  it('creates a Vrompt user from a verified Google identity', async () => {
     const transaction = {
       user: {
+        findUnique: jest
+          .fn()
+          .mockResolvedValueOnce(null)
+          .mockResolvedValueOnce(null)
+          .mockResolvedValueOnce(null),
         create: jest.fn().mockResolvedValue(user),
       },
-      refreshToken: {
-        create: jest.fn().mockResolvedValue(undefined),
-      },
+      refreshToken: { create: jest.fn().mockResolvedValue(undefined) },
+      profile: { upsert: jest.fn() },
     };
     const prismaService = {
-      refreshToken: {
-        create: jest.fn().mockResolvedValue(undefined),
-      },
       $transaction: jest.fn((callback: (tx: typeof transaction) => unknown) =>
         callback(transaction),
       ),
+      refreshToken: { create: jest.fn().mockResolvedValue(undefined) },
     };
     const service = await createService(
       prismaService,
       configService,
       jwtService,
-      redisService,
     );
 
-    const session = await service.register({
+    const session = await service.authenticateGoogle({
+      avatar: 'https://example.com/avatar.png',
+      displayName: 'Prompt Owner',
       email: ' Owner@Example.com ',
-      username: ' Owner ',
-      password: 'strong-password',
+      subject: 'google-subject',
     });
 
-    const createCall = transaction.user.create.mock.calls[0][0];
-    expect(createCall.data.email).toBe('owner@example.com');
-    expect(createCall.data.username).toBe('owner');
-    expect(createCall.data.passwordHash).not.toBe('strong-password');
-    await expect(
-      compare('strong-password', createCall.data.passwordHash),
-    ).resolves.toBe(true);
-    expect(session).toEqual(
+    expect(transaction.user.create).toHaveBeenCalledWith(
       expect.objectContaining({
-        accessToken: 'access-token',
-        user: expect.objectContaining({
-          id: user.id,
-          email: user.email,
-          username: user.username,
-          role: user.role,
+        data: expect.objectContaining({
+          email: 'owner@example.com',
+          googleId: 'google-subject',
+          profile: expect.any(Object),
         }),
       }),
     );
-    expect(prismaService.refreshToken.create).toHaveBeenCalled();
-  });
-
-  it('logs in with a valid password and clears the throttle key', async () => {
-    const passwordHash = await hash('strong-password', 4);
-    const prismaService = {
-      user: {
-        findUnique: jest.fn().mockResolvedValue({ ...user, passwordHash }),
-      },
-      refreshToken: {
-        create: jest.fn().mockResolvedValue(undefined),
-      },
-    };
-    const service = await createService(
-      prismaService,
-      configService,
-      jwtService,
-      redisService,
-    );
-
-    await service.login(
-      { email: 'OWNER@example.com', password: 'strong-password' },
-      '127.0.0.1',
-    );
-
-    expect(redisService.increment).toHaveBeenCalled();
-    expect(redisService.delete).toHaveBeenCalled();
-    expect(prismaService.user.findUnique).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { email: 'owner@example.com' } }),
+    expect(session).toEqual(
+      expect.objectContaining({ accessToken: 'access-token' }),
     );
   });
 
@@ -121,7 +86,6 @@ describe('AuthService', () => {
       refreshToken: {
         findUnique: jest.fn().mockResolvedValue({
           id: 'refresh-id',
-          tokenHash: 'stored-hash',
           expiresAt: new Date(Date.now() + 60_000),
           revokedAt: null,
           user,
@@ -135,7 +99,6 @@ describe('AuthService', () => {
       prismaService,
       configService,
       jwtService,
-      redisService,
     );
 
     const session = await service.refresh('raw-refresh-token');
@@ -153,7 +116,6 @@ async function createService(
   prismaService: object,
   configService: object,
   jwtService: object,
-  redisService: object,
 ) {
   const moduleRef = await Test.createTestingModule({
     providers: [
@@ -161,7 +123,6 @@ async function createService(
       { provide: ConfigService, useValue: configService },
       { provide: JwtService, useValue: jwtService },
       { provide: PrismaService, useValue: prismaService },
-      { provide: RedisService, useValue: redisService },
     ],
   }).compile();
 
