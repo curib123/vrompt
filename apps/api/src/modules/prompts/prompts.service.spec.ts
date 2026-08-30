@@ -63,6 +63,54 @@ describe('PromptsService', () => {
       skipDuplicates: true,
     });
   });
+
+  it('creates the next immutable version and repoints the repository', async () => {
+    const transaction = {
+      promptVersion: {
+        aggregate: jest.fn().mockResolvedValue({ _max: { versionNumber: 3 } }),
+        create: jest
+          .fn()
+          .mockResolvedValue({ id: 'version-4', versionNumber: 4 }),
+      },
+      promptRepository: { update: jest.fn().mockResolvedValue(undefined) },
+    };
+    const prismaService = {
+      promptRepository: {
+        findUnique: jest.fn().mockResolvedValue({
+          id: 'repository-id',
+          ownerId: 'owner-id',
+          status: 'ACTIVE',
+          visibility: 'PUBLIC',
+        }),
+      },
+      $transaction: jest.fn((callback: (tx: typeof transaction) => unknown) =>
+        callback(transaction),
+      ),
+    };
+    const service = await createService(prismaService, {
+      createOrGet: jest.fn(),
+    });
+
+    await expect(
+      service.createVersion('my-prompt', 'owner-id', {
+        changelog: 'Clarify the output format',
+        content: 'Write a concise answer with headings.',
+      }),
+    ).resolves.toEqual({ id: 'version-4', versionNumber: 4 });
+
+    expect(transaction.promptVersion.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          versionNumber: 4,
+          status: 'PUBLISHED',
+        }),
+      }),
+    );
+    expect(transaction.promptRepository.update).toHaveBeenCalledWith({
+      where: { id: 'repository-id' },
+      data: { currentVersionId: 'version-4' },
+    });
+  });
 });
 
 async function createService(prismaService: object, tagsService: object) {

@@ -83,6 +83,47 @@ export interface PromptEvidenceImage {
   sortOrder: number;
 }
 
+export interface PromptVersionSummary {
+  id: string;
+  versionNumber: number;
+  changelog: string | null;
+  status: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
+  publishedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+  author: { username: string };
+}
+
+export interface PromptVersionContent {
+  id: string;
+  versionNumber: number;
+  content: string;
+  changelog: string | null;
+  status: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
+  publishedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+  variables: Array<{
+    id: string;
+    name: string;
+    description: string | null;
+    defaultValue: string | null;
+    required: boolean;
+  }>;
+  examples: Array<{
+    id: string;
+    title: string | null;
+    input: string;
+    output: string;
+    sortOrder: number;
+  }>;
+  evidenceImages: PromptEvidenceImage[];
+}
+
+export interface PromptVersionDetail extends PromptVersionContent {
+  author: { username: string };
+}
+
 export interface PromptRepositoryDetail {
   id: string;
   ownerId: string;
@@ -103,31 +144,7 @@ export interface PromptRepositoryDetail {
   };
   category: { name: string; slug: string } | null;
   promptTags: { tag: TagOption }[];
-  currentVersion: {
-    id: string;
-    versionNumber: number;
-    content: string;
-    changelog: string | null;
-    status: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
-    publishedAt: string | null;
-    createdAt: string;
-    updatedAt: string;
-    variables: Array<{
-      id: string;
-      name: string;
-      description: string | null;
-      defaultValue: string | null;
-      required: boolean;
-    }>;
-    examples: Array<{
-      id: string;
-      title: string | null;
-      input: string;
-      output: string;
-      sortOrder: number;
-    }>;
-    evidenceImages: PromptEvidenceImage[];
-  } | null;
+  currentVersion: PromptVersionContent | null;
 }
 
 export class ApiError extends Error {

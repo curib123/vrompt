@@ -11,14 +11,19 @@ import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Modal } from '@/components/ui/modal';
 import { Tabs } from '@/components/ui/tabs';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { apiRequest, getMediaUrl } from '@/lib/api';
 import type {
   PromptEvidenceImage,
+  PromptVersionContent,
+  PromptVersionDetail,
+  PromptVersionSummary,
   PromptRepositoryDetail,
 } from '@/lib/api';
 
 export function RepositoryDetail({ slug }: { slug: string }) {
-  const { accessToken, isLoading } = useAuth();
+  const { accessToken, isLoading, user } = useAuth();
   const [repository, setRepository] = useState<PromptRepositoryDetail | null>(
     null,
   );
@@ -27,6 +32,7 @@ export function RepositoryDetail({ slug }: { slug: string }) {
     'idle' | 'copying' | 'copied' | 'failed'
   >('idle');
   const [selectedImage, setSelectedImage] = useState<PromptEvidenceImage>();
+  const [selectedVersion, setSelectedVersion] = useState<PromptVersionDetail>();
 
   useEffect(() => {
     if (isLoading) {
@@ -78,9 +84,10 @@ export function RepositoryDetail({ slug }: { slug: string }) {
   }
 
   const version = repository.currentVersion;
+  const activeVersion: PromptVersionContent | null = selectedVersion ?? version;
   const displayName =
     repository.owner.profile?.displayName || repository.owner.username;
-  const evidenceImages = version?.evidenceImages ?? [];
+  const evidenceImages = activeVersion?.evidenceImages ?? [];
 
   async function copyPrompt() {
     if (!version || copyState === 'copying') {
@@ -125,9 +132,10 @@ export function RepositoryDetail({ slug }: { slug: string }) {
                   {repository.category.name}
                 </Badge>
               ) : null}
-              {version ? (
+              {activeVersion ? (
                 <Badge className="border-white/30 text-zinc-300">
-                  Version {version.versionNumber}
+                  {selectedVersion ? 'Previous' : 'Current'} Version{' '}
+                  {activeVersion.versionNumber}
                 </Badge>
               ) : null}
             </div>
@@ -195,7 +203,9 @@ export function RepositoryDetail({ slug }: { slug: string }) {
           {
             content: (
               <PromptTab
-                content={version?.content ?? 'No prompt content is available.'}
+                content={
+                  activeVersion?.content ?? 'No prompt content is available.'
+                }
               />
             ),
             id: 'prompt',
@@ -203,7 +213,11 @@ export function RepositoryDetail({ slug }: { slug: string }) {
           },
           {
             content: (
-              <VersionsTab versionNumber={version?.versionNumber ?? 1} />
+              <VersionsTab
+                currentVersion={version}
+                onSelectVersion={setSelectedVersion}
+                repositorySlug={slug}
+              />
             ),
             id: 'versions',
             label: 'Versions',
@@ -212,7 +226,7 @@ export function RepositoryDetail({ slug }: { slug: string }) {
             content: (
               <ExamplesTab
                 evidenceImages={evidenceImages}
-                examples={version?.examples ?? []}
+                examples={activeVersion?.examples ?? []}
                 onSelectImage={setSelectedImage}
               />
             ),
@@ -241,6 +255,14 @@ export function RepositoryDetail({ slug }: { slug: string }) {
           },
         ]}
       />
+
+      {user?.id === repository.ownerId && version ? (
+        <NewVersionForm
+          accessToken={accessToken}
+          initialContent={version.content}
+          repositorySlug={slug}
+        />
+      ) : null}
 
       <Modal
         description={
@@ -294,20 +316,185 @@ function PromptTab({ content }: { content: string }) {
   );
 }
 
-function VersionsTab({ versionNumber }: { versionNumber: number }) {
+function VersionsTab({
+  currentVersion,
+  onSelectVersion,
+  repositorySlug,
+}: {
+  currentVersion: PromptVersionContent | null;
+  onSelectVersion: (version: PromptVersionDetail | undefined) => void;
+  repositorySlug: string;
+}) {
+  const [versions, setVersions] = useState<PromptVersionSummary[]>([]);
+  const [comparison, setComparison] = useState<PromptVersionDetail>();
+
+  useEffect(() => {
+    let active = true;
+    void apiRequest<PromptVersionSummary[]>(
+      `/prompt-repositories/${encodeURIComponent(repositorySlug)}/versions`,
+    )
+      .then((result) => {
+        if (active) {
+          setVersions(result);
+        }
+      })
+      .catch(() => {
+        if (active) {
+          setVersions([]);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [repositorySlug]);
+
+  async function selectVersion(versionNumber: number) {
+    if (versionNumber === currentVersion?.versionNumber) {
+      setComparison(undefined);
+      onSelectVersion(undefined);
+      return;
+    }
+
+    const version = await apiRequest<PromptVersionDetail>(
+      `/prompt-repositories/${encodeURIComponent(repositorySlug)}/versions/${versionNumber}`,
+    );
+    setComparison(version);
+    onSelectVersion(version);
+  }
+
   return (
-    <Card>
-      <div className="flex items-center justify-between gap-4">
-        <div>
-          <Badge>Current version</Badge>
-          <h2 className="mt-4 text-2xl font-semibold">
-            Version {versionNumber}
+    <div className="grid gap-5">
+      <Card>
+        <div className="space-y-2">
+          <Badge>Version history</Badge>
+          <h2 className="mt-2 text-2xl font-semibold">
+            Immutable prompt versions.
           </h2>
         </div>
-        <p className="text-sm text-zinc-500">
-          Version history arrives in Phase 12.
+        <div className="mt-5 grid gap-2">
+          {versions.map((version) => (
+            <button
+              className="flex items-center justify-between gap-4 rounded-2xl border border-zinc-200 px-4 py-3 text-left transition hover:border-black dark:border-zinc-800 dark:hover:border-white"
+              key={version.id}
+              onClick={() => void selectVersion(version.versionNumber)}
+              type="button"
+            >
+              <span>
+                <strong>Version {version.versionNumber}</strong>
+                <span className="ml-3 text-sm text-zinc-500">
+                  {version.changelog || 'No changelog'}
+                </span>
+              </span>
+              <Badge>
+                {version.versionNumber === currentVersion?.versionNumber
+                  ? 'Current Version'
+                  : 'Previous Version'}
+              </Badge>
+            </button>
+          ))}
+        </div>
+      </Card>
+      {comparison && currentVersion ? (
+        <Card>
+          <div className="space-y-2">
+            <Badge>Basic comparison</Badge>
+            <h2 className="text-2xl font-semibold">
+              Previous Version vs Current Version
+            </h2>
+          </div>
+          <div className="mt-5 grid gap-4 md:grid-cols-2">
+            <CodeBlock
+              label={`Previous Version ${comparison.versionNumber}`}
+              value={comparison.content}
+            />
+            <CodeBlock
+              label={`Current Version ${currentVersion.versionNumber}`}
+              value={currentVersion.content}
+            />
+          </div>
+        </Card>
+      ) : null}
+    </div>
+  );
+}
+
+function NewVersionForm({
+  accessToken,
+  initialContent,
+  repositorySlug,
+}: {
+  accessToken: string | null;
+  initialContent: string;
+  repositorySlug: string;
+}) {
+  const [content, setContent] = useState(initialContent);
+  const [changelog, setChangelog] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  async function submit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setSaving(true);
+    setError(null);
+
+    try {
+      await apiRequest(
+        `/prompt-repositories/${encodeURIComponent(repositorySlug)}/versions`,
+        {
+          accessToken: accessToken ?? undefined,
+          body: JSON.stringify({ changelog, content, publish: true }),
+          method: 'POST',
+        },
+      );
+      window.location.reload();
+    } catch (submitError: unknown) {
+      setError(
+        submitError instanceof Error
+          ? submitError.message
+          : 'Version could not be created.',
+      );
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Card>
+      <div className="space-y-2">
+        <Badge>Create new version</Badge>
+        <h2 className="text-2xl font-semibold">
+          Keep the repository evolving.
+        </h2>
+        <p className="text-sm leading-6 text-zinc-600 dark:text-zinc-400">
+          Published versions remain immutable. This editor creates the next
+          version and keeps older evidence attached to its original version.
         </p>
       </div>
+      <form
+        className="mt-5 grid gap-4"
+        onSubmit={(event) => void submit(event)}
+      >
+        <Textarea
+          aria-label="New version prompt content"
+          onChange={(event) => setContent(event.target.value)}
+          required
+          value={content}
+        />
+        <Input
+          aria-label="Version changelog"
+          maxLength={1000}
+          onChange={(event) => setChangelog(event.target.value)}
+          placeholder="What changed?"
+          required
+          value={changelog}
+        />
+        {error ? <p className="text-sm text-red-600">{error}</p> : null}
+        <div className="flex justify-end">
+          <Button disabled={saving} type="submit">
+            {saving ? 'Publishing...' : 'Publish new version'}
+          </Button>
+        </div>
+      </form>
     </Card>
   );
 }

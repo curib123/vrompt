@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -16,6 +17,7 @@ import { slugify } from '../common/slug';
 import { PrismaService } from '../prisma/prisma.service';
 import type { CreatePromptRepositoryDto } from './dto/create-prompt-repository.dto';
 import type { CopyPromptDto } from './dto/copy-prompt.dto';
+import type { CreatePromptVersionDto } from './dto/create-prompt-version.dto';
 import { TagsService } from '../tags/tags.service';
 
 @Injectable()
@@ -216,6 +218,162 @@ export class PromptsService {
     };
   }
 
+  async listVersions(slug: string, viewerId?: string) {
+    const repository = await this.prismaService.promptRepository.findUnique({
+      where: { slug: slugify(slug) },
+      select: { id: true, ownerId: true, visibility: true, status: true },
+    });
+
+    this.assertReadableRepository(repository, viewerId);
+
+    return this.prismaService.promptVersion.findMany({
+      where: { repositoryId: repository.id },
+      orderBy: { versionNumber: 'desc' },
+      select: {
+        id: true,
+        versionNumber: true,
+        changelog: true,
+        status: true,
+        publishedAt: true,
+        createdAt: true,
+        updatedAt: true,
+        author: { select: { username: true } },
+      },
+    });
+  }
+
+  async getVersion(slug: string, versionNumber: number, viewerId?: string) {
+    const repository = await this.prismaService.promptRepository.findUnique({
+      where: { slug: slugify(slug) },
+      select: { id: true, ownerId: true, visibility: true, status: true },
+    });
+
+    this.assertReadableRepository(repository, viewerId);
+
+    const version = await this.prismaService.promptVersion.findFirst({
+      where: { repositoryId: repository.id, versionNumber },
+      select: this.versionSelect,
+    });
+
+    if (!version) {
+      throw new NotFoundException('Prompt version not found');
+    }
+
+    return version;
+  }
+
+  async createVersion(
+    slug: string,
+    actorId: string,
+    input: CreatePromptVersionDto,
+  ) {
+    const repository = await this.prismaService.promptRepository.findUnique({
+      where: { slug: slugify(slug) },
+      select: { id: true, ownerId: true, visibility: true, status: true },
+    });
+
+    if (!repository || repository.status !== PromptRepositoryStatus.ACTIVE) {
+      throw new NotFoundException('Repository not found');
+    }
+
+    if (repository.ownerId !== actorId) {
+      throw new ForbiddenException(
+        'Only the repository owner can create a version',
+      );
+    }
+
+    const versionStatus =
+      input.publish || repository.visibility !== PromptVisibility.PRIVATE
+        ? PromptVersionStatus.PUBLISHED
+        : PromptVersionStatus.DRAFT;
+
+    try {
+      return await this.prismaService.$transaction(
+        async (transaction) => {
+          const latest = await transaction.promptVersion.aggregate({
+            where: { repositoryId: repository.id },
+            _max: { versionNumber: true },
+          });
+          const version = await transaction.promptVersion.create({
+            data: {
+              repositoryId: repository.id,
+              authorId: actorId,
+              versionNumber: (latest._max.versionNumber ?? 0) + 1,
+              content: input.content,
+              changelog: this.cleanNullable(input.changelog),
+              status: versionStatus,
+              publishedAt:
+                versionStatus === PromptVersionStatus.PUBLISHED
+                  ? new Date()
+                  : undefined,
+              variables: {
+                create: (input.variables ?? []).map((variable, index) => ({
+                  name: variable.name.trim(),
+                  description: this.cleanNullable(variable.description),
+                  defaultValue: this.cleanNullable(variable.defaultValue),
+                  required: variable.required ?? false,
+                  sortOrder: index,
+                })),
+              },
+              examples: {
+                create: (input.examples ?? []).map((example, index) => ({
+                  title: this.cleanNullable(example.title),
+                  input: example.input,
+                  output: example.output,
+                  sortOrder: index,
+                })),
+              },
+            },
+            select: { id: true, versionNumber: true },
+          });
+
+          await transaction.promptRepository.update({
+            where: { id: repository.id },
+            data: { currentVersionId: version.id },
+          });
+
+          return version;
+        },
+        { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+      );
+    } catch (error: unknown) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002'
+      ) {
+        throw new ConflictException(
+          'A version is already being created; try again',
+        );
+      }
+
+      throw error;
+    }
+  }
+
+  private assertReadableRepository(
+    repository: {
+      id: string;
+      ownerId: string;
+      visibility: PromptVisibility;
+      status: PromptRepositoryStatus;
+    } | null,
+    viewerId?: string,
+  ): asserts repository is {
+    id: string;
+    ownerId: string;
+    visibility: PromptVisibility;
+    status: PromptRepositoryStatus;
+  } {
+    if (
+      !repository ||
+      repository.status !== PromptRepositoryStatus.ACTIVE ||
+      (repository.visibility === PromptVisibility.PRIVATE &&
+        repository.ownerId !== viewerId)
+    ) {
+      throw new NotFoundException('Repository not found');
+    }
+  }
+
   private async uniqueSlug(
     transaction: Prisma.TransactionClient,
     baseSlug: string,
@@ -319,6 +477,50 @@ export class PromptsService {
             sortOrder: true,
           },
         },
+      },
+    },
+  } as const;
+
+  private readonly versionSelect = {
+    id: true,
+    versionNumber: true,
+    content: true,
+    changelog: true,
+    status: true,
+    publishedAt: true,
+    createdAt: true,
+    updatedAt: true,
+    author: { select: { username: true } },
+    variables: {
+      orderBy: { sortOrder: 'asc' },
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        defaultValue: true,
+        required: true,
+      },
+    },
+    examples: {
+      orderBy: { sortOrder: 'asc' },
+      select: {
+        id: true,
+        title: true,
+        input: true,
+        output: true,
+        sortOrder: true,
+      },
+    },
+    evidenceImages: {
+      orderBy: { sortOrder: 'asc' },
+      select: {
+        id: true,
+        secureUrl: true,
+        originalFilename: true,
+        mimeType: true,
+        altText: true,
+        caption: true,
+        sortOrder: true,
       },
     },
   } as const;
