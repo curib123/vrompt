@@ -217,6 +217,17 @@ export interface ReportResponse {
   };
 }
 
+export interface ModerationReport {
+  id: string;
+  targetType: 'REPOSITORY' | 'COMMENT' | 'USER';
+  targetId: string;
+  reason: string;
+  description: string | null;
+  status: 'OPEN' | 'DISMISSED' | 'RESOLVED';
+  createdAt: string;
+  reporter: { username: string };
+}
+
 interface ProfileSummary {
   id: string;
   username: string;

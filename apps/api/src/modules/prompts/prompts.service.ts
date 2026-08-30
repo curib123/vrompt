@@ -666,6 +666,7 @@ export class PromptsService {
           },
         },
         evidenceImages: {
+          where: { isHidden: false },
           orderBy: { sortOrder: 'asc' },
           select: {
             id: true,
@@ -712,6 +713,7 @@ export class PromptsService {
       },
     },
     evidenceImages: {
+      where: { isHidden: false },
       orderBy: { sortOrder: 'asc' },
       select: {
         id: true,

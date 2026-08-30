@@ -302,6 +302,7 @@ model PromptEvidenceImage {
   height           Int?
   altText          String?         @db.VarChar(255)
   caption          String?         @db.VarChar(500)
+  isHidden         Boolean         @default(false)
   sortOrder        Int             @default(0)
   createdAt        DateTime        @default(now())
   updatedAt        DateTime        @updatedAt

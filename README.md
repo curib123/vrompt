@@ -1,6 +1,6 @@
 # Vrompt
 
-Vrompt is the repository for AI prompts. This workspace contains the Phase 1 through Phase 26 MVP foundation: a TypeScript monorepo, a Next.js frontend shell, a NestJS API shell, a normalized Prisma/PostgreSQL data model, media storage adapters, Google-only authentication, user profiles, prompt organization, repository creation, repository detail pages, copy tracking, immutable prompt versions, Create Variant, Variant Lineage, saved prompt repositories, repository likes, community comments, creator follows, prompt collections, repository search, repository-first Explore, a repository-first homepage, a followed-creator activity feed, in-app notifications, repository activity history, and user reporting.
+Vrompt is the repository for AI prompts. This workspace contains the Phase 1 through Phase 27 MVP foundation: a TypeScript monorepo, a Next.js frontend shell, a NestJS API shell, a normalized Prisma/PostgreSQL data model, media storage adapters, Google-only authentication, user profiles, prompt organization, repository creation, repository detail pages, copy tracking, immutable prompt versions, Create Variant, Variant Lineage, saved prompt repositories, repository likes, community comments, creator follows, prompt collections, repository search, repository-first Explore, a repository-first homepage, a followed-creator activity feed, in-app notifications, repository activity history, user reporting, and role-protected moderation.
 
 ## Workspace layout
 
@@ -114,6 +114,8 @@ Phase 25 adds repository-scoped activity history for creation, published version
 and variants alongside the community discussion in the Activity tab.
 Phase 26 adds authenticated reports for repositories, comments, and users with
 moderator-owned statuses and recent duplicate-report suppression.
+Phase 27 adds moderator/admin report queues, hide/restore/suspend actions,
+evidence-image moderation support, and auditable moderation operations.
 
 ## Docker development
 
