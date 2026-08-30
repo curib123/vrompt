@@ -36,7 +36,7 @@ export function SiteHeader() {
                 className={cn(
                   'rounded-lg px-4 py-2 text-sm transition',
                   pathname === route.href
-                    ? 'bg-[#0D0D0D] text-white dark:bg-white dark:text-[#0D0D0D]'
+                    ? 'bg-[#0D0D0D] !text-white dark:bg-white dark:!text-[#0D0D0D]'
                     : 'text-[#4D4D4D] hover:bg-[#E6E6E6] dark:text-zinc-300 dark:hover:bg-[#1A1A1A]',
                 )}
                 href={route.href as Route}
@@ -53,7 +53,7 @@ export function SiteHeader() {
               className={cn(
                 'rounded-lg px-4 py-2 text-sm transition',
                 pathname === route.href
-                  ? 'bg-[#0D0D0D] text-white dark:bg-white dark:text-[#0D0D0D]'
+                  ? 'bg-[#0D0D0D] !text-white dark:bg-white dark:!text-[#0D0D0D]'
                   : 'text-[#4D4D4D] hover:bg-[#E6E6E6] dark:text-zinc-300 dark:hover:bg-[#1A1A1A]',
               )}
               href={route.href as Route}
