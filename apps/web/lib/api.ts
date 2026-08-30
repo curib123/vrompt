@@ -67,6 +67,12 @@ export interface TagOption {
   slug: string;
 }
 
+export interface PromptCreateResponse {
+  id: string;
+  slug: string;
+  promptVersionId: string;
+}
+
 export class ApiError extends Error {
   status: number;
 

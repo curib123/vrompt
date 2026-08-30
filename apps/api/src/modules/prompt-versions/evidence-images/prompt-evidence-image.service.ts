@@ -26,6 +26,12 @@ export interface AddPromptEvidenceImageInput extends MediaUploadInput {
   width?: number;
 }
 
+export interface UpdatePromptEvidenceImageInput {
+  actorId: string;
+  altText?: string | null;
+  caption?: string | null;
+}
+
 @Injectable()
 export class PromptEvidenceImageService {
   constructor(
@@ -104,6 +110,112 @@ export class PromptEvidenceImageService {
       );
       throw error;
     }
+  }
+
+  async deleteImage(imageId: string, actorId: string) {
+    const image = await this.getOwnedImage(imageId, actorId);
+    await this.prismaService.promptEvidenceImage.delete({
+      where: { id: imageId },
+    });
+    await this.mediaStorageService.delete(
+      image.storageKey,
+      image.storageProvider,
+    );
+  }
+
+  async updateImage(imageId: string, input: UpdatePromptEvidenceImageInput) {
+    await this.getOwnedImage(imageId, input.actorId);
+
+    return this.prismaService.promptEvidenceImage.update({
+      where: { id: imageId },
+      data: {
+        ...(input.altText !== undefined ? { altText: input.altText } : {}),
+        ...(input.caption !== undefined ? { caption: input.caption } : {}),
+      },
+    });
+  }
+
+  async reorderImages(
+    promptVersionId: string,
+    actorId: string,
+    imageIds: string[],
+  ) {
+    const version = await this.prismaService.promptVersion.findUnique({
+      where: { id: promptVersionId },
+      select: { repository: { select: { ownerId: true } } },
+    });
+
+    if (!version) {
+      throw new NotFoundException('Prompt version not found');
+    }
+
+    if (version.repository.ownerId !== actorId) {
+      throw new ForbiddenException(
+        'Only the repository owner can reorder evidence images',
+      );
+    }
+
+    const images = await this.prismaService.promptEvidenceImage.findMany({
+      where: { promptVersionId },
+      select: { id: true },
+    });
+    const existingIds = new Set(images.map((image) => image.id));
+
+    if (
+      imageIds.length !== images.length ||
+      new Set(imageIds).size !== imageIds.length ||
+      imageIds.some((imageId) => !existingIds.has(imageId))
+    ) {
+      throw new BadRequestException(
+        'The evidence image order is incomplete or invalid',
+      );
+    }
+
+    await this.prismaService.$transaction(async (transaction) => {
+      await transaction.promptEvidenceImage.updateMany({
+        where: { promptVersionId },
+        data: { sortOrder: { increment: 3 } },
+      });
+
+      await Promise.all(
+        imageIds.map((imageId, sortOrder) =>
+          transaction.promptEvidenceImage.update({
+            where: { id: imageId },
+            data: { sortOrder },
+          }),
+        ),
+      );
+    });
+
+    return this.prismaService.promptEvidenceImage.findMany({
+      where: { promptVersionId },
+      orderBy: { sortOrder: 'asc' },
+    });
+  }
+
+  private async getOwnedImage(imageId: string, actorId: string) {
+    const image = await this.prismaService.promptEvidenceImage.findUnique({
+      where: { id: imageId },
+      select: {
+        storageKey: true,
+        storageProvider: true,
+        promptVersion: {
+          select: { repository: { select: { ownerId: true } } },
+        },
+      },
+    });
+
+    if (!image) {
+      throw new NotFoundException('Evidence image not found');
+    }
+
+    if (image.promptVersion.repository.ownerId !== actorId) {
+      throw new ForbiddenException(
+        'Only the repository owner can manage evidence images',
+      );
+    }
+
+    return image;
   }
 
   private async assertUploadAllowed(actorId: string) {

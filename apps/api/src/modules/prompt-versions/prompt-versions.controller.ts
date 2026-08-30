@@ -2,7 +2,9 @@ import {
   BadRequestException,
   Body,
   Controller,
+  Delete,
   Param,
+  Patch,
   Post,
   UploadedFile,
   UseGuards,
@@ -15,6 +17,7 @@ import { AccessTokenGuard } from '../auth/guards/access-token.guard';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { PromptEvidenceImageDto } from './evidence-images/prompt-evidence-image.dto';
 import { PromptEvidenceImageService } from './evidence-images/prompt-evidence-image.service';
+import { ReorderEvidenceImagesDto } from './evidence-images/reorder-evidence-images.dto';
 
 @Controller('prompt-versions')
 export class PromptVersionsController {
@@ -61,6 +64,43 @@ export class PromptVersionsController {
       mimeType: file.mimetype,
       originalFilename: file.originalname,
       sortOrder: input.sortOrder,
+    });
+  }
+
+  @Delete(':promptVersionId/evidence-images/:imageId')
+  @UseGuards(AccessTokenGuard)
+  deleteEvidenceImage(
+    @Param('imageId') imageId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.promptEvidenceImageService.deleteImage(imageId, user.id);
+  }
+
+  @Patch(':promptVersionId/evidence-images/order')
+  @UseGuards(AccessTokenGuard)
+  reorderEvidenceImages(
+    @Param('promptVersionId') promptVersionId: string,
+    @Body() input: ReorderEvidenceImagesDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.promptEvidenceImageService.reorderImages(
+      promptVersionId,
+      user.id,
+      input.imageIds,
+    );
+  }
+
+  @Patch(':promptVersionId/evidence-images/:imageId')
+  @UseGuards(AccessTokenGuard)
+  updateEvidenceImage(
+    @Param('imageId') imageId: string,
+    @Body() input: PromptEvidenceImageDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.promptEvidenceImageService.updateImage(imageId, {
+      actorId: user.id,
+      altText: input.altText,
+      caption: input.caption,
     });
   }
 }
