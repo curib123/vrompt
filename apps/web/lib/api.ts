@@ -68,6 +68,31 @@ export interface FollowListResponse {
   hasNextPage: boolean;
 }
 
+export interface CollectionItem {
+  promptRepositoryId: string;
+  sortOrder: number;
+  promptRepository: {
+    id: string;
+    title: string;
+    slug: string;
+    description: string | null;
+    visibility: 'PUBLIC' | 'UNLISTED' | 'PRIVATE';
+    owner: { username: string };
+  };
+}
+
+export interface CollectionDetail {
+  id: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  visibility: 'PUBLIC' | 'PRIVATE';
+  createdAt: string;
+  updatedAt: string;
+  owner: { id: string; username: string };
+  items: CollectionItem[];
+}
+
 interface ProfileSummary {
   id: string;
   username: string;

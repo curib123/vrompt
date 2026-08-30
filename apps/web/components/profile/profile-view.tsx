@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import type { Route } from 'next';
 import { useEffect, useState } from 'react';
 
 import { Avatar } from '@/components/ui/avatar';
@@ -207,17 +208,24 @@ export function ProfileView({ username }: { username: string }) {
         {profile.collections.length > 0 ? (
           <div className="grid gap-4 md:grid-cols-2">
             {profile.collections.map((collection) => (
-              <Card key={collection.id}>
-                <div className="flex items-start justify-between gap-4">
-                  <h3 className="text-xl font-semibold tracking-tight">
-                    {collection.name}
-                  </h3>
-                  <Badge>{collection._count.items} prompts</Badge>
-                </div>
-                <p className="mt-3 text-sm leading-6 text-zinc-600 dark:text-zinc-400">
-                  {collection.description || 'A public prompt collection.'}
-                </p>
-              </Card>
+              <Link
+                href={
+                  `/collections/${profile.username}/${collection.slug}` as Route
+                }
+                key={collection.id}
+              >
+                <Card>
+                  <div className="flex items-start justify-between gap-4">
+                    <h3 className="text-xl font-semibold tracking-tight">
+                      {collection.name}
+                    </h3>
+                    <Badge>{collection._count.items} prompts</Badge>
+                  </div>
+                  <p className="mt-3 text-sm leading-6 text-zinc-600 dark:text-zinc-400">
+                    {collection.description || 'A public prompt collection.'}
+                  </p>
+                </Card>
+              </Link>
             ))}
           </div>
         ) : (

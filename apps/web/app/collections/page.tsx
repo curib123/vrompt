@@ -1,14 +1,10 @@
 import { ProtectedRoute } from '@/components/auth/protected-route';
-import { RoutePlaceholder } from '@/components/route-placeholder';
+import { CollectionsView } from '@/components/collections/collections-view';
 
 export default function CollectionsPage() {
   return (
     <ProtectedRoute>
-      <RoutePlaceholder
-        description="Collection organization arrives in a later phase. This route establishes the responsive screen foundation now."
-        eyebrow="Collections"
-        title="Organize your prompt collections"
-      />
+      <CollectionsView />
     </ProtectedRoute>
   );
 }
