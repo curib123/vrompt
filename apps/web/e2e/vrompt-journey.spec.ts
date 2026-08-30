@@ -132,6 +132,39 @@ function pngFile(name: string) {
 
 test.use({ viewport: { width: 390, height: 844 } });
 
+test('opens the mobile navigation drawer from the left-side hamburger', async ({
+  page,
+}) => {
+  await page.route(`${apiOrigin}/**`, async (route) => {
+    const url = new URL(route.request().url());
+    if (url.pathname === '/api/v1/auth/refresh') {
+      await route.fulfill({
+        status: 401,
+        json: { message: 'Signed out' },
+      });
+      return;
+    }
+    await route.abort();
+  });
+
+  await page.goto('/');
+  const hamburger = page.getByRole('button', { name: 'Open navigation' });
+  const homeLink = page.getByRole('link', { name: 'Vrompt home' });
+  const hamburgerBox = await hamburger.boundingBox();
+  const homeLinkBox = await homeLink.boundingBox();
+  expect(hamburgerBox?.x).toBeLessThan(homeLinkBox?.x ?? Number.POSITIVE_INFINITY);
+  await hamburger.click();
+
+  const drawer = page.getByRole('dialog', {
+    name: 'Mobile navigation drawer',
+  });
+  await expect(drawer).toBeVisible();
+  await expect(drawer.getByRole('link', { name: 'Explore' })).toBeVisible();
+
+  await page.getByRole('button', { name: 'Close navigation' }).last().click();
+  await expect(drawer).not.toBeVisible();
+});
+
 test('completes the two-user prompt and evidence journey on mobile', async ({
   page,
 }) => {
