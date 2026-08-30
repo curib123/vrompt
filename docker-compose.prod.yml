@@ -1,0 +1,159 @@
+services:
+  vrompt-nginx:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/nginx.Dockerfile
+    container_name: vrompt-nginx
+    restart: unless-stopped
+    depends_on:
+      vrompt-web:
+        condition: service_healthy
+      vrompt-api:
+        condition: service_healthy
+    ports:
+      - '80:80'
+    networks:
+      - edge
+      - backend
+    healthcheck:
+      test: ['CMD', 'wget', '--spider', '--quiet', 'http://localhost/']
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  vrompt-web:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/web.Dockerfile
+      args:
+        NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-/api/v1}
+    container_name: vrompt-web
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      HOSTNAME: 0.0.0.0
+      PORT: 3000
+      INTERNAL_API_BASE_URL: http://vrompt-api:4000/api/v1
+    expose:
+      - '3000'
+    depends_on:
+      vrompt-api:
+        condition: service_healthy
+    networks:
+      - backend
+    stop_grace_period: 20s
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://localhost:3000').then((response)=>process.exit(response.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  vrompt-api:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/api.Dockerfile
+    container_name: vrompt-api
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 4000
+      API_PREFIX: api/v1
+      SWAGGER_ENABLED: 'false'
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@vrompt-postgres:5432/vrompt
+      REDIS_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD is required}@vrompt-redis:6379
+      WEB_ORIGIN: ${WEB_ORIGIN:?WEB_ORIGIN is required}
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:?JWT_ACCESS_SECRET is required}
+      JWT_ACCESS_TTL_SECONDS: ${JWT_ACCESS_TTL_SECONDS:-900}
+      JWT_REFRESH_TTL_SECONDS: ${JWT_REFRESH_TTL_SECONDS:-604800}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:?GOOGLE_CLIENT_ID is required}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:?GOOGLE_CLIENT_SECRET is required}
+      GOOGLE_CALLBACK_URL: ${GOOGLE_CALLBACK_URL:?GOOGLE_CALLBACK_URL is required}
+      AUTH_COOKIE_SECURE: 'true'
+      AUTH_COOKIE_SAME_SITE: ${AUTH_COOKIE_SAME_SITE:-lax}
+      MEDIA_STORAGE_DRIVER: cloudinary
+      CLOUDINARY_CLOUD_NAME: ${CLOUDINARY_CLOUD_NAME:?CLOUDINARY_CLOUD_NAME is required}
+      CLOUDINARY_API_KEY: ${CLOUDINARY_API_KEY:?CLOUDINARY_API_KEY is required}
+      CLOUDINARY_API_SECRET: ${CLOUDINARY_API_SECRET:?CLOUDINARY_API_SECRET is required}
+    expose:
+      - '4000'
+    depends_on:
+      vrompt-postgres:
+        condition: service_healthy
+      vrompt-redis:
+        condition: service_healthy
+    networks:
+      - backend
+    stop_grace_period: 30s
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://localhost:4000/api/v1/health').then((response)=>response.ok?response.json().then((body)=>process.exit(body.status==='ok'?0:1)):process.exit(1)).catch(()=>process.exit(1))",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  vrompt-postgres:
+    image: postgres:16-alpine
+    container_name: vrompt-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-vrompt}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+    expose:
+      - '5432'
+    volumes:
+      - vrompt-postgres-prod-data:/var/lib/postgresql/data
+    networks:
+      - backend
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  vrompt-redis:
+    image: redis:7-alpine
+    container_name: vrompt-redis
+    restart: unless-stopped
+    command:
+      - redis-server
+      - --appendonly
+      - 'yes'
+      - --requirepass
+      - ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
+    environment:
+      REDISCLI_AUTH: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
+    expose:
+      - '6379'
+    volumes:
+      - vrompt-redis-prod-data:/data
+    networks:
+      - backend
+    healthcheck:
+      test: ['CMD-SHELL', 'redis-cli -a "$${REDISCLI_AUTH}" ping | grep PONG']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  vrompt-postgres-prod-data:
+  vrompt-redis-prod-data:
+
+networks:
+  edge:
+  backend:
+    internal: true

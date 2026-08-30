@@ -25,10 +25,18 @@ export class MediaStorageService {
   }
 
   private get provider() {
-    const configuredProvider = this.configService.get<string>(
-      'MEDIA_STORAGE_PROVIDER',
-      StorageProvider.LOCAL,
+    const configuredDriver = this.configService.get<string>(
+      'MEDIA_STORAGE_DRIVER',
     );
+    const configuredProvider =
+      configuredDriver === 'cloudinary'
+        ? StorageProvider.CLOUDINARY
+        : configuredDriver === 'local'
+          ? StorageProvider.LOCAL
+          : this.configService.get<string>(
+              'MEDIA_STORAGE_PROVIDER',
+              StorageProvider.LOCAL,
+            );
 
     if (
       !Object.values(StorageProvider).includes(

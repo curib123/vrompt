@@ -19,6 +19,7 @@ packages/*/dist/
 
 # env
 .env
+.env.production
 .env.local
 .env.development.local
 .env.test.local

@@ -65,7 +65,8 @@ async function bootstrap() {
     '/media',
     express.static(
       resolve(
-        configService.get<string>('MEDIA_STORAGE_LOCAL_DIR', './storage'),
+        configService.get<string>('LOCAL_MEDIA_ROOT') ??
+          configService.get<string>('MEDIA_STORAGE_LOCAL_DIR', './storage'),
       ),
       { dotfiles: 'deny', index: false },
     ),

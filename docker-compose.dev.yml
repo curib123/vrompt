@@ -1,0 +1,11 @@
+# Development overlay. Use with: docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
+services:
+  vrompt-web:
+    build:
+      target: dependencies
+    command: npm run dev --workspace @vrompt/web -- --hostname 0.0.0.0 --port 3000
+
+  vrompt-api:
+    build:
+      target: dependencies
+    command: sh -c "npm run prisma:deploy --workspace @vrompt/api && npm run dev --workspace @vrompt/api"

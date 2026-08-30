@@ -140,11 +140,28 @@ existing local Chromium binary.
 
 ## Docker development
 
-Start the full local stack with:
+Start the development stack with source bind mounts and watch mode:
 
 ```bash
-docker compose up --build
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
 ```
+
+Development evidence is persisted at `./storage/evidence` on the host. Changes
+to `.ts`, `.tsx`, and CSS files are picked up without rebuilding the images;
+rebuild when dependencies, Dockerfiles, OS packages, or container configuration
+change.
+
+For the production-shaped stack, copy `.env.production.example` to an ignored
+production environment file, fill in all required secrets, and run:
+
+```bash
+docker compose --env-file .env.production -f docker-compose.prod.yml up -d --build
+```
+
+Production builds run compiled Next.js/NestJS runtimes as the non-root `node`
+user. Nginx is the only published service; PostgreSQL, Redis, web, and API are
+internal-only. Production evidence uses Cloudinary and is not stored in a Docker
+volume.
 
 This launches:
 

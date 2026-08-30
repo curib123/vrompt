@@ -1,18 +1,41 @@
-FROM node:20-bookworm-slim
+FROM node:20-bookworm-slim AS dependencies
 
 WORKDIR /workspace
 
-COPY package.json package-lock.json* turbo.json ./
-COPY apps/web/package.json apps/web/package.json
+COPY package.json package-lock.json turbo.json ./
 COPY apps/api/package.json apps/api/package.json
+COPY apps/web/package.json apps/web/package.json
 COPY packages/config/package.json packages/config/package.json
 COPY packages/shared/package.json packages/shared/package.json
 COPY packages/types/package.json packages/types/package.json
 
-RUN npm install
+RUN npm ci
+
+FROM dependencies AS build
 
 COPY . .
 
+ARG NEXT_PUBLIC_API_BASE_URL=/api/v1
+ENV NEXT_PUBLIC_API_BASE_URL=${NEXT_PUBLIC_API_BASE_URL}
+
+RUN npm run build --workspace @vrompt/web
+
+FROM node:20-bookworm-slim AS production
+
+ENV NODE_ENV=production
+ENV HOSTNAME=0.0.0.0
+ENV PORT=3000
+
+WORKDIR /app
+
+COPY --from=build --chown=node:node /workspace/apps/web/.next/standalone ./
+COPY --from=build --chown=node:node /workspace/apps/web/.next/static ./apps/web/.next/static
+COPY --from=build --chown=node:node /workspace/apps/web/public ./apps/web/public
+
+USER node
+
 EXPOSE 3000
 
-CMD ["npm", "run", "dev", "--workspace", "@vrompt/web", "--", "--hostname", "0.0.0.0", "--port", "3000"]
+STOPSIGNAL SIGTERM
+
+CMD ["node", "apps/web/server.js"]

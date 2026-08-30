@@ -20,7 +20,8 @@ export class LocalStorageAdapter implements MediaStorageAdapter {
 
   constructor(private readonly configService: ConfigService) {
     this.directory = resolve(
-      this.configService.get<string>('MEDIA_STORAGE_LOCAL_DIR', './storage'),
+      this.configService.get<string>('LOCAL_MEDIA_ROOT') ??
+        this.configService.get<string>('MEDIA_STORAGE_LOCAL_DIR', './storage'),
     );
     this.publicUrl = configService.get<string>(
       'MEDIA_STORAGE_LOCAL_PUBLIC_URL',

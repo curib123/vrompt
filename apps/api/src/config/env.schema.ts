@@ -34,6 +34,29 @@ export const envValidationSchema = Joi.object({
   MEDIA_STORAGE_PROVIDER: Joi.string()
     .valid('LOCAL', 'CLOUDINARY')
     .default('LOCAL'),
+  MEDIA_STORAGE_DRIVER: Joi.string().valid('local', 'cloudinary').optional(),
   MEDIA_STORAGE_LOCAL_DIR: Joi.string().default('./storage'),
   MEDIA_STORAGE_LOCAL_PUBLIC_URL: Joi.string().default('/media'),
+  LOCAL_MEDIA_ROOT: Joi.string().optional(),
+  CLOUDINARY_CLOUD_NAME: Joi.string()
+    .allow('')
+    .default('')
+    .when('MEDIA_STORAGE_DRIVER', {
+      is: 'cloudinary',
+      then: Joi.string().min(1).required(),
+    }),
+  CLOUDINARY_API_KEY: Joi.string()
+    .allow('')
+    .default('')
+    .when('MEDIA_STORAGE_DRIVER', {
+      is: 'cloudinary',
+      then: Joi.string().min(1).required(),
+    }),
+  CLOUDINARY_API_SECRET: Joi.string()
+    .allow('')
+    .default('')
+    .when('MEDIA_STORAGE_DRIVER', {
+      is: 'cloudinary',
+      then: Joi.string().min(1).required(),
+    }),
 });
