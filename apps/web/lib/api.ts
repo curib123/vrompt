@@ -404,3 +404,11 @@ export async function fetchApiHealth(): Promise<ApiHealthResponse | null> {
     return null;
   }
 }
+
+export async function fetchExploreData(): Promise<ExploreResponse | null> {
+  try {
+    return await apiRequest<ExploreResponse>('/search/explore');
+  } catch {
+    return null;
+  }
+}
