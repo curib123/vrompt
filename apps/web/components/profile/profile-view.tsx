@@ -5,6 +5,8 @@ import { useEffect, useState } from 'react';
 
 import { Avatar } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { useAuth } from '@/components/providers/auth-provider';
 import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -12,14 +14,19 @@ import { apiRequest, getMediaUrl } from '@/lib/api';
 import type { ApiError, ProfileResponse } from '@/lib/api';
 
 export function ProfileView({ username }: { username: string }) {
+  const { accessToken, isLoading, user } = useAuth();
   const [profile, setProfile] = useState<ProfileResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [followState, setFollowState] = useState<'idle' | 'saving' | 'failed'>(
+    'idle',
+  );
 
   useEffect(() => {
     let active = true;
 
     void apiRequest<ProfileResponse>(
       `/profiles/${encodeURIComponent(username)}`,
+      { accessToken: accessToken ?? undefined },
     )
       .then((result) => {
         if (active) {
@@ -39,7 +46,7 @@ export function ProfileView({ username }: { username: string }) {
     return () => {
       active = false;
     };
-  }, [username]);
+  }, [accessToken, isLoading, username]);
 
   if (error) {
     return (
@@ -57,6 +64,37 @@ export function ProfileView({ username }: { username: string }) {
   }
 
   const displayName = profile.displayName || profile.username;
+  const profileUsername = profile.username;
+  const profileIsFollowing = profile.isFollowing;
+
+  async function toggleFollow() {
+    if (!accessToken || followState === 'saving') {
+      return;
+    }
+
+    setFollowState('saving');
+    try {
+      const result = await apiRequest<{
+        following: boolean;
+        followerCount: number;
+      }>(`/profiles/${encodeURIComponent(profileUsername)}/follow`, {
+        accessToken,
+        method: profileIsFollowing ? 'DELETE' : 'POST',
+      });
+      setProfile((current) =>
+        current
+          ? {
+              ...current,
+              isFollowing: result.following,
+              stats: { ...current.stats, followers: result.followerCount },
+            }
+          : current,
+      );
+      setFollowState('idle');
+    } catch {
+      setFollowState('failed');
+    }
+  }
 
   return (
     <div className="grid gap-8">
@@ -95,8 +133,26 @@ export function ProfileView({ username }: { username: string }) {
                 Website
               </a>
             ) : null}
+            {user && user.username !== profile.username ? (
+              <Button
+                disabled={followState === 'saving'}
+                onClick={() => void toggleFollow()}
+                variant="secondary"
+              >
+                {followState === 'saving'
+                  ? 'Updating...'
+                  : profile.isFollowing
+                    ? 'Following'
+                    : 'Follow'}
+              </Button>
+            ) : null}
           </div>
         </div>
+        {followState === 'failed' ? (
+          <p className="relative mt-4 text-sm text-red-300">
+            Follow status could not be updated. Try again.
+          </p>
+        ) : null}
         {profile.bio ? (
           <p className="relative mt-8 max-w-2xl text-base leading-8 text-zinc-300">
             {profile.bio}

@@ -51,8 +51,27 @@ export interface ProfileResponse {
     followers: number;
     following: number;
   };
+  isFollowing: boolean;
   repositories: ProfileRepository[];
   collections: ProfileCollection[];
+}
+
+export interface FollowListResponse {
+  items: Array<{
+    createdAt: string;
+    follower?: ProfileSummary;
+    following?: ProfileSummary;
+  }>;
+  page: number;
+  pageSize: number;
+  total: number;
+  hasNextPage: boolean;
+}
+
+interface ProfileSummary {
+  id: string;
+  username: string;
+  profile: { displayName: string | null; avatar: string | null } | null;
 }
 
 export interface CategoryOption {

@@ -76,7 +76,7 @@ export class ProfilesService {
     private readonly mediaStorageService: MediaStorageService,
   ) {}
 
-  async getPublicProfile(username: string) {
+  async getPublicProfile(username: string, viewerId?: string) {
     const normalizedUsername = this.normalizeUsername(username);
 
     if (!usernamePattern.test(normalizedUsername)) {
@@ -92,7 +92,21 @@ export class ProfilesService {
       throw new NotFoundException('Profile not found');
     }
 
-    return this.toProfileResponse(user);
+    const isFollowing = viewerId
+      ? Boolean(
+          await this.prismaService.follow.findUnique({
+            where: {
+              followerId_followingId: {
+                followerId: viewerId,
+                followingId: user.id,
+              },
+            },
+            select: { followerId: true },
+          }),
+        )
+      : false;
+
+    return this.toProfileResponse(user, isFollowing);
   }
 
   async getOwnProfile(userId: string) {
@@ -105,7 +119,7 @@ export class ProfilesService {
       throw new NotFoundException('Profile not found');
     }
 
-    return this.toProfileResponse(user);
+    return this.toProfileResponse(user, false);
   }
 
   async updateOwnProfile(userId: string, input: UpdateProfileDto) {
@@ -222,7 +236,7 @@ export class ProfilesService {
     return username.trim().toLowerCase();
   }
 
-  private toProfileResponse(user: ProfileRecord) {
+  private toProfileResponse(user: ProfileRecord, isFollowing: boolean) {
     return {
       id: user.id,
       username: user.username,
@@ -236,6 +250,7 @@ export class ProfilesService {
         followers: user._count.followers,
         following: user._count.following,
       },
+      isFollowing,
       repositories: user.ownedRepositories,
       collections: user.collections,
     };

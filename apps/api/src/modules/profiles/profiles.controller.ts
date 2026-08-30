@@ -15,6 +15,7 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { AccessTokenGuard } from '../auth/guards/access-token.guard';
+import { OptionalAccessTokenGuard } from '../auth/guards/optional-access-token.guard';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { ProfilesService } from './profiles.service';
 
@@ -80,7 +81,11 @@ export class ProfilesController {
   }
 
   @Get(':username')
-  getPublicProfile(@Param('username') username: string) {
-    return this.profilesService.getPublicProfile(username);
+  @UseGuards(OptionalAccessTokenGuard)
+  getPublicProfile(
+    @Param('username') username: string,
+    @CurrentUser() user?: AuthenticatedUser,
+  ) {
+    return this.profilesService.getPublicProfile(username, user?.id);
   }
 }
