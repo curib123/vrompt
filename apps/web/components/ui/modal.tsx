@@ -20,23 +20,51 @@ export function Modal({
   title: string;
 }) {
   const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const previousFocusRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     if (!open) {
       return;
     }
 
+    previousFocusRef.current = document.activeElement as HTMLElement | null;
     closeButtonRef.current?.focus();
 
-    const handleEscape = (event: KeyboardEvent) => {
+    const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         onClose();
+        return;
+      }
+
+      if (event.key !== 'Tab' || !dialogRef.current) {
+        return;
+      }
+
+      const focusable = Array.from(
+        dialogRef.current.querySelectorAll<HTMLElement>(
+          'button, a[href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+        ),
+      ).filter((element) => !element.hasAttribute('disabled'));
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+
+      if (!first || !last) return;
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
       }
     };
 
-    window.addEventListener('keydown', handleEscape);
+    window.addEventListener('keydown', handleKeyDown);
 
-    return () => window.removeEventListener('keydown', handleEscape);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      previousFocusRef.current?.focus();
+    };
   }, [onClose, open]);
 
   if (!open) {
@@ -46,6 +74,8 @@ export function Modal({
   return (
     <div
       aria-modal="true"
+      aria-describedby="modal-description"
+      aria-labelledby="modal-title"
       className="fixed inset-0 z-40 flex items-end justify-center bg-black/50 p-4 md:items-center"
       role="dialog"
     >
@@ -56,11 +86,10 @@ export function Modal({
         type="button"
       />
       <div
-        aria-describedby="modal-description"
-        aria-labelledby="modal-title"
         className={cn(
           'relative z-10 max-h-[90dvh] w-full max-w-xl overflow-y-auto rounded-[2rem] border border-zinc-200 bg-white p-4 shadow-2xl sm:p-6 dark:border-zinc-800 dark:bg-zinc-950',
         )}
+        ref={dialogRef}
       >
         <div className="flex items-start justify-between gap-4">
           <div className="space-y-2">

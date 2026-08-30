@@ -17,6 +17,7 @@ export function MobileNav() {
     <div className="lg:hidden">
       <Button
         aria-expanded={open}
+        aria-controls="mobile-navigation"
         aria-label="Toggle navigation"
         onClick={() => setOpen((current) => !current)}
         variant="secondary"
@@ -24,7 +25,10 @@ export function MobileNav() {
         Menu
       </Button>
       {open ? (
-        <div className="absolute inset-x-4 top-20 z-30 rounded-[2rem] border border-zinc-200 bg-white p-4 shadow-2xl dark:border-zinc-800 dark:bg-zinc-950">
+        <div
+          className="absolute inset-x-4 top-20 z-30 rounded-[2rem] border border-zinc-200 bg-white p-4 shadow-2xl dark:border-zinc-800 dark:bg-zinc-950"
+          id="mobile-navigation"
+        >
           <nav aria-label="Mobile navigation" className="grid gap-2">
             {[...primaryRoutes, ...secondaryRoutes].map((route) => (
               <Link

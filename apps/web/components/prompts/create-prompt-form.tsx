@@ -628,6 +628,7 @@ export function CreatePromptForm({ variantFrom }: { variantFrom?: string }) {
                 </div>
                 <div className="flex gap-2 sm:flex-col">
                   <Button
+                    aria-label={`Move evidence image ${index + 1} up`}
                     disabled={index === 0}
                     onClick={() => moveEvidence(index, -1)}
                     type="button"
@@ -636,6 +637,7 @@ export function CreatePromptForm({ variantFrom }: { variantFrom?: string }) {
                     Up
                   </Button>
                   <Button
+                    aria-label={`Move evidence image ${index + 1} down`}
                     disabled={index === evidence.length - 1}
                     onClick={() => moveEvidence(index, 1)}
                     type="button"
@@ -644,6 +646,7 @@ export function CreatePromptForm({ variantFrom }: { variantFrom?: string }) {
                     Down
                   </Button>
                   <Button
+                    aria-label={`Remove evidence image ${index + 1}`}
                     onClick={() => removeEvidence(index)}
                     type="button"
                     variant="ghost"
@@ -656,12 +659,20 @@ export function CreatePromptForm({ variantFrom }: { variantFrom?: string }) {
           </Card>
 
           {error ? (
-            <Card className="border-red-200 bg-red-50 text-sm text-red-700 dark:border-red-950 dark:bg-red-950/30 dark:text-red-300">
+            <Card
+              aria-live="assertive"
+              className="border-red-200 bg-red-50 text-sm text-red-700 dark:border-red-950 dark:bg-red-950/30 dark:text-red-300"
+              role="alert"
+            >
               {error}
             </Card>
           ) : null}
           {message ? (
-            <Card className="border-emerald-200 bg-emerald-50 text-sm text-emerald-700 dark:border-emerald-950 dark:bg-emerald-950/30 dark:text-emerald-300">
+            <Card
+              aria-live="polite"
+              className="border-emerald-200 bg-emerald-50 text-sm text-emerald-700 dark:border-emerald-950 dark:bg-emerald-950/30 dark:text-emerald-300"
+              role="status"
+            >
               {message}
             </Card>
           ) : null}

@@ -1,6 +1,6 @@
 'use client';
 
-import { useId, useState } from 'react';
+import { useId, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 
 import { cn } from '@/lib/cn';
@@ -14,6 +14,7 @@ interface TabItem {
 export function Tabs({ items }: { items: TabItem[] }) {
   const [activeTab, setActiveTab] = useState(items[0]?.id ?? '');
   const idPrefix = useId();
+  const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const currentTab =
     items.find((item) => item.id === activeTab)?.id ?? items[0]?.id ?? '';
 
@@ -40,17 +41,34 @@ export function Tabs({ items }: { items: TabItem[] }) {
               id={`${idPrefix}-${item.id}-tab`}
               key={item.id}
               onClick={() => setActiveTab(item.id)}
+              ref={(element) => {
+                tabRefs.current[index] = element;
+              }}
+              tabIndex={isSelected ? 0 : -1}
               onKeyDown={(event) => {
-                if (event.key !== 'ArrowRight' && event.key !== 'ArrowLeft') {
+                if (
+                  !['ArrowRight', 'ArrowLeft', 'Home', 'End'].includes(
+                    event.key,
+                  )
+                ) {
                   return;
                 }
 
-                const direction = event.key === 'ArrowRight' ? 1 : -1;
-                const nextItem =
-                  items[(index + direction + items.length) % items.length];
+                event.preventDefault();
+                const nextIndex =
+                  event.key === 'Home'
+                    ? 0
+                    : event.key === 'End'
+                      ? items.length - 1
+                      : (index +
+                          (event.key === 'ArrowRight' ? 1 : -1) +
+                          items.length) %
+                        items.length;
+                const nextItem = items[nextIndex];
 
                 if (nextItem) {
                   setActiveTab(nextItem.id);
+                  tabRefs.current[nextIndex]?.focus();
                 }
               }}
               role="tab"

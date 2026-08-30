@@ -104,7 +104,11 @@ export function ReportRepositoryButton({
                 value={description}
               />
               {state === 'error' ? (
-                <p className="text-sm text-red-600">
+                <p
+                  aria-live="assertive"
+                  className="text-sm text-red-600"
+                  role="alert"
+                >
                   Report could not be submitted. You may already have reported
                   this recently.
                 </p>
