@@ -73,6 +73,16 @@ export interface PromptCreateResponse {
   promptVersionId: string;
 }
 
+export interface PromptEvidenceImage {
+  id: string;
+  secureUrl: string;
+  originalFilename: string;
+  mimeType: string;
+  altText: string | null;
+  caption: string | null;
+  sortOrder: number;
+}
+
 export interface PromptRepositoryDetail {
   id: string;
   ownerId: string;
@@ -85,6 +95,7 @@ export interface PromptRepositoryDetail {
   license: string | null;
   createdAt: string;
   updatedAt: string;
+  copyCount: number;
   owner: {
     username: string;
     status: 'ACTIVE' | 'SUSPENDED' | 'DELETED';
@@ -115,15 +126,7 @@ export interface PromptRepositoryDetail {
       output: string;
       sortOrder: number;
     }>;
-    evidenceImages: Array<{
-      id: string;
-      secureUrl: string;
-      originalFilename: string;
-      mimeType: string;
-      altText: string | null;
-      caption: string | null;
-      sortOrder: number;
-    }>;
+    evidenceImages: PromptEvidenceImage[];
   } | null;
 }
 

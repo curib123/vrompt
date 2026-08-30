@@ -12,7 +12,10 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { Modal } from '@/components/ui/modal';
 import { Tabs } from '@/components/ui/tabs';
 import { apiRequest, getMediaUrl } from '@/lib/api';
-import type { PromptRepositoryDetail } from '@/lib/api';
+import type {
+  PromptEvidenceImage,
+  PromptRepositoryDetail,
+} from '@/lib/api';
 
 export function RepositoryDetail({ slug }: { slug: string }) {
   const { accessToken, isLoading } = useAuth();
@@ -20,16 +23,10 @@ export function RepositoryDetail({ slug }: { slug: string }) {
     null,
   );
   const [error, setError] = useState<string | null>(null);
-  const [selectedImage, setSelectedImage] =
-    useState<
-      PromptRepositoryDetail['currentVersion'] extends infer Version
-        ? Version extends { evidenceImages: infer Images }
-          ? Images extends Array<infer Image>
-            ? Image
-            : never
-          : never
-        : never
-    >();
+  const [copyState, setCopyState] = useState<
+    'idle' | 'copying' | 'copied' | 'failed'
+  >('idle');
+  const [selectedImage, setSelectedImage] = useState<PromptEvidenceImage>();
 
   useEffect(() => {
     if (isLoading) {
@@ -85,6 +82,34 @@ export function RepositoryDetail({ slug }: { slug: string }) {
     repository.owner.profile?.displayName || repository.owner.username;
   const evidenceImages = version?.evidenceImages ?? [];
 
+  async function copyPrompt() {
+    if (!version || copyState === 'copying') {
+      return;
+    }
+
+    setCopyState('copying');
+
+    try {
+      await copyToClipboard(version.content);
+      const clientKey = getCopyClientKey();
+      const result = await apiRequest<{ copyCount: number }>(
+        `/prompt-repositories/${encodeURIComponent(slug)}/copy`,
+        {
+          accessToken: accessToken ?? undefined,
+          body: JSON.stringify({ clientKey }),
+          method: 'POST',
+        },
+      );
+      setRepository((current) =>
+        current ? { ...current, copyCount: result.copyCount } : current,
+      );
+      setCopyState('copied');
+      window.setTimeout(() => setCopyState('idle'), 2200);
+    } catch {
+      setCopyState('failed');
+    }
+  }
+
   return (
     <div className="grid gap-8">
       <Card className="relative overflow-hidden border-[#0D0D0D] bg-[#0D0D0D] text-white dark:border-white">
@@ -130,8 +155,17 @@ export function RepositoryDetail({ slug }: { slug: string }) {
             </Link>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Button disabled type="button" variant="secondary">
-              Copy Prompt
+            <Button
+              disabled={!version || copyState === 'copying'}
+              onClick={() => void copyPrompt()}
+              type="button"
+              variant="secondary"
+            >
+              {copyState === 'copying'
+                ? 'Copying...'
+                : copyState === 'copied'
+                  ? 'Copied'
+                  : 'Copy Prompt'}
             </Button>
             <Button disabled type="button" variant="secondary">
               Save
@@ -143,6 +177,11 @@ export function RepositoryDetail({ slug }: { slug: string }) {
               Share
             </Button>
           </div>
+          <p className="relative mt-3 text-xs text-zinc-400">
+            {copyState === 'failed'
+              ? 'Clipboard access failed. Check browser permissions and try again.'
+              : `${repository.copyCount} recorded copies`}
+          </p>
         </div>
       </Card>
 
@@ -278,11 +317,9 @@ function ExamplesTab({
   examples,
   onSelectImage,
 }: {
-  evidenceImages: NonNullable<
-    PromptRepositoryDetail['currentVersion']
-  >['evidenceImages'];
+  evidenceImages: PromptEvidenceImage[];
   examples: NonNullable<PromptRepositoryDetail['currentVersion']>['examples'];
-  onSelectImage: (image: (typeof evidenceImages)[number]) => void;
+  onSelectImage: (image: PromptEvidenceImage) => void;
 }) {
   return (
     <div className="grid gap-6">
@@ -370,4 +407,38 @@ function formatDate(value: string) {
     month: 'short',
     year: 'numeric',
   }).format(new Date(value));
+}
+
+async function copyToClipboard(value: string) {
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(value);
+    return;
+  }
+
+  const textarea = document.createElement('textarea');
+  textarea.value = value;
+  textarea.style.position = 'fixed';
+  textarea.style.opacity = '0';
+  document.body.appendChild(textarea);
+  textarea.focus();
+  textarea.select();
+  const copied = document.execCommand('copy');
+  textarea.remove();
+
+  if (!copied) {
+    throw new Error('Clipboard unavailable');
+  }
+}
+
+function getCopyClientKey() {
+  const storageKey = 'vrompt-copy-client-key';
+  const existing = window.localStorage.getItem(storageKey);
+
+  if (existing) {
+    return existing;
+  }
+
+  const value = crypto.randomUUID();
+  window.localStorage.setItem(storageKey, value);
+  return value;
 }

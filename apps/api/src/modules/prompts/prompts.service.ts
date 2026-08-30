@@ -10,10 +10,12 @@ import {
   PromptVersionStatus,
   PromptVisibility,
 } from '@prisma/client';
+import { createHash } from 'node:crypto';
 
 import { slugify } from '../common/slug';
 import { PrismaService } from '../prisma/prisma.service';
 import type { CreatePromptRepositoryDto } from './dto/create-prompt-repository.dto';
+import type { CopyPromptDto } from './dto/copy-prompt.dto';
 import { TagsService } from '../tags/tags.service';
 
 @Injectable()
@@ -155,6 +157,65 @@ export class PromptsService {
     return repository;
   }
 
+  async copyBySlug(
+    slug: string,
+    viewerId: string | undefined,
+    input: CopyPromptDto,
+  ) {
+    const repository = await this.getBySlug(slug, viewerId);
+    const version = repository.currentVersion;
+
+    if (!version) {
+      throw new NotFoundException('Prompt version not found');
+    }
+
+    const identity = viewerId
+      ? `user:${viewerId}`
+      : `client:${input.clientKey ?? 'anonymous'}`;
+    const bucket = Math.floor(Date.now() / (60 * 60 * 1000));
+    const dedupeKey = createHash('sha256')
+      .update(`${repository.id}:${version.id}:${identity}:${bucket}`)
+      .digest('hex');
+    let counted = true;
+
+    try {
+      await this.prismaService.$transaction(async (transaction) => {
+        await transaction.promptCopyEvent.create({
+          data: {
+            dedupeKey,
+            promptRepositoryId: repository.id,
+            promptVersionId: version.id,
+            userId: viewerId,
+          },
+        });
+        await transaction.promptRepository.update({
+          where: { id: repository.id },
+          data: { copyCount: { increment: 1 } },
+        });
+      });
+    } catch (error: unknown) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002'
+      ) {
+        counted = false;
+      } else {
+        throw error;
+      }
+    }
+
+    const current = await this.prismaService.promptRepository.findUnique({
+      where: { id: repository.id },
+      select: { copyCount: true },
+    });
+
+    return {
+      content: version.content,
+      copyCount: current?.copyCount ?? 0,
+      counted,
+    };
+  }
+
   private async uniqueSlug(
     transaction: Prisma.TransactionClient,
     baseSlug: string,
@@ -201,6 +262,7 @@ export class PromptsService {
     aiCompatibility: true,
     visibility: true,
     status: true,
+    copyCount: true,
     license: true,
     createdAt: true,
     updatedAt: true,

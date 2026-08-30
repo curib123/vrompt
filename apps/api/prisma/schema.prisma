@@ -144,6 +144,7 @@ model User {
   reports               Report[]
   moderationActions     ModerationAction[]
   auditLogs             AuditLog[]
+  copyEvents            PromptCopyEvent[]
 
   @@index([status, createdAt])
 }
@@ -212,6 +213,7 @@ model PromptRepository {
   collectionItems   CollectionPrompt[]
   notifications     Notification[]
   reports           Report[]
+  copyEvents        PromptCopyEvent[]
 
   @@index([ownerId, visibility, status])
   @@index([categoryId, visibility, status])
@@ -238,6 +240,7 @@ model PromptVersion {
   variables      PromptVariable[]
   examples       PromptExample[]
   evidenceImages PromptEvidenceImage[]
+  copyEvents     PromptCopyEvent[]
 
   @@unique([repositoryId, versionNumber])
   @@index([repositoryId, status, createdAt])
@@ -297,6 +300,23 @@ model PromptEvidenceImage {
 
   @@unique([promptVersionId, sortOrder])
   @@index([promptVersionId])
+}
+
+model PromptCopyEvent {
+  id                 String   @id @default(uuid()) @db.Uuid
+  userId             String?  @db.Uuid
+  promptRepositoryId String   @db.Uuid
+  promptVersionId    String   @db.Uuid
+  dedupeKey          String   @unique @db.VarChar(255)
+  createdAt          DateTime @default(now())
+
+  user             User?            @relation(fields: [userId], references: [id], onDelete: SetNull)
+  promptRepository PromptRepository @relation(fields: [promptRepositoryId], references: [id], onDelete: Cascade)
+  promptVersion    PromptVersion    @relation(fields: [promptVersionId], references: [id], onDelete: Cascade)
+
+  @@index([promptRepositoryId, createdAt])
+  @@index([promptVersionId, createdAt])
+  @@index([userId, createdAt])
 }
 
 model Category {

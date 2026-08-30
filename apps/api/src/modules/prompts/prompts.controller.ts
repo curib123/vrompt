@@ -5,6 +5,7 @@ import type { AuthenticatedUser } from '../auth/auth.types';
 import { AccessTokenGuard } from '../auth/guards/access-token.guard';
 import { OptionalAccessTokenGuard } from '../auth/guards/optional-access-token.guard';
 import { CreatePromptRepositoryDto } from './dto/create-prompt-repository.dto';
+import { CopyPromptDto } from './dto/copy-prompt.dto';
 import { PromptsService } from './prompts.service';
 
 @Controller('prompt-repositories')
@@ -18,6 +19,16 @@ export class PromptsController {
     @CurrentUser() user: AuthenticatedUser,
   ) {
     return this.promptsService.create(user.id, input);
+  }
+
+  @Post(':slug/copy')
+  @UseGuards(OptionalAccessTokenGuard)
+  copy(
+    @Param('slug') slug: string,
+    @Body() input: CopyPromptDto,
+    @CurrentUser() user?: AuthenticatedUser,
+  ) {
+    return this.promptsService.copyBySlug(slug, user?.id, input);
   }
 
   @Get(':slug')
