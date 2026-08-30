@@ -208,6 +208,15 @@ export interface NotificationsResponse {
   hasNextPage: boolean;
 }
 
+export interface ReportResponse {
+  submitted: boolean;
+  report: {
+    id: string;
+    status: 'OPEN' | 'DISMISSED' | 'RESOLVED';
+    createdAt: string;
+  };
+}
+
 interface ProfileSummary {
   id: string;
   username: string;

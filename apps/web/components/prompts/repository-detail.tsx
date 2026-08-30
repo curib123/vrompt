@@ -15,6 +15,7 @@ import { Tabs } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { apiRequest, getMediaUrl } from '@/lib/api';
+import { ReportRepositoryButton } from '@/components/reports/report-repository-button';
 import type {
   PromptEvidenceImage,
   PromptVersionContent,
@@ -291,6 +292,7 @@ export function RepositoryDetail({ slug }: { slug: string }) {
             <Button disabled type="button" variant="secondary">
               Share
             </Button>
+            <ReportRepositoryButton repositoryId={repository.id} />
           </div>
           <p className="relative mt-3 text-xs text-zinc-400">
             {copyState === 'failed'
