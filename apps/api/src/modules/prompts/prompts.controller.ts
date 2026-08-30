@@ -3,6 +3,7 @@ import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { AccessTokenGuard } from '../auth/guards/access-token.guard';
+import { OptionalAccessTokenGuard } from '../auth/guards/optional-access-token.guard';
 import { CreatePromptRepositoryDto } from './dto/create-prompt-repository.dto';
 import { PromptsService } from './prompts.service';
 
@@ -20,7 +21,11 @@ export class PromptsController {
   }
 
   @Get(':slug')
-  getBySlug(@Param('slug') slug: string) {
-    return this.promptsService.getBySlug(slug);
+  @UseGuards(OptionalAccessTokenGuard)
+  getBySlug(
+    @Param('slug') slug: string,
+    @CurrentUser() user?: AuthenticatedUser,
+  ) {
+    return this.promptsService.getBySlug(slug, user?.id);
   }
 }

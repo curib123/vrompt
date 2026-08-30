@@ -73,6 +73,60 @@ export interface PromptCreateResponse {
   promptVersionId: string;
 }
 
+export interface PromptRepositoryDetail {
+  id: string;
+  ownerId: string;
+  title: string;
+  slug: string;
+  description: string | null;
+  aiCompatibility: string | null;
+  visibility: 'PUBLIC' | 'UNLISTED' | 'PRIVATE';
+  status: 'ACTIVE' | 'HIDDEN' | 'ARCHIVED';
+  license: string | null;
+  createdAt: string;
+  updatedAt: string;
+  owner: {
+    username: string;
+    status: 'ACTIVE' | 'SUSPENDED' | 'DELETED';
+    profile: { displayName: string | null; avatar: string | null } | null;
+  };
+  category: { name: string; slug: string } | null;
+  promptTags: { tag: TagOption }[];
+  currentVersion: {
+    id: string;
+    versionNumber: number;
+    content: string;
+    changelog: string | null;
+    status: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
+    publishedAt: string | null;
+    createdAt: string;
+    updatedAt: string;
+    variables: Array<{
+      id: string;
+      name: string;
+      description: string | null;
+      defaultValue: string | null;
+      required: boolean;
+    }>;
+    examples: Array<{
+      id: string;
+      title: string | null;
+      input: string;
+      output: string;
+      sortOrder: number;
+    }>;
+    evidenceImages: Array<{
+      id: string;
+      secureUrl: string;
+      originalFilename: string;
+      mimeType: string;
+      altText: string | null;
+      caption: string | null;
+      sortOrder: number;
+    }>;
+  } | null;
+}
+
 export class ApiError extends Error {
   status: number;
 
