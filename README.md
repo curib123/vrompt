@@ -164,6 +164,10 @@ Phase 43 adds a private alpha task plan, evidence-comprehension prompts, tester
 exit criteria, and a privacy-conscious feedback template in
 `infrastructure/alpha`.
 
+Phase 44 adds controlled-beta support intake, severity guidance, moderation and
+abuse handling, daily operator checks, rollback guidance, and a redacted report
+template in `infrastructure/beta`.
+
 ## Docker development
 
 Start the development stack with source bind mounts and watch mode:
