@@ -1,0 +1,5 @@
+node_modules
+.turbo
+apps/web/.next
+apps/api/dist
+packages/*/dist

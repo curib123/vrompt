@@ -1,0 +1,493 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  USER
+  MODERATOR
+  ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+  DELETED
+}
+
+enum PromptVisibility {
+  PUBLIC
+  UNLISTED
+  PRIVATE
+}
+
+enum PromptRepositoryStatus {
+  ACTIVE
+  HIDDEN
+  ARCHIVED
+}
+
+enum PromptVersionStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum StorageProvider {
+  LOCAL
+  CLOUDINARY
+}
+
+enum CommentStatus {
+  VISIBLE
+  HIDDEN
+  DELETED
+}
+
+enum CollectionVisibility {
+  PUBLIC
+  PRIVATE
+}
+
+enum NotificationType {
+  NEW_FOLLOWER
+  PROMPT_LIKED
+  PROMPT_COMMENTED
+  COMMENT_REPLIED
+  VARIANT_CREATED
+}
+
+enum ReportTargetType {
+  REPOSITORY
+  COMMENT
+  USER
+}
+
+enum ReportReason {
+  SPAM
+  SCAM
+  MISLEADING
+  COPYRIGHT
+  HARASSMENT
+  UNSAFE_CONTENT
+  ADULT_CONTENT
+  OTHER
+}
+
+enum ReportStatus {
+  OPEN
+  DISMISSED
+  RESOLVED
+}
+
+enum ModerationTargetType {
+  REPOSITORY
+  COMMENT
+  USER
+}
+
+enum ModerationActionType {
+  HIDE_REPOSITORY
+  RESTORE_REPOSITORY
+  HIDE_COMMENT
+  RESTORE_COMMENT
+  SUSPEND_USER
+  RESTORE_USER
+}
+
+enum AuditTargetType {
+  REPOSITORY
+  COMMENT
+  USER
+  REPORT
+  ROLE
+}
+
+enum AuditActionType {
+  PROMPT_HIDDEN
+  PROMPT_RESTORED
+  COMMENT_HIDDEN
+  USER_SUSPENDED
+  USER_RESTORED
+  ROLE_CHANGED
+  REPORT_RESOLVED
+}
+
+model User {
+  id           String     @id @default(uuid()) @db.Uuid
+  email        String     @unique @db.VarChar(320)
+  username     String     @unique @db.VarChar(32)
+  passwordHash String?    @db.VarChar(255)
+  role         UserRole   @default(USER)
+  status       UserStatus @default(ACTIVE)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  deletedAt    DateTime?
+
+  profile               Profile?
+  refreshTokens         RefreshToken[]
+  ownedRepositories     PromptRepository[] @relation("RepositoryOwner")
+  authoredVersions      PromptVersion[]    @relation("VersionAuthor")
+  bookmarks             Bookmark[]
+  likes                 Like[]
+  comments              Comment[]
+  followers             Follow[]           @relation("Following")
+  following             Follow[]           @relation("Follower")
+  collections           Collection[]
+  receivedNotifications Notification[]     @relation("NotificationRecipient")
+  sentNotifications     Notification[]     @relation("NotificationActor")
+  reports               Report[]
+  moderationActions     ModerationAction[]
+  auditLogs             AuditLog[]
+
+  @@index([status, createdAt])
+}
+
+model Profile {
+  id          String   @id @default(uuid()) @db.Uuid
+  userId      String   @unique @db.Uuid
+  displayName String?  @db.VarChar(80)
+  bio         String?  @db.Text
+  avatar      String?  @db.VarChar(500)
+  website     String?  @db.VarChar(500)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model RefreshToken {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @db.Uuid
+  tokenHash String    @unique @db.VarChar(255)
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, revokedAt])
+  @@index([expiresAt])
+}
+
+model PromptRepository {
+  id               String                 @id @default(uuid()) @db.Uuid
+  ownerId          String                 @db.Uuid
+  categoryId       String?                @db.Uuid
+  currentVersionId String?                @unique @db.Uuid
+  sourcePromptId   String?                @db.Uuid
+  rootPromptId     String?                @db.Uuid
+  title            String                 @db.VarChar(160)
+  slug             String                 @unique @db.VarChar(180)
+  description      String?                @db.Text
+  aiCompatibility  String?                @db.VarChar(120)
+  visibility       PromptVisibility       @default(PRIVATE)
+  status           PromptRepositoryStatus @default(ACTIVE)
+  license          String?                @db.VarChar(120)
+  variantCount     Int                    @default(0)
+  copyCount        Int                    @default(0)
+  saveCount        Int                    @default(0)
+  likeCount        Int                    @default(0)
+  createdAt        DateTime               @default(now())
+  updatedAt        DateTime               @updatedAt
+  archivedAt       DateTime?
+
+  owner             User               @relation("RepositoryOwner", fields: [ownerId], references: [id], onDelete: Restrict)
+  category          Category?          @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  currentVersion    PromptVersion?     @relation("CurrentPromptVersion", fields: [currentVersionId], references: [id], onDelete: Restrict)
+  versions          PromptVersion[]    @relation("RepositoryVersions")
+  sourcePrompt      PromptRepository?  @relation("PromptVariants", fields: [sourcePromptId], references: [id], onDelete: SetNull)
+  variants          PromptRepository[] @relation("PromptVariants")
+  rootPrompt        PromptRepository?  @relation("PromptRoots", fields: [rootPromptId], references: [id], onDelete: SetNull)
+  descendantPrompts PromptRepository[] @relation("PromptRoots")
+  bookmarks         Bookmark[]
+  likes             Like[]
+  comments          Comment[]
+  promptTags        PromptTag[]
+  collectionItems   CollectionPrompt[]
+  notifications     Notification[]
+  reports           Report[]
+
+  @@index([ownerId, visibility, status])
+  @@index([categoryId, visibility, status])
+  @@index([visibility, status, updatedAt])
+  @@index([sourcePromptId])
+  @@index([rootPromptId])
+}
+
+model PromptVersion {
+  id            String              @id @default(uuid()) @db.Uuid
+  repositoryId  String              @db.Uuid
+  authorId      String              @db.Uuid
+  versionNumber Int                 @default(1)
+  content       String              @db.Text
+  changelog     String?             @db.Text
+  status        PromptVersionStatus @default(DRAFT)
+  publishedAt   DateTime?
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+
+  repository     PromptRepository      @relation("RepositoryVersions", fields: [repositoryId], references: [id], onDelete: Cascade)
+  author         User                  @relation("VersionAuthor", fields: [authorId], references: [id], onDelete: Restrict)
+  currentFor     PromptRepository?     @relation("CurrentPromptVersion")
+  variables      PromptVariable[]
+  examples       PromptExample[]
+  evidenceImages PromptEvidenceImage[]
+
+  @@unique([repositoryId, versionNumber])
+  @@index([repositoryId, status, createdAt])
+  @@index([authorId, createdAt])
+}
+
+model PromptVariable {
+  id              String   @id @default(uuid()) @db.Uuid
+  promptVersionId String   @db.Uuid
+  name            String   @db.VarChar(80)
+  description     String?  @db.Text
+  defaultValue    String?  @db.Text
+  required        Boolean  @default(false)
+  sortOrder       Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  promptVersion PromptVersion @relation(fields: [promptVersionId], references: [id], onDelete: Cascade)
+
+  @@unique([promptVersionId, name])
+  @@index([promptVersionId, sortOrder])
+}
+
+model PromptExample {
+  id              String   @id @default(uuid()) @db.Uuid
+  promptVersionId String   @db.Uuid
+  title           String?  @db.VarChar(120)
+  input           String   @db.Text
+  output          String   @db.Text
+  sortOrder       Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  promptVersion PromptVersion @relation(fields: [promptVersionId], references: [id], onDelete: Cascade)
+
+  @@index([promptVersionId, sortOrder])
+}
+
+model PromptEvidenceImage {
+  id               String          @id @default(uuid()) @db.Uuid
+  promptVersionId  String          @db.Uuid
+  storageProvider  StorageProvider
+  storageKey       String          @db.VarChar(500)
+  secureUrl        String          @db.VarChar(1000)
+  originalFilename String          @db.VarChar(255)
+  mimeType         String          @db.VarChar(100)
+  fileSize         Int
+  width            Int?
+  height           Int?
+  altText          String?         @db.VarChar(255)
+  caption          String?         @db.VarChar(500)
+  sortOrder        Int             @default(0)
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  promptVersion PromptVersion @relation(fields: [promptVersionId], references: [id], onDelete: Cascade)
+
+  @@unique([promptVersionId, sortOrder])
+  @@index([promptVersionId])
+}
+
+model Category {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String   @unique @db.VarChar(80)
+  slug      String   @unique @db.VarChar(100)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  repositories PromptRepository[]
+}
+
+model Tag {
+  id             String   @id @default(uuid()) @db.Uuid
+  name           String   @db.VarChar(50)
+  normalizedName String   @unique @db.VarChar(50)
+  slug           String   @unique @db.VarChar(60)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  promptTags PromptTag[]
+}
+
+model PromptTag {
+  promptRepositoryId String @db.Uuid
+  tagId              String @db.Uuid
+
+  promptRepository PromptRepository @relation(fields: [promptRepositoryId], references: [id], onDelete: Cascade)
+  tag              Tag              @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([promptRepositoryId, tagId])
+  @@index([tagId])
+}
+
+model Bookmark {
+  userId             String   @db.Uuid
+  promptRepositoryId String   @db.Uuid
+  createdAt          DateTime @default(now())
+
+  user             User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  promptRepository PromptRepository @relation(fields: [promptRepositoryId], references: [id], onDelete: Cascade)
+
+  @@id([userId, promptRepositoryId])
+  @@index([userId, createdAt])
+  @@index([promptRepositoryId, createdAt])
+}
+
+model Like {
+  userId             String   @db.Uuid
+  promptRepositoryId String   @db.Uuid
+  createdAt          DateTime @default(now())
+
+  user             User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  promptRepository PromptRepository @relation(fields: [promptRepositoryId], references: [id], onDelete: Cascade)
+
+  @@id([userId, promptRepositoryId])
+  @@index([promptRepositoryId, createdAt])
+}
+
+model Comment {
+  id                 String        @id @default(uuid()) @db.Uuid
+  userId             String        @db.Uuid
+  promptRepositoryId String        @db.Uuid
+  parentId           String?       @db.Uuid
+  content            String        @db.Text
+  status             CommentStatus @default(VISIBLE)
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+  deletedAt          DateTime?
+
+  user             User             @relation(fields: [userId], references: [id], onDelete: Restrict)
+  promptRepository PromptRepository @relation(fields: [promptRepositoryId], references: [id], onDelete: Cascade)
+  parent           Comment?         @relation("CommentReplies", fields: [parentId], references: [id], onDelete: SetNull)
+  replies          Comment[]        @relation("CommentReplies")
+  notifications    Notification[]
+
+  @@index([promptRepositoryId, status, createdAt])
+  @@index([parentId])
+}
+
+model Follow {
+  followerId  String   @db.Uuid
+  followingId String   @db.Uuid
+  createdAt   DateTime @default(now())
+
+  follower  User @relation("Follower", fields: [followerId], references: [id], onDelete: Cascade)
+  following User @relation("Following", fields: [followingId], references: [id], onDelete: Cascade)
+
+  @@id([followerId, followingId])
+  @@index([followingId, createdAt])
+}
+
+model Collection {
+  id          String               @id @default(uuid()) @db.Uuid
+  ownerId     String               @db.Uuid
+  name        String               @db.VarChar(120)
+  slug        String               @db.VarChar(140)
+  description String?              @db.Text
+  visibility  CollectionVisibility @default(PRIVATE)
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+  archivedAt  DateTime?
+
+  owner User               @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  items CollectionPrompt[]
+
+  @@unique([ownerId, slug])
+  @@index([ownerId, visibility, updatedAt])
+}
+
+model CollectionPrompt {
+  collectionId       String   @db.Uuid
+  promptRepositoryId String   @db.Uuid
+  sortOrder          Int      @default(0)
+  createdAt          DateTime @default(now())
+
+  collection       Collection       @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  promptRepository PromptRepository @relation(fields: [promptRepositoryId], references: [id], onDelete: Cascade)
+
+  @@id([collectionId, promptRepositoryId])
+  @@unique([collectionId, sortOrder])
+  @@index([promptRepositoryId])
+}
+
+model Notification {
+  id                 String           @id @default(uuid()) @db.Uuid
+  recipientId        String           @db.Uuid
+  actorId            String?          @db.Uuid
+  promptRepositoryId String?          @db.Uuid
+  commentId          String?          @db.Uuid
+  type               NotificationType
+  readAt             DateTime?
+  createdAt          DateTime         @default(now())
+
+  recipient        User              @relation("NotificationRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
+  actor            User?             @relation("NotificationActor", fields: [actorId], references: [id], onDelete: SetNull)
+  promptRepository PromptRepository? @relation(fields: [promptRepositoryId], references: [id], onDelete: Cascade)
+  comment          Comment?          @relation(fields: [commentId], references: [id], onDelete: SetNull)
+
+  @@index([recipientId, readAt, createdAt])
+  @@index([promptRepositoryId])
+}
+
+model Report {
+  id          String           @id @default(uuid()) @db.Uuid
+  reporterId  String           @db.Uuid
+  targetType  ReportTargetType
+  targetId    String           @db.Uuid
+  reason      ReportReason
+  description String?          @db.Text
+  status      ReportStatus     @default(OPEN)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  resolvedAt  DateTime?
+
+  reporter           User              @relation(fields: [reporterId], references: [id], onDelete: Restrict)
+  PromptRepository   PromptRepository? @relation(fields: [promptRepositoryId], references: [id])
+  promptRepositoryId String?           @db.Uuid
+
+  @@index([status, createdAt])
+  @@index([targetType, targetId])
+  @@index([reporterId, targetType, targetId, createdAt])
+}
+
+model ModerationAction {
+  id         String               @id @default(uuid()) @db.Uuid
+  actorId    String               @db.Uuid
+  targetType ModerationTargetType
+  targetId   String               @db.Uuid
+  action     ModerationActionType
+  reason     String?              @db.Text
+  metadata   Json?
+  createdAt  DateTime             @default(now())
+
+  actor User @relation(fields: [actorId], references: [id], onDelete: Restrict)
+
+  @@index([targetType, targetId, createdAt])
+  @@index([actorId, createdAt])
+}
+
+model AuditLog {
+  id         String          @id @default(uuid()) @db.Uuid
+  actorId    String?         @db.Uuid
+  action     AuditActionType
+  targetType AuditTargetType
+  targetId   String?         @db.Uuid
+  metadata   Json?
+  createdAt  DateTime        @default(now())
+
+  actor User? @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([action, createdAt])
+  @@index([targetType, targetId, createdAt])
+  @@index([actorId, createdAt])
+}

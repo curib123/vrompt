@@ -1,0 +1,103 @@
+services:
+  vrompt-web:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/web.Dockerfile
+    container_name: vrompt-web
+    environment:
+      NODE_ENV: development
+      NEXT_PUBLIC_API_BASE_URL: http://localhost:4000/api/v1
+      INTERNAL_API_BASE_URL: http://vrompt-api:4000/api/v1
+    ports:
+      - '3000:3000'
+    depends_on:
+      vrompt-api:
+        condition: service_healthy
+    volumes:
+      - .:/workspace
+      - vrompt-node-modules:/workspace/node_modules
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://localhost:3000').then((response)=>process.exit(response.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  vrompt-api:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/api.Dockerfile
+    container_name: vrompt-api
+    environment:
+      NODE_ENV: development
+      PORT: 4000
+      API_PREFIX: api/v1
+      SWAGGER_ENABLED: 'true'
+      DATABASE_URL: postgresql://postgres:postgres@vrompt-postgres:5432/vrompt
+      REDIS_URL: redis://vrompt-redis:6379
+      MEDIA_STORAGE_PROVIDER: LOCAL
+      MEDIA_STORAGE_LOCAL_DIR: /workspace/storage
+      MEDIA_STORAGE_LOCAL_PUBLIC_URL: /media
+    ports:
+      - '4000:4000'
+    depends_on:
+      vrompt-postgres:
+        condition: service_healthy
+      vrompt-redis:
+        condition: service_healthy
+    volumes:
+      - .:/workspace
+      - vrompt-node-modules:/workspace/node_modules
+      - vrompt-media-storage:/workspace/storage
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://localhost:4000/api/v1/health').then((response)=>response.ok?response.json().then((body)=>process.exit(body.status==='ok'?0:1)):process.exit(1)).catch(()=>process.exit(1))",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  vrompt-postgres:
+    image: postgres:16-alpine
+    container_name: vrompt-postgres
+    environment:
+      POSTGRES_DB: vrompt
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - '5432:5432'
+    volumes:
+      - vrompt-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres -d vrompt']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  vrompt-redis:
+    image: redis:7-alpine
+    container_name: vrompt-redis
+    command: redis-server --save "" --appendonly no
+    ports:
+      - '6379:6379'
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  vrompt-node-modules:
+  vrompt-postgres-data:
+  vrompt-media-storage:
