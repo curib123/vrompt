@@ -1,0 +1,224 @@
+'use client';
+
+import Link from 'next/link';
+import { useEffect, useState } from 'react';
+
+import { useAuth } from '@/components/providers/auth-provider';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { EmptyState } from '@/components/ui/empty-state';
+import { Skeleton } from '@/components/ui/skeleton';
+import { apiRequest } from '@/lib/api';
+import type { SavedRepositoriesResponse } from '@/lib/api';
+
+export function SavedRepositories() {
+  const { accessToken, isLoading } = useAuth();
+  const [sort, setSort] = useState<'newest' | 'updated'>('newest');
+  const [page, setPage] = useState(1);
+  const [result, setResult] = useState<SavedRepositoriesResponse | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [removingSlug, setRemovingSlug] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (isLoading || !accessToken) {
+      return;
+    }
+
+    let active = true;
+    void apiRequest<SavedRepositoriesResponse>(
+      `/saved?page=${page}&pageSize=12&sort=${sort}`,
+      { accessToken },
+    )
+      .then((response) => {
+        if (active) {
+          setError(null);
+          setResult(response);
+        }
+      })
+      .catch(() => {
+        if (active) {
+          setError('Saved repositories could not be loaded right now.');
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [accessToken, isLoading, page, sort]);
+
+  async function remove(slug: string) {
+    if (!accessToken || removingSlug) {
+      return;
+    }
+
+    setRemovingSlug(slug);
+    try {
+      await apiRequest(
+        `/prompt-repositories/${encodeURIComponent(slug)}/save`,
+        {
+          accessToken,
+          method: 'DELETE',
+        },
+      );
+      setResult((current) =>
+        current
+          ? {
+              ...current,
+              items: current.items.filter(
+                (item) => item.promptRepository.slug !== slug,
+              ),
+              total: Math.max(current.total - 1, 0),
+            }
+          : current,
+      );
+    } catch {
+      setError('That repository could not be removed from your saves.');
+    } finally {
+      setRemovingSlug(null);
+    }
+  }
+
+  if (isLoading || !result) {
+    return error ? (
+      <EmptyState description={error} title="Saved library unavailable" />
+    ) : (
+      <SavedSkeleton />
+    );
+  }
+
+  return (
+    <div className="grid gap-8">
+      <Card className="relative overflow-hidden border-[#0D0D0D] bg-[#0D0D0D] text-white dark:border-white">
+        <div className="pointer-events-none absolute -right-24 -top-28 size-80 rounded-full border-[40px] border-white/10" />
+        <div className="relative flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <Badge className="border-white/30 text-zinc-300">Library</Badge>
+            <h1 className="mt-4 text-4xl font-semibold tracking-[-0.06em] sm:text-5xl">
+              Saved repositories
+            </h1>
+            <p className="mt-3 max-w-xl text-sm leading-7 text-zinc-300">
+              Keep useful prompt systems close, then return when you are ready
+              to build with them.
+            </p>
+          </div>
+          <label className="grid gap-2 text-xs uppercase tracking-[0.18em] text-zinc-400">
+            Sort by
+            <select
+              className="min-h-11 rounded-full border border-white/20 bg-white/10 px-4 text-sm normal-case tracking-normal text-white outline-none"
+              onChange={(event) => {
+                setSort(event.target.value as 'newest' | 'updated');
+                setPage(1);
+              }}
+              value={sort}
+            >
+              <option className="text-black" value="newest">
+                Recently saved
+              </option>
+              <option className="text-black" value="updated">
+                Recently updated
+              </option>
+            </select>
+          </label>
+        </div>
+      </Card>
+
+      {error ? <p className="text-sm text-red-600">{error}</p> : null}
+      {result.items.length === 0 ? (
+        <EmptyState
+          actionHref="/explore"
+          actionLabel="Explore prompts"
+          description="Save repositories from their detail page and they will appear here."
+          title="Your library is empty"
+        />
+      ) : (
+        <div className="grid gap-4 md:grid-cols-2">
+          {result.items.map((item) => {
+            const repository = item.promptRepository;
+            return (
+              <Card className="flex h-full flex-col" key={repository.id}>
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex flex-wrap gap-2">
+                    <Badge>{repository.visibility.toLowerCase()}</Badge>
+                    {repository.category ? (
+                      <Badge>{repository.category.name}</Badge>
+                    ) : null}
+                  </div>
+                  <Button
+                    disabled={removingSlug === repository.slug}
+                    onClick={() => void remove(repository.slug)}
+                    variant="ghost"
+                  >
+                    {removingSlug === repository.slug
+                      ? 'Removing...'
+                      : 'Remove'}
+                  </Button>
+                </div>
+                <Link
+                  className="mt-5 block flex-1"
+                  href={`/p/${repository.slug}`}
+                >
+                  <h2 className="text-2xl font-semibold tracking-[-0.04em]">
+                    {repository.title}
+                  </h2>
+                  <p className="mt-3 line-clamp-3 text-sm leading-7 text-zinc-600 dark:text-zinc-400">
+                    {repository.description || 'A reusable prompt repository.'}
+                  </p>
+                </Link>
+                <div className="mt-6 flex flex-wrap gap-x-4 gap-y-2 text-xs text-zinc-500">
+                  <span>by @{repository.owner.username}</span>
+                  <span>Saved {formatDate(item.createdAt)}</span>
+                  <span>Updated {formatDate(repository.updatedAt)}</span>
+                </div>
+              </Card>
+            );
+          })}
+        </div>
+      )}
+
+      {result.total > 0 ? (
+        <div className="flex items-center justify-between gap-4">
+          <p className="text-sm text-zinc-500">
+            Page {result.page} of{' '}
+            {Math.max(Math.ceil(result.total / result.pageSize), 1)}
+          </p>
+          <div className="flex gap-2">
+            <Button
+              disabled={result.page <= 1}
+              onClick={() => setPage((current) => Math.max(current - 1, 1))}
+              variant="secondary"
+            >
+              Previous
+            </Button>
+            <Button
+              disabled={!result.hasNextPage}
+              onClick={() => setPage((current) => current + 1)}
+              variant="secondary"
+            >
+              Next
+            </Button>
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function SavedSkeleton() {
+  return (
+    <div className="grid gap-8">
+      <Skeleton className="h-64 rounded-[1.5rem]" />
+      <div className="grid gap-4 md:grid-cols-2">
+        <Skeleton className="h-64 rounded-[1.5rem]" />
+        <Skeleton className="h-64 rounded-[1.5rem]" />
+      </div>
+    </div>
+  );
+}
+
+function formatDate(value: string) {
+  return new Intl.DateTimeFormat('en', {
+    month: 'short',
+    year: 'numeric',
+  }).format(new Date(value));
+}

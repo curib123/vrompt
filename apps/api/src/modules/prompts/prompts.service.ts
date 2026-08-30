@@ -157,7 +157,21 @@ export class PromptsService {
       throw new NotFoundException('Repository not found');
     }
 
-    return repository;
+    if (!viewerId) {
+      return { ...repository, isSaved: false };
+    }
+
+    const bookmark = await this.prismaService.bookmark.findUnique({
+      where: {
+        userId_promptRepositoryId: {
+          userId: viewerId,
+          promptRepositoryId: repository.id,
+        },
+      },
+      select: { userId: true },
+    });
+
+    return { ...repository, isSaved: Boolean(bookmark) };
   }
 
   async copyBySlug(
@@ -548,6 +562,7 @@ export class PromptsService {
     visibility: true,
     status: true,
     copyCount: true,
+    saveCount: true,
     license: true,
     createdAt: true,
     updatedAt: true,

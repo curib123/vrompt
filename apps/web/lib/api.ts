@@ -158,6 +158,8 @@ export interface PromptRepositoryDetail {
   createdAt: string;
   updatedAt: string;
   copyCount: number;
+  saveCount: number;
+  isSaved: boolean;
   variantCount: number;
   sourcePromptId: string | null;
   rootPromptId: string | null;
@@ -174,6 +176,28 @@ export interface PromptRepositoryDetail {
   } | null;
   promptTags: { tag: TagOption }[];
   currentVersion: PromptVersionContent | null;
+}
+
+export interface SavedRepositoryItem {
+  createdAt: string;
+  promptRepository: {
+    id: string;
+    title: string;
+    slug: string;
+    description: string | null;
+    visibility: 'PUBLIC' | 'UNLISTED' | 'PRIVATE';
+    updatedAt: string;
+    owner: { username: string };
+    category: { name: string; slug: string } | null;
+  };
+}
+
+export interface SavedRepositoriesResponse {
+  items: SavedRepositoryItem[];
+  page: number;
+  pageSize: number;
+  total: number;
+  hasNextPage: boolean;
 }
 
 export class ApiError extends Error {

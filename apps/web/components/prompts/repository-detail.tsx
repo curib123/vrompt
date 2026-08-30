@@ -34,6 +34,9 @@ export function RepositoryDetail({ slug }: { slug: string }) {
   const [copyState, setCopyState] = useState<
     'idle' | 'copying' | 'copied' | 'failed'
   >('idle');
+  const [saveState, setSaveState] = useState<'idle' | 'saving' | 'failed'>(
+    'idle',
+  );
   const [selectedImage, setSelectedImage] = useState<PromptEvidenceImage>();
   const [selectedVersion, setSelectedVersion] = useState<PromptVersionDetail>();
 
@@ -120,6 +123,36 @@ export function RepositoryDetail({ slug }: { slug: string }) {
     }
   }
 
+  async function toggleSave() {
+    if (!user || saveState === 'saving') {
+      return;
+    }
+
+    setSaveState('saving');
+
+    try {
+      const result = await apiRequest<{ saved: boolean; saveCount: number }>(
+        `/prompt-repositories/${encodeURIComponent(slug)}/save`,
+        {
+          accessToken: accessToken ?? undefined,
+          method: repository?.isSaved ? 'DELETE' : 'POST',
+        },
+      );
+      setRepository((current) =>
+        current
+          ? {
+              ...current,
+              isSaved: result.saved,
+              saveCount: result.saveCount,
+            }
+          : current,
+      );
+      setSaveState('idle');
+    } catch {
+      setSaveState('failed');
+    }
+  }
+
   return (
     <div className="grid gap-8">
       <Card className="relative overflow-hidden border-[#0D0D0D] bg-[#0D0D0D] text-white dark:border-white">
@@ -178,9 +211,27 @@ export function RepositoryDetail({ slug }: { slug: string }) {
                   ? 'Copied'
                   : 'Copy Prompt'}
             </Button>
-            <Button disabled type="button" variant="secondary">
-              Save
-            </Button>
+            {user ? (
+              <Button
+                disabled={saveState === 'saving'}
+                onClick={() => void toggleSave()}
+                type="button"
+                variant="secondary"
+              >
+                {saveState === 'saving'
+                  ? 'Saving...'
+                  : repository.isSaved
+                    ? 'Saved'
+                    : 'Save'}
+              </Button>
+            ) : (
+              <Link
+                className={getButtonClasses('secondary')}
+                href={`/login?next=/p/${encodeURIComponent(slug)}`}
+              >
+                Sign in to Save
+              </Link>
+            )}
             <Link
               className={getButtonClasses('secondary')}
               href={`/create?variantFrom=${encodeURIComponent(slug)}`}
@@ -194,7 +245,8 @@ export function RepositoryDetail({ slug }: { slug: string }) {
           <p className="relative mt-3 text-xs text-zinc-400">
             {copyState === 'failed'
               ? 'Clipboard access failed. Check browser permissions and try again.'
-              : `${repository.copyCount} recorded copies`}
+              : `${repository.copyCount} copies - ${repository.saveCount} saves`}
+            {saveState === 'failed' ? ' Save failed; try again.' : ''}
           </p>
         </div>
       </Card>
