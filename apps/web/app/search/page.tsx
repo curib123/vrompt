@@ -12,7 +12,7 @@ export default async function SearchPage({
   };
   return (
     <SearchView
-      initialAi={value('ai')}
+      initialAi={value('aiCompatibility') ?? value('ai')}
       initialCategory={value('category')}
       initialQuery={value('q')}
       initialSort={value('sort')}

@@ -180,6 +180,64 @@ test('opens the mobile navigation drawer from the left-side hamburger', async ({
   await expect(drawer).not.toBeVisible();
 });
 
+test('searches prompts from Explore with advanced filters', async ({ page }) => {
+  await page.route(`${apiOrigin}/**`, async (route) => {
+    const url = new URL(route.request().url());
+    if (url.pathname === '/api/v1/auth/refresh') {
+      await route.fulfill({ status: 401, json: { message: 'Signed out' } });
+      return;
+    }
+    if (url.pathname === '/api/v1/search/explore') {
+      await route.fulfill({
+        json: {
+          featured: [],
+          popular: [],
+          recentlyUpdated: [],
+          mostCopied: [],
+          mostSaved: [],
+          mostVariants: [],
+          categories: [
+            { id: 'category-writing', name: 'Writing', slug: 'writing' },
+          ],
+          starterCollections: [],
+        },
+      });
+      return;
+    }
+    if (url.pathname === '/api/v1/search') {
+      await route.fulfill({
+        json: {
+          items: [],
+          page: 1,
+          pageSize: 20,
+          total: 0,
+          hasNextPage: false,
+        },
+      });
+      return;
+    }
+    await route.abort();
+  });
+
+  await page.goto('/explore');
+  await page.getByLabel('Search prompts').fill('research brief');
+  await page.locator('summary').filter({ hasText: 'Advanced filters' }).click();
+  await page.getByLabel('Category').selectOption('writing');
+  await page.getByLabel('AI compatibility').fill('GPT-5');
+  await page.getByLabel('Sort results').selectOption('copies');
+  await page.getByRole('button', { name: 'Search prompts' }).click();
+
+  await page.waitForURL((url) => {
+    return (
+      url.pathname === '/search' &&
+      url.searchParams.get('q') === 'research brief' &&
+      url.searchParams.get('category') === 'writing' &&
+      url.searchParams.get('aiCompatibility') === 'GPT-5' &&
+      url.searchParams.get('sort') === 'copies'
+    );
+  });
+});
+
 test('completes the two-user prompt and evidence journey on mobile', async ({
   page,
 }) => {
