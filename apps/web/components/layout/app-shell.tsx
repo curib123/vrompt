@@ -14,7 +14,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         Skip to main content
       </a>
       <SiteHeader />
-      <main className="py-8 sm:py-12" id="main-content">
+      <main className="py-6 sm:py-12" id="main-content">
         <PageContainer>{children}</PageContainer>
       </main>
     </div>
