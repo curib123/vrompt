@@ -17,7 +17,7 @@ export default async function HomePage() {
 
   return (
     <div className="grid gap-8">
-      <Card className="relative grid gap-10 overflow-hidden border-[#BDBDBD] p-7 sm:p-10 lg:grid-cols-[1.2fr_0.8fr] lg:p-14">
+      <Card className="relative grid gap-10 overflow-hidden border-[#E6E6E6] p-7 sm:p-10 lg:grid-cols-[1.2fr_0.8fr] lg:p-14">
         <div className="pointer-events-none absolute -right-20 -top-24 size-72 rounded-full border-[36px] border-[#E6E6E6] opacity-70" />
         <div className="relative space-y-8">
           <BrandLockup />

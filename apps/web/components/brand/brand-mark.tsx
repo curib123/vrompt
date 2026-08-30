@@ -5,6 +5,7 @@ export function BrandMark(props: SVGProps<SVGSVGElement>) {
     <svg
       aria-hidden="true"
       fill="none"
+      focusable="false"
       viewBox="0 0 100 100"
       xmlns="http://www.w3.org/2000/svg"
       {...props}
@@ -24,22 +25,26 @@ export function BrandLockup({
 }) {
   return (
     <span
-      className={inverted ? 'text-white' : 'text-[#0D0D0D] dark:text-white'}
+      className={
+        inverted
+          ? 'text-white'
+          : 'text-[var(--brand-ink)] dark:text-[var(--brand-paper)]'
+      }
     >
-      <span className="flex items-center gap-3">
-        <BrandMark className={compact ? 'size-8' : 'size-11'} />
+      <span className="flex items-center gap-3.5">
+        <BrandMark className={compact ? 'size-8' : 'size-12'} />
         <span className="leading-none">
           <span
             className={
               compact
-                ? 'text-xl font-semibold tracking-[-0.06em]'
-                : 'text-3xl font-semibold tracking-[-0.07em]'
+                ? 'text-xl font-semibold tracking-[-0.055em]'
+                : 'text-3xl font-semibold tracking-[-0.065em]'
             }
           >
             Vrompt
           </span>
           {!compact ? (
-            <span className="mt-2 block text-[0.55rem] font-medium tracking-[0.34em]">
+            <span className="mt-2 block text-[0.55rem] font-semibold tracking-[0.34em]">
               SHARE. PROMPT. EVOLVE.
             </span>
           ) : null}

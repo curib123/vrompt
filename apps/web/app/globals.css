@@ -2,9 +2,14 @@
 
 @theme inline {
   --font-sans: var(--font-display);
-  --font-mono: var(--font-mono);
-  --color-background: #f7f7f7;
-  --color-foreground: #0d0d0d;
+  --font-mono: var(--font-display);
+  --color-background: var(--brand-paper);
+  --color-foreground: var(--brand-ink);
+  --color-brand-ink: var(--brand-ink);
+  --color-brand-charcoal: var(--brand-charcoal);
+  --color-brand-mid: var(--brand-mid);
+  --color-brand-soft: var(--brand-soft);
+  --color-brand-paper: var(--brand-paper);
 }
 
 :root {
@@ -14,6 +19,13 @@
   --brand-mid: #4d4d4d;
   --brand-soft: #e6e6e6;
   --brand-paper: #ffffff;
+  --brand-grid: rgba(13, 13, 13, 0.045);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --brand-grid: rgba(255, 255, 255, 0.055);
+  }
 }
 
 * {
@@ -27,6 +39,7 @@ html {
 body {
   margin: 0;
   background: var(--brand-paper);
+  color: var(--brand-ink);
   font-family: var(--font-display), sans-serif;
 }
 
@@ -55,6 +68,13 @@ textarea {
 ::selection {
   background: var(--brand-ink);
   color: var(--brand-paper);
+}
+
+.brand-grid {
+  background-image:
+    linear-gradient(var(--brand-grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--brand-grid) 1px, transparent 1px);
+  background-size: 32px 32px;
 }
 
 @media (prefers-color-scheme: dark) {

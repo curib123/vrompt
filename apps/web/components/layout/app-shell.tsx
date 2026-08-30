@@ -5,8 +5,8 @@ import { SiteHeader } from '@/components/layout/site-header';
 
 export function AppShell({ children }: { children: ReactNode }) {
   return (
-    <div className="min-h-screen bg-[#F7F7F7] text-[#0D0D0D] dark:bg-[#0D0D0D] dark:text-white">
-      <div className="absolute inset-0 -z-10 bg-[linear-gradient(rgba(13,13,13,0.035)_1px,transparent_1px),linear-gradient(90deg,rgba(13,13,13,0.035)_1px,transparent_1px)] bg-[size:32px_32px] dark:bg-[linear-gradient(rgba(255,255,255,0.045)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.045)_1px,transparent_1px)]" />
+    <div className="min-h-screen bg-white text-[#0D0D0D] dark:bg-[#0D0D0D] dark:text-white">
+      <div className="brand-grid absolute inset-0 -z-10" />
       <a
         className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-full focus:bg-black focus:px-5 focus:py-3 focus:text-sm focus:text-white"
         href="#main-content"

@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { IBM_Plex_Mono, Inter } from 'next/font/google';
+import { Inter } from 'next/font/google';
 import type { ReactNode } from 'react';
 
 import { AppShell } from '@/components/layout/app-shell';
@@ -11,12 +11,6 @@ const displayFont = Inter({
   subsets: ['latin'],
   variable: '--font-display',
   weight: ['400', '500', '600', '700'],
-});
-
-const monoFont = IBM_Plex_Mono({
-  subsets: ['latin'],
-  variable: '--font-mono',
-  weight: ['400', '500'],
 });
 
 export const metadata: Metadata = {
@@ -31,12 +25,8 @@ export default function RootLayout({
   children: ReactNode;
 }>) {
   return (
-    <html
-      className={`${displayFont.variable} ${monoFont.variable}`}
-      lang="en"
-      suppressHydrationWarning
-    >
-      <body className="min-h-screen bg-white text-black antialiased dark:bg-black dark:text-white">
+    <html className={displayFont.variable} lang="en" suppressHydrationWarning>
+      <body className="min-h-screen bg-white text-[#0D0D0D] antialiased dark:bg-[#0D0D0D] dark:text-white">
         <AppProviders>
           <AppShell>{children}</AppShell>
         </AppProviders>
