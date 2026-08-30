@@ -7,6 +7,11 @@ import { SearchQueryDto } from './dto/search-query.dto';
 export class SearchController {
   constructor(private readonly searchService: SearchService) {}
 
+  @Get('/explore')
+  explore() {
+    return this.searchService.explore();
+  }
+
   @Get()
   search(@Query() input: SearchQueryDto) {
     return this.searchService.search(input);

@@ -118,6 +118,38 @@ export interface SearchResponse {
   hasNextPage: boolean;
 }
 
+export interface ExploreRepository {
+  id: string;
+  title: string;
+  slug: string;
+  description: string | null;
+  copyCount: number;
+  saveCount: number;
+  likeCount: number;
+  variantCount: number;
+  updatedAt: string;
+  owner: { username: string };
+  category: { name: string; slug: string } | null;
+}
+
+export interface ExploreResponse {
+  featured: ExploreRepository[];
+  popular: ExploreRepository[];
+  recentlyUpdated: ExploreRepository[];
+  mostCopied: ExploreRepository[];
+  mostSaved: ExploreRepository[];
+  mostVariants: ExploreRepository[];
+  categories: CategoryOption[];
+  starterCollections: Array<{
+    id: string;
+    name: string;
+    slug: string;
+    description: string | null;
+    owner: { username: string };
+    _count: { items: number };
+  }>;
+}
+
 interface ProfileSummary {
   id: string;
   username: string;

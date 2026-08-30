@@ -96,6 +96,102 @@ export class SearchService {
     };
   }
 
+  async explore() {
+    const publicWhere = {
+      status: PromptRepositoryStatus.ACTIVE,
+      visibility: { in: [PromptVisibility.PUBLIC, PromptVisibility.UNLISTED] },
+    };
+    const select = {
+      id: true,
+      title: true,
+      slug: true,
+      description: true,
+      copyCount: true,
+      saveCount: true,
+      likeCount: true,
+      variantCount: true,
+      updatedAt: true,
+      owner: { select: { username: true } },
+      category: { select: { name: true, slug: true } },
+    } as const;
+    const [
+      featured,
+      popular,
+      recentlyUpdated,
+      mostCopied,
+      mostSaved,
+      mostVariants,
+      categories,
+      starterCollections,
+    ] = await Promise.all([
+      this.prismaService.promptRepository.findMany({
+        where: publicWhere,
+        orderBy: [{ likeCount: 'desc' }, { updatedAt: 'desc' }],
+        take: 6,
+        select,
+      }),
+      this.prismaService.promptRepository.findMany({
+        where: publicWhere,
+        orderBy: [{ likeCount: 'desc' }, { copyCount: 'desc' }],
+        take: 6,
+        select,
+      }),
+      this.prismaService.promptRepository.findMany({
+        where: publicWhere,
+        orderBy: { updatedAt: 'desc' },
+        take: 6,
+        select,
+      }),
+      this.prismaService.promptRepository.findMany({
+        where: publicWhere,
+        orderBy: { copyCount: 'desc' },
+        take: 6,
+        select,
+      }),
+      this.prismaService.promptRepository.findMany({
+        where: publicWhere,
+        orderBy: { saveCount: 'desc' },
+        take: 6,
+        select,
+      }),
+      this.prismaService.promptRepository.findMany({
+        where: publicWhere,
+        orderBy: { variantCount: 'desc' },
+        take: 6,
+        select,
+      }),
+      this.prismaService.category.findMany({
+        orderBy: { name: 'asc' },
+        take: 20,
+        select: { id: true, name: true, slug: true },
+      }),
+      this.prismaService.collection.findMany({
+        where: { visibility: 'PUBLIC', archivedAt: null },
+        orderBy: { updatedAt: 'desc' },
+        take: 6,
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          description: true,
+          owner: { select: { username: true } },
+          _count: { select: { items: true } },
+        },
+      }),
+    ]);
+
+    return {
+      featured,
+      popular,
+      recentlyUpdated,
+      mostCopied,
+      mostSaved,
+      mostVariants,
+      categories,
+      starterCollections,
+    };
+  }
+
   private orderBy(sort: SearchQueryDto['sort'], hasQuery: boolean) {
     switch (sort) {
       case 'newest':
