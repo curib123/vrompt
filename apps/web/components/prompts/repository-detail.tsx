@@ -7,6 +7,7 @@ import { useAuth } from '@/components/providers/auth-provider';
 import { Avatar } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { getButtonClasses } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Modal } from '@/components/ui/modal';
@@ -178,9 +179,12 @@ export function RepositoryDetail({ slug }: { slug: string }) {
             <Button disabled type="button" variant="secondary">
               Save
             </Button>
-            <Button disabled type="button" variant="secondary">
+            <Link
+              className={getButtonClasses('secondary')}
+              href={`/create?variantFrom=${encodeURIComponent(slug)}`}
+            >
               Create Variant
-            </Button>
+            </Link>
             <Button disabled type="button" variant="secondary">
               Share
             </Button>
@@ -192,6 +196,30 @@ export function RepositoryDetail({ slug }: { slug: string }) {
           </p>
         </div>
       </Card>
+
+      {repository.sourcePrompt ? (
+        <Card className="border-dashed">
+          <p className="text-xs font-medium uppercase tracking-[0.2em] text-zinc-500">
+            Attribution
+          </p>
+          <p className="mt-3 text-sm text-zinc-600 dark:text-zinc-400">
+            Based on{' '}
+            <Link
+              className="font-semibold text-black underline dark:text-white"
+              href={`/u/${repository.sourcePrompt.owner.username}`}
+            >
+              @{repository.sourcePrompt.owner.username}
+            </Link>{' '}
+            /{' '}
+            <Link
+              className="font-semibold text-black underline dark:text-white"
+              href={`/p/${repository.sourcePrompt.slug}`}
+            >
+              {repository.sourcePrompt.title}
+            </Link>
+          </p>
+        </Card>
+      ) : null}
 
       <Tabs
         items={[

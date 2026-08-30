@@ -18,6 +18,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import type { CreatePromptRepositoryDto } from './dto/create-prompt-repository.dto';
 import type { CopyPromptDto } from './dto/copy-prompt.dto';
 import type { CreatePromptVersionDto } from './dto/create-prompt-version.dto';
+import type { CreateVariantDto } from './dto/create-variant.dto';
 import { TagsService } from '../tags/tags.service';
 
 @Injectable()
@@ -350,6 +351,29 @@ export class PromptsService {
     }
   }
 
+  async createVariant(
+    sourceSlug: string,
+    actorId: string,
+    input: CreateVariantDto,
+  ) {
+    const source = await this.getBySlug(sourceSlug, actorId);
+    const created = await this.create(actorId, input);
+    const rootPromptId = source.rootPromptId ?? source.id;
+
+    await this.prismaService.$transaction(async (transaction) => {
+      await transaction.promptRepository.update({
+        where: { id: created.id },
+        data: { sourcePromptId: source.id, rootPromptId },
+      });
+      await transaction.promptRepository.update({
+        where: { id: source.id },
+        data: { variantCount: { increment: 1 } },
+      });
+    });
+
+    return { ...created, sourcePromptId: source.id, rootPromptId };
+  }
+
   private assertReadableRepository(
     repository: {
       id: string;
@@ -414,6 +438,8 @@ export class PromptsService {
   private readonly repositorySelect = {
     id: true,
     ownerId: true,
+    sourcePromptId: true,
+    rootPromptId: true,
     title: true,
     slug: true,
     description: true,
@@ -432,6 +458,13 @@ export class PromptsService {
       },
     },
     category: { select: { name: true, slug: true } },
+    sourcePrompt: {
+      select: {
+        title: true,
+        slug: true,
+        owner: { select: { username: true } },
+      },
+    },
     promptTags: {
       select: { tag: { select: { id: true, name: true, slug: true } } },
     },

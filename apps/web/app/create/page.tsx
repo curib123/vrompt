@@ -1,10 +1,14 @@
 import { ProtectedRoute } from '@/components/auth/protected-route';
 import { CreatePromptForm } from '@/components/prompts/create-prompt-form';
 
-export default function CreatePage() {
+export default async function CreatePage({
+  searchParams,
+}: Readonly<{ searchParams: Promise<{ variantFrom?: string }> }>) {
+  const { variantFrom } = await searchParams;
+
   return (
     <ProtectedRoute>
-      <CreatePromptForm />
+      <CreatePromptForm variantFrom={variantFrom} />
     </ProtectedRoute>
   );
 }

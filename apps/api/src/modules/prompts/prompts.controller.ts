@@ -7,6 +7,7 @@ import { OptionalAccessTokenGuard } from '../auth/guards/optional-access-token.g
 import { CreatePromptRepositoryDto } from './dto/create-prompt-repository.dto';
 import { CopyPromptDto } from './dto/copy-prompt.dto';
 import { CreatePromptVersionDto } from './dto/create-prompt-version.dto';
+import { CreateVariantDto } from './dto/create-variant.dto';
 import { PromptsService } from './prompts.service';
 
 @Controller('prompt-repositories')
@@ -63,6 +64,16 @@ export class PromptsController {
     @CurrentUser() user: AuthenticatedUser,
   ) {
     return this.promptsService.createVersion(slug, user.id, input);
+  }
+
+  @Post(':slug/variants')
+  @UseGuards(AccessTokenGuard)
+  createVariant(
+    @Param('slug') slug: string,
+    @Body() input: CreateVariantDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.promptsService.createVariant(slug, user.id, input);
   }
 
   @Get(':slug')

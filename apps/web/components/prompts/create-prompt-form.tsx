@@ -15,7 +15,11 @@ import { FieldGroup, FormField } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { apiRequest } from '@/lib/api';
-import type { PromptCreateResponse, TagOption } from '@/lib/api';
+import type {
+  PromptCreateResponse,
+  PromptRepositoryDetail,
+  TagOption,
+} from '@/lib/api';
 
 interface DraftVariable {
   defaultValue: string;
@@ -46,7 +50,7 @@ const blankVariable: DraftVariable = {
 
 const blankExample: DraftExample = { input: '', output: '', title: '' };
 
-export function CreatePromptForm() {
+export function CreatePromptForm({ variantFrom }: { variantFrom?: string }) {
   const router = useRouter();
   const { accessToken } = useAuth();
   const [title, setTitle] = useState('');
@@ -66,6 +70,31 @@ export function CreatePromptForm() {
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [created, setCreated] = useState<PromptCreateResponse | null>(null);
+
+  useEffect(() => {
+    if (!variantFrom || !accessToken) {
+      return;
+    }
+
+    void apiRequest<PromptRepositoryDetail>(
+      `/prompt-repositories/${encodeURIComponent(variantFrom)}`,
+      { accessToken },
+    )
+      .then((source) => {
+        const sourceVersion = source.currentVersion;
+        setTitle(`${source.title} Variant`);
+        setDescription(source.description ?? '');
+        setContent(sourceVersion?.content ?? '');
+        setCategorySlug(source.category?.slug ?? '');
+        setTags(source.promptTags.map(({ tag }) => tag));
+        setAiCompatibility(source.aiCompatibility ?? '');
+        setLicense(source.license ?? '');
+        setMessage(
+          `Prefilled from ${source.title}. Attribution will be kept automatically.`,
+        );
+      })
+      .catch(() => setError('The source repository could not be loaded.'));
+  }, [accessToken, variantFrom]);
 
   const isDirty = Boolean(
     title ||
@@ -184,7 +213,9 @@ export function CreatePromptForm() {
 
     try {
       const repository = await apiRequest<PromptCreateResponse>(
-        '/prompt-repositories',
+        variantFrom
+          ? `/prompt-repositories/${encodeURIComponent(variantFrom)}/variants`
+          : '/prompt-repositories',
         {
           accessToken,
           body: JSON.stringify({

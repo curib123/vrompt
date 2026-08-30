@@ -137,12 +137,20 @@ export interface PromptRepositoryDetail {
   createdAt: string;
   updatedAt: string;
   copyCount: number;
+  variantCount: number;
+  sourcePromptId: string | null;
+  rootPromptId: string | null;
   owner: {
     username: string;
     status: 'ACTIVE' | 'SUSPENDED' | 'DELETED';
     profile: { displayName: string | null; avatar: string | null } | null;
   };
   category: { name: string; slug: string } | null;
+  sourcePrompt: {
+    title: string;
+    slug: string;
+    owner: { username: string };
+  } | null;
   promptTags: { tag: TagOption }[];
   currentVersion: PromptVersionContent | null;
 }
