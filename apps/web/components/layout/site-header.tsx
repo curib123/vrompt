@@ -89,10 +89,6 @@ export function SiteHeader() {
               <Link className={getButtonClasses('primary')} href="/register">
                 Join Vrompt
               </Link>
-              <Avatar
-                className="border-[#0D0D0D] bg-[#E6E6E6]"
-                name="Prompt Owner"
-              />
             </>
           )}
         </div>
