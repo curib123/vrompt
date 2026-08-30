@@ -15,7 +15,7 @@ const displayFont = Inter({
 
 export const metadata: Metadata = {
   title: 'Vrompt',
-  description: 'Share. Prompt. Evolve.',
+  description: 'A living library of high-quality prompts and real experience.',
   icons: { icon: '/vrompt-mark.svg' },
 };
 
