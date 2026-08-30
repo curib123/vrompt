@@ -124,6 +124,13 @@ signature-validated evidence uploads with path-safe filenames.
 Phase 30 adds explicit real/starter/official account types, repeatable labeled
 starter accounts, repositories, variants, collections, official categories and
 tags, and discovery metric queries that exclude seeded accounts.
+Phase 31 improves mobile and tablet layouts, evidence upload affordances,
+responsive cards, tabs, dialogs, and touch targets. Phase 32 adds skip
+navigation, visible focus, keyboard tabs/menus, modal focus trapping, and
+screen-reader status/error announcements. Phase 33 adds behavioral backend
+coverage across the core domain and evidence/storage boundaries. Phase 34 adds
+an opt-in real-AppModule workflow test; run it with `RUN_INTEGRATION_TESTS=true`
+against an isolated test database using `npm run test:integration --workspace @vrompt/api`.
 
 ## Docker development
 
