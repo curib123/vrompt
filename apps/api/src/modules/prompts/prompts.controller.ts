@@ -42,6 +42,15 @@ export class PromptsController {
     return this.promptsService.listVersions(slug, user?.id);
   }
 
+  @Get(':slug/lineage')
+  @UseGuards(OptionalAccessTokenGuard)
+  getLineage(
+    @Param('slug') slug: string,
+    @CurrentUser() user?: AuthenticatedUser,
+  ) {
+    return this.promptsService.getLineage(slug, user?.id);
+  }
+
   @Get(':slug/versions/:versionNumber')
   @UseGuards(OptionalAccessTokenGuard)
   getVersion(

@@ -374,6 +374,107 @@ export class PromptsService {
     return { ...created, sourcePromptId: source.id, rootPromptId };
   }
 
+  async getLineage(slug: string, viewerId?: string) {
+    const repository = await this.prismaService.promptRepository.findUnique({
+      where: { slug: slugify(slug) },
+      select: {
+        id: true,
+        ownerId: true,
+        rootPromptId: true,
+        sourcePromptId: true,
+        visibility: true,
+        status: true,
+      },
+    });
+
+    this.assertReadableRepository(repository, viewerId);
+    const rootId = repository.rootPromptId ?? repository.id;
+    const repositories = await this.prismaService.promptRepository.findMany({
+      where: {
+        status: PromptRepositoryStatus.ACTIVE,
+        OR: [{ id: rootId }, { rootPromptId: rootId }],
+        AND: {
+          ...(viewerId
+            ? {
+                OR: [
+                  { visibility: { not: PromptVisibility.PRIVATE } },
+                  { ownerId: viewerId },
+                ],
+              }
+            : { visibility: { not: PromptVisibility.PRIVATE } }),
+        },
+      },
+      orderBy: { createdAt: 'asc' },
+      select: {
+        id: true,
+        ownerId: true,
+        title: true,
+        slug: true,
+        sourcePromptId: true,
+        rootPromptId: true,
+        variantCount: true,
+        visibility: true,
+        owner: { select: { username: true } },
+      },
+    });
+    const byId = new Map(repositories.map((item) => [item.id, item]));
+    const children = new Map<string, typeof repositories>();
+
+    for (const item of repositories) {
+      if (
+        item.sourcePromptId &&
+        item.sourcePromptId !== item.id &&
+        byId.has(item.sourcePromptId)
+      ) {
+        const siblings = children.get(item.sourcePromptId) ?? [];
+        siblings.push(item);
+        children.set(item.sourcePromptId, siblings);
+      }
+    }
+
+    const buildTree = (
+      id: string,
+      visited = new Set<string>(),
+    ): LineageNode | null => {
+      const item = byId.get(id);
+      if (!item || visited.has(id)) {
+        return null;
+      }
+
+      const nextVisited = new Set(visited).add(id);
+      return {
+        id: item.id,
+        title: item.title,
+        slug: item.slug,
+        ownerUsername: item.owner.username,
+        variantCount: item.variantCount,
+        children: (children.get(id) ?? [])
+          .map((child) => buildTree(child.id, nextVisited))
+          .filter((child): child is LineageNode => child !== null),
+      };
+    };
+
+    const root = buildTree(rootId);
+    const current = byId.get(repository.id);
+    const directSource = repository.sourcePromptId
+      ? byId.get(repository.sourcePromptId)
+      : undefined;
+
+    return {
+      root,
+      currentRepositoryId: repository.id,
+      directSource: directSource
+        ? {
+            id: directSource.id,
+            title: directSource.title,
+            slug: directSource.slug,
+            ownerUsername: directSource.owner.username,
+          }
+        : null,
+      variantCount: current?.variantCount ?? 0,
+    };
+  }
+
   private assertReadableRepository(
     repository: {
       id: string;
@@ -557,4 +658,13 @@ export class PromptsService {
       },
     },
   } as const;
+}
+
+export interface LineageNode {
+  id: string;
+  title: string;
+  slug: string;
+  ownerUsername: string;
+  variantCount: number;
+  children: LineageNode[];
 }

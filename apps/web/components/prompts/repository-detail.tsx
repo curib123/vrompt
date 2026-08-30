@@ -21,6 +21,8 @@ import type {
   PromptVersionDetail,
   PromptVersionSummary,
   PromptRepositoryDetail,
+  PromptLineageNode,
+  PromptLineageResponse,
 } from '@/lib/api';
 
 export function RepositoryDetail({ slug }: { slug: string }) {
@@ -262,12 +264,7 @@ export function RepositoryDetail({ slug }: { slug: string }) {
             label: 'Examples',
           },
           {
-            content: (
-              <EmptyState
-                description="Variants will be connected here in the next evolution phase."
-                title="No Variant Lineage yet"
-              />
-            ),
+            content: <LineageTab repositorySlug={slug} />,
             id: 'variants',
             label: 'Variants',
           },
@@ -588,6 +585,104 @@ function ExamplesTab({
           title="No examples yet"
         />
       ) : null}
+    </div>
+  );
+}
+
+function LineageTab({ repositorySlug }: { repositorySlug: string }) {
+  const [lineage, setLineage] = useState<PromptLineageResponse | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    void apiRequest<PromptLineageResponse>(
+      `/prompt-repositories/${encodeURIComponent(repositorySlug)}/lineage`,
+    )
+      .then((result) => {
+        if (active) {
+          setLineage(result);
+        }
+      })
+      .catch(() => {
+        if (active) {
+          setLineage(null);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [repositorySlug]);
+
+  if (!lineage) {
+    return (
+      <Card>
+        <p className="text-sm text-zinc-500">Loading Variant Lineage...</p>
+      </Card>
+    );
+  }
+
+  return (
+    <Card>
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div className="space-y-2">
+          <Badge>Variant Lineage</Badge>
+          <h2 className="text-2xl font-semibold">
+            Prompt evolution, kept readable.
+          </h2>
+        </div>
+        <p className="text-sm text-zinc-500">
+          {lineage.variantCount} direct Variants
+        </p>
+      </div>
+      {lineage.root ? (
+        <div className="mt-6 grid gap-2">
+          <LineageItem
+            currentId={lineage.currentRepositoryId}
+            node={lineage.root}
+          />{' '}
+        </div>
+      ) : (
+        <p className="mt-6 text-sm text-zinc-500">No lineage is available.</p>
+      )}
+    </Card>
+  );
+}
+
+function LineageItem({
+  currentId,
+  depth = 0,
+  node,
+}: {
+  currentId: string;
+  depth?: number;
+  node: PromptLineageNode;
+}) {
+  return (
+    <div className="grid gap-2">
+      <Link
+        className="flex items-center justify-between gap-4 rounded-2xl border border-zinc-200 px-4 py-3 transition hover:border-black dark:border-zinc-800 dark:hover:border-white"
+        href={`/p/${node.slug}`}
+        style={{ marginLeft: `${depth * 1.25}rem` }}
+      >
+        <span>
+          <span className="font-mono text-xs text-zinc-500">
+            {depth === 0 ? 'Original' : 'Variant'}
+          </span>
+          <strong className="ml-3">{node.title}</strong>
+          <span className="ml-2 text-sm text-zinc-500">
+            @{node.ownerUsername}
+          </span>
+        </span>
+        {node.id === currentId ? <Badge>Current</Badge> : null}
+      </Link>
+      {node.children.map((child) => (
+        <LineageItem
+          currentId={currentId}
+          depth={depth + 1}
+          key={child.id}
+          node={child}
+        />
+      ))}
     </div>
   );
 }

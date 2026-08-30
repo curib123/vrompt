@@ -124,6 +124,27 @@ export interface PromptVersionDetail extends PromptVersionContent {
   author: { username: string };
 }
 
+export interface PromptLineageNode {
+  id: string;
+  title: string;
+  slug: string;
+  ownerUsername: string;
+  variantCount: number;
+  children: PromptLineageNode[];
+}
+
+export interface PromptLineageResponse {
+  root: PromptLineageNode | null;
+  currentRepositoryId: string;
+  directSource: {
+    id: string;
+    title: string;
+    slug: string;
+    ownerUsername: string;
+  } | null;
+  variantCount: number;
+}
+
 export interface PromptRepositoryDetail {
   id: string;
   ownerId: string;

@@ -1,6 +1,6 @@
 # Vrompt
 
-Vrompt is the repository for AI prompts. This workspace contains the Phase 1 through Phase 13 MVP foundation: a TypeScript monorepo, a Next.js frontend shell, a NestJS API shell, a normalized Prisma/PostgreSQL data model, media storage adapters, Google-only authentication, user profiles, prompt organization, repository creation, repository detail pages, copy tracking, immutable prompt versions, and Create Variant lineage.
+Vrompt is the repository for AI prompts. This workspace contains the Phase 1 through Phase 14 MVP foundation: a TypeScript monorepo, a Next.js frontend shell, a NestJS API shell, a normalized Prisma/PostgreSQL data model, media storage adapters, Google-only authentication, user profiles, prompt organization, repository creation, repository detail pages, copy tracking, immutable prompt versions, Create Variant, and Variant Lineage.
 
 ## Workspace layout
 
@@ -88,6 +88,8 @@ Phase 11 records deduplicated copy events, and Phase 12 adds immutable versions,
 version history, basic comparison, and owner-only version publishing.
 Phase 13 adds the consistently named Create Variant flow with prefilled editing,
 creator ownership, attribution, and separate evidence for the new repository.
+Phase 14 adds a bounded, cycle-safe Variant Lineage view with original, source,
+child, and current repository relationships.
 
 ## Docker development
 
