@@ -14,13 +14,14 @@ interface TabItem {
 export function Tabs({ items }: { items: TabItem[] }) {
   const [activeTab, setActiveTab] = useState(items[0]?.id ?? '');
   const idPrefix = useId();
-  const currentTab = items.find((item) => item.id === activeTab)?.id ?? items[0]?.id ?? '';
+  const currentTab =
+    items.find((item) => item.id === activeTab)?.id ?? items[0]?.id ?? '';
 
   return (
     <div className="space-y-4">
       <div
         aria-label="Sections"
-        className="flex flex-wrap gap-2 rounded-full border border-zinc-200 p-2 dark:border-zinc-800"
+        className="flex max-w-full gap-2 overflow-x-auto rounded-full border border-zinc-200 p-2 dark:border-zinc-800"
         role="tablist"
       >
         {items.map((item, index) => {
@@ -31,7 +32,7 @@ export function Tabs({ items }: { items: TabItem[] }) {
               aria-controls={`${idPrefix}-${item.id}`}
               aria-selected={isSelected}
               className={cn(
-                'rounded-full px-4 py-2 text-sm transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black dark:focus-visible:outline-white',
+                'min-h-11 shrink-0 rounded-full px-4 py-2 text-sm transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black dark:focus-visible:outline-white',
                 isSelected
                   ? 'bg-black text-white dark:bg-white dark:text-black'
                   : 'text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-900',

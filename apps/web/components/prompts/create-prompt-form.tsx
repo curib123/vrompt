@@ -132,8 +132,8 @@ export function CreatePromptForm({ variantFrom }: { variantFrom?: string }) {
     }
 
     const validFiles = nextFiles.slice(0, available).filter((file) => {
-      if (!file.type.startsWith('image/')) {
-        setError(`${file.name} is not an image.`);
+      if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+        setError(`${file.name} must be a JPEG, PNG, or WebP image.`);
         return false;
       }
 
@@ -581,10 +581,10 @@ export function CreatePromptForm({ variantFrom }: { variantFrom?: string }) {
                 Drop images here or choose files
               </span>
               <span className="mt-2 text-xs text-zinc-500">
-                JPEG, PNG, WebP, or GIF up to 5 MB each
+                JPEG, PNG, or WebP up to 5 MB each
               </span>
               <input
-                accept="image/*"
+                accept="image/jpeg,image/png,image/webp"
                 className="sr-only"
                 disabled={evidence.length >= 3}
                 multiple

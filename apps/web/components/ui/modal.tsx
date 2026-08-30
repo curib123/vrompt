@@ -56,16 +56,24 @@ export function Modal({
         type="button"
       />
       <div
+        aria-describedby="modal-description"
+        aria-labelledby="modal-title"
         className={cn(
-          'relative z-10 w-full max-w-xl rounded-[2rem] border border-zinc-200 bg-white p-6 shadow-2xl dark:border-zinc-800 dark:bg-zinc-950',
+          'relative z-10 max-h-[90dvh] w-full max-w-xl overflow-y-auto rounded-[2rem] border border-zinc-200 bg-white p-4 shadow-2xl sm:p-6 dark:border-zinc-800 dark:bg-zinc-950',
         )}
       >
         <div className="flex items-start justify-between gap-4">
           <div className="space-y-2">
-            <h3 className="text-xl font-semibold text-black dark:text-white">
+            <h3
+              className="text-xl font-semibold text-black dark:text-white"
+              id="modal-title"
+            >
               {title}
             </h3>
-            <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            <p
+              className="text-sm text-zinc-600 dark:text-zinc-400"
+              id="modal-description"
+            >
               {description}
             </p>
           </div>

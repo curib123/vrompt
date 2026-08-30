@@ -47,7 +47,7 @@ export function ExploreView() {
         <div className="pointer-events-none absolute -right-24 -top-28 size-80 rounded-full border-[40px] border-white/10" />
         <div className="relative max-w-3xl space-y-5">
           <Badge className="border-white/30 text-zinc-300">Discover</Badge>
-          <h1 className="text-5xl font-semibold leading-[0.95] tracking-[-0.07em] sm:text-7xl">
+          <h1 className="text-4xl font-semibold leading-[0.95] tracking-[-0.07em] sm:text-7xl">
             Useful prompts, less wandering.
           </h1>
           <p className="text-base leading-8 text-zinc-300">

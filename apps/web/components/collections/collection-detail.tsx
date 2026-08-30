@@ -62,7 +62,7 @@ export function CollectionDetailView({
           <Badge className="border-white/30 text-zinc-300">
             {collection.visibility.toLowerCase()} collection
           </Badge>
-          <h1 className="text-5xl font-semibold tracking-[-0.07em] sm:text-7xl">
+          <h1 className="text-4xl font-semibold tracking-[-0.07em] sm:text-7xl">
             {collection.name}
           </h1>
           <p className="max-w-2xl text-base leading-8 text-zinc-300">

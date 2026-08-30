@@ -213,7 +213,7 @@ export function RepositoryDetail({ slug }: { slug: string }) {
               ) : null}
             </div>
             <div>
-              <h1 className="max-w-4xl text-5xl font-semibold leading-[0.98] tracking-[-0.07em] sm:text-7xl">
+              <h1 className="max-w-4xl text-4xl font-semibold leading-[0.98] tracking-[-0.07em] sm:text-7xl">
                 {repository.title}
               </h1>
               <p className="mt-4 max-w-2xl text-base leading-8 text-zinc-300">

@@ -78,7 +78,7 @@ export function SearchView({
         <div className="pointer-events-none absolute -right-24 -top-28 size-80 rounded-full border-[40px] border-white/10" />
         <div className="relative space-y-4">
           <Badge className="border-white/30 text-zinc-300">Discover</Badge>
-          <h1 className="text-5xl font-semibold tracking-[-0.07em] sm:text-7xl">
+          <h1 className="text-4xl font-semibold tracking-[-0.07em] sm:text-7xl">
             Find a better prompt.
           </h1>
           <p className="max-w-2xl text-base leading-8 text-zinc-300">
