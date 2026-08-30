@@ -152,16 +152,31 @@ test('opens the mobile navigation drawer from the left-side hamburger', async ({
   const homeLink = page.getByRole('link', { name: 'Vrompt home' });
   const hamburgerBox = await hamburger.boundingBox();
   const homeLinkBox = await homeLink.boundingBox();
-  expect(hamburgerBox?.x).toBeLessThan(homeLinkBox?.x ?? Number.POSITIVE_INFINITY);
+  expect(hamburgerBox?.x).toBeLessThan(
+    homeLinkBox?.x ?? Number.POSITIVE_INFINITY,
+  );
+  expect(
+    (homeLinkBox?.x ?? 0) -
+      ((hamburgerBox?.x ?? 0) + (hamburgerBox?.width ?? 0)),
+  ).toBeLessThanOrEqual(16);
   await hamburger.click();
 
   const drawer = page.getByRole('dialog', {
     name: 'Mobile navigation drawer',
   });
   await expect(drawer).toBeVisible();
+  const closeButton = drawer.getByRole('button', {
+    name: 'Close navigation',
+  });
+  await expect(closeButton).toBeFocused();
   await expect(drawer.getByRole('link', { name: 'Explore' })).toBeVisible();
+  await expect(drawer.getByRole('link', { name: 'Join Vrompt' })).toBeVisible();
 
-  await page.getByRole('button', { name: 'Close navigation' }).last().click();
+  await expect
+    .poll(async () => (await drawer.boundingBox())?.x)
+    .toBeCloseTo(0, 1);
+
+  await closeButton.click();
   await expect(drawer).not.toBeVisible();
 });
 

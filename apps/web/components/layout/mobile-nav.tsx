@@ -15,7 +15,8 @@ export function MobileNav() {
   const pathname = usePathname();
   const { isLoading, logout, user } = useAuth();
   const [open, setOpen] = useState(false);
-  const firstLinkRef = useRef<HTMLAnchorElement>(null);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const drawerRef = useRef<HTMLElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
@@ -23,19 +24,40 @@ export function MobileNav() {
 
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
-    firstLinkRef.current?.focus();
+    closeButtonRef.current?.focus();
 
-    const handleEscape = (event: KeyboardEvent) => {
+    const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         setOpen(false);
         triggerRef.current?.focus();
+        return;
+      }
+
+      if (event.key !== 'Tab' || !drawerRef.current) {
+        return;
+      }
+
+      const focusable = Array.from(
+        drawerRef.current.querySelectorAll<HTMLElement>(
+          'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])',
+        ),
+      );
+      const first = focusable[0];
+      const last = focusable.at(-1);
+
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last?.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first?.focus();
       }
     };
 
-    window.addEventListener('keydown', handleEscape);
+    window.addEventListener('keydown', handleKeyDown);
     return () => {
       document.body.style.overflow = previousOverflow;
-      window.removeEventListener('keydown', handleEscape);
+      window.removeEventListener('keydown', handleKeyDown);
     };
   }, [open]);
 
@@ -49,56 +71,53 @@ export function MobileNav() {
       <Button
         aria-expanded={open}
         aria-controls="mobile-navigation"
-        aria-label={open ? 'Close navigation' : 'Open navigation'}
+        aria-label="Open navigation"
         aria-haspopup="dialog"
-        className="size-11 rounded-2xl border-[#E6E6E6] bg-white px-0 shadow-[0_8px_24px_rgba(13,13,13,0.08)] dark:border-[#4D4D4D] dark:bg-[#1A1A1A] dark:shadow-none"
+        className="size-11 shrink-0 rounded-2xl border-[#E6E6E6] bg-white px-0 shadow-[0_8px_24px_rgba(13,13,13,0.08)] dark:border-[#4D4D4D] dark:bg-[#1A1A1A] dark:shadow-none"
         onClick={() => setOpen((current) => !current)}
         ref={triggerRef}
         variant="secondary"
       >
-        <span className="sr-only">{open ? 'Close menu' : 'Open menu'}</span>
-        <span aria-hidden="true" className="grid w-5 gap-1">
+        <span className="sr-only">Open menu</span>
+        <span aria-hidden="true" className="grid w-5 gap-1.5">
           <span className="h-0.5 w-full bg-current" />
-          <span className="h-0.5 w-full bg-current" />
+          <span className="h-0.5 w-3.5 bg-current" />
           <span className="h-0.5 w-full bg-current" />
         </span>
       </Button>
       {open ? (
-        <div
-          aria-label="Mobile navigation drawer"
-          className="fixed inset-0 z-50 lg:hidden"
-          id="mobile-navigation"
-          role="dialog"
-          aria-modal="true"
-        >
+        <div className="fixed inset-0 z-50 lg:hidden">
           <button
             aria-label="Close navigation"
             className="drawer-backdrop absolute inset-0 w-full cursor-default bg-[#0D0D0D]/60 backdrop-blur-[2px]"
             onClick={closeDrawer}
             type="button"
           />
-          <aside className="drawer-panel absolute right-0 top-0 flex h-full w-[min(90vw,25rem)] flex-col rounded-l-[2rem] border-l border-[#E6E6E6] bg-white px-5 pb-6 pt-5 shadow-2xl dark:border-[#1A1A1A] dark:bg-[#0D0D0D]">
+          <aside
+            aria-label="Mobile navigation drawer"
+            aria-modal="true"
+            className="drawer-panel absolute left-0 top-0 flex h-dvh w-[min(90vw,25rem)] flex-col overflow-hidden rounded-r-[2rem] border-r border-[#E6E6E6] bg-white px-5 pb-6 pt-5 shadow-2xl dark:border-[#1A1A1A] dark:bg-[#0D0D0D]"
+            id="mobile-navigation"
+            ref={drawerRef}
+            role="dialog"
+          >
             <div className="border-b border-[#E6E6E6] pb-5 dark:border-[#1A1A1A]">
               <div className="flex items-center justify-between gap-4">
                 <Link aria-label="Vrompt home" href="/" onClick={closeDrawer}>
                   <BrandLockup compact />
                 </Link>
-                <div className="flex items-center gap-2">
-                  <span className="rounded-full bg-[#E6E6E6] px-3 py-1 text-[0.62rem] font-semibold uppercase tracking-[0.2em] text-[#4D4D4D] dark:bg-[#1A1A1A] dark:text-zinc-300">
-                    Menu
+                <Button
+                  aria-label="Close navigation"
+                  className="size-11 shrink-0 rounded-2xl px-0"
+                  onClick={closeDrawer}
+                  ref={closeButtonRef}
+                  variant="ghost"
+                >
+                  <span aria-hidden="true" className="relative size-5">
+                    <span className="absolute left-0 top-1/2 h-0.5 w-5 -rotate-45 bg-current" />
+                    <span className="absolute left-0 top-1/2 h-0.5 w-5 rotate-45 bg-current" />
                   </span>
-                  <Button
-                    aria-label="Close navigation"
-                    className="size-11 rounded-2xl px-0"
-                    onClick={closeDrawer}
-                    variant="ghost"
-                  >
-                    <span aria-hidden="true" className="relative size-5">
-                      <span className="absolute left-0 top-1/2 h-0.5 w-5 -rotate-45 bg-current" />
-                      <span className="absolute left-0 top-1/2 h-0.5 w-5 rotate-45 bg-current" />
-                    </span>
-                  </Button>
-                </div>
+                </Button>
               </div>
               <p className="mt-5 max-w-[17rem] text-sm leading-6 text-[#4D4D4D] dark:text-zinc-400">
                 Discover useful prompts, thoughtful creators, and ideas worth
@@ -107,40 +126,39 @@ export function MobileNav() {
             </div>
             <nav
               aria-label="Mobile navigation"
-              className="grid min-h-0 gap-1 overflow-y-auto py-6"
+              className="grid min-h-0 flex-1 content-start gap-1 overflow-y-auto overscroll-contain py-5 pr-1"
             >
               <p className="px-3 pb-2 text-[0.62rem] font-semibold uppercase tracking-[0.24em] text-[#4D4D4D] dark:text-zinc-400">
                 Explore Vrompt
               </p>
               {[...primaryRoutes, ...secondaryRoutes.slice(0, 2)].map(
-                (route, index) => (
-                <Link
-                  className={cn(
-                    'group flex min-h-12 items-center gap-3 rounded-2xl px-3.5 py-3 text-base font-medium transition',
-                    pathname === route.href
-                      ? 'bg-[#0D0D0D] !text-white shadow-[0_10px_24px_rgba(13,13,13,0.16)] dark:bg-white dark:!text-[#0D0D0D] dark:shadow-none'
-                      : '!text-[#4D4D4D] hover:bg-[#E6E6E6] dark:!text-zinc-300 dark:hover:bg-[#1A1A1A]',
-                  )}
-                  href={route.href as Route}
-                  key={route.href}
-                  onClick={closeDrawer}
-                  ref={index === 0 ? firstLinkRef : undefined}
-                >
-                  <span
-                    aria-hidden="true"
+                (route) => (
+                  <Link
                     className={cn(
-                      'size-2 rounded-full border border-current transition',
+                      'group flex min-h-12 items-center gap-3 rounded-2xl px-3.5 py-3 text-base font-medium transition',
                       pathname === route.href
-                        ? 'bg-current'
-                        : 'group-hover:bg-current',
+                        ? 'bg-[#0D0D0D] !text-white shadow-[0_10px_24px_rgba(13,13,13,0.16)] dark:bg-white dark:!text-[#0D0D0D] dark:shadow-none'
+                        : '!text-[#4D4D4D] hover:bg-[#E6E6E6] dark:!text-zinc-300 dark:hover:bg-[#1A1A1A]',
                     )}
-                  />
-                  {route.label}
-                </Link>
+                    href={route.href as Route}
+                    key={route.href}
+                    onClick={closeDrawer}
+                  >
+                    <span
+                      aria-hidden="true"
+                      className={cn(
+                        'size-2 rounded-full border border-current transition',
+                        pathname === route.href
+                          ? 'bg-current'
+                          : 'group-hover:bg-current',
+                      )}
+                    />
+                    {route.label}
+                  </Link>
                 ),
               )}
             </nav>
-            <div className="mt-auto grid gap-3">
+            <div className="grid shrink-0 gap-3 border-t border-[#E6E6E6] pt-4 dark:border-[#1A1A1A]">
               <div className="rounded-2xl bg-[#0D0D0D] px-4 py-4 text-white shadow-[0_14px_28px_rgba(13,13,13,0.18)] dark:border dark:border-[#4D4D4D] dark:bg-[#1A1A1A] dark:shadow-none">
                 <p className="text-[0.62rem] font-semibold uppercase tracking-[0.2em] text-zinc-400">
                   Vrompt community
@@ -150,7 +168,9 @@ export function MobileNav() {
                 </p>
               </div>
               {isLoading ? (
-                <p className="px-2 text-sm text-zinc-500">Checking your account...</p>
+                <p className="px-2 text-sm text-zinc-500">
+                  Checking your account...
+                </p>
               ) : user ? (
                 <div className="flex items-center justify-between gap-3 rounded-2xl border border-[#E6E6E6] px-3 py-2 dark:border-[#4D4D4D]">
                   <Link

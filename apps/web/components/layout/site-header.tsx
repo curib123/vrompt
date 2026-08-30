@@ -97,16 +97,15 @@ export function SiteHeader() {
             )}
           </div>
         </div>
-        <div className="relative flex w-full items-center justify-between lg:hidden">
+        <div className="flex w-full items-center gap-2 lg:hidden">
           <MobileNav />
           <Link
             aria-label="Vrompt home"
-            className="absolute left-1/2 inline-flex -translate-x-1/2 rounded-lg px-1 py-1 transition hover:bg-[#E6E6E6] dark:hover:bg-[#1A1A1A]"
+            className="inline-flex min-w-0 rounded-lg px-1 py-1 transition hover:bg-[#E6E6E6] dark:hover:bg-[#1A1A1A]"
             href="/"
           >
             <BrandLockup compact />
           </Link>
-          <span aria-hidden="true" className="size-11" />
         </div>
       </div>
     </header>
