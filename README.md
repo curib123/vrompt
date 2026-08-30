@@ -156,6 +156,10 @@ and storage metrics, plus a public health check and VPS monitoring script in
 `infrastructure/monitoring`. Metrics intentionally exclude secrets and
 identifiers; counters reset when the API restarts.
 
+Phase 42 adds a privacy-conscious analytics ledger at `/api/v1/analytics` with
+allowlisted events, sanitized metadata, authenticated/anonymous capture, and a
+moderator/admin summary that excludes starter and official seeded accounts.
+
 ## Docker development
 
 Start the development stack with source bind mounts and watch mode:

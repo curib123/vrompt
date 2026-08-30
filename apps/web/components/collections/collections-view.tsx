@@ -13,6 +13,7 @@ import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
 import { apiRequest } from '@/lib/api';
+import { trackAnalyticsEvent } from '@/lib/analytics';
 import type { CollectionDetail } from '@/lib/api';
 
 export function CollectionsView() {
@@ -60,6 +61,7 @@ export function CollectionsView() {
       );
       setName('');
       setDescription('');
+      trackAnalyticsEvent('collection_created', undefined, accessToken);
     } catch (submitError: unknown) {
       setError(
         submitError instanceof Error

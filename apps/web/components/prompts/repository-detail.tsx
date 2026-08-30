@@ -15,6 +15,7 @@ import { Tabs } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { apiRequest, getMediaUrl } from '@/lib/api';
+import { trackAnalyticsEvent } from '@/lib/analytics';
 import { ReportRepositoryButton } from '@/components/reports/report-repository-button';
 import type {
   PromptEvidenceImage,
@@ -62,6 +63,15 @@ export function RepositoryDetail({ slug }: { slug: string }) {
       .then((result) => {
         if (active) {
           setRepository(result);
+          trackAnalyticsEvent(
+            'repository_viewed',
+            {
+              hasEvidence: Boolean(
+                result.currentVersion?.evidenceImages?.length,
+              ),
+            },
+            accessToken,
+          );
         }
       })
       .catch(() => {
@@ -124,6 +134,7 @@ export function RepositoryDetail({ slug }: { slug: string }) {
         current ? { ...current, copyCount: result.copyCount } : current,
       );
       setCopyState('copied');
+      trackAnalyticsEvent('prompt_copied', undefined, accessToken);
       window.setTimeout(() => setCopyState('idle'), 2200);
     } catch {
       setCopyState('failed');
@@ -155,6 +166,9 @@ export function RepositoryDetail({ slug }: { slug: string }) {
           : current,
       );
       setSaveState('idle');
+      if (result.saved) {
+        trackAnalyticsEvent('prompt_saved', undefined, accessToken);
+      }
     } catch {
       setSaveState('failed');
     }
@@ -185,6 +199,9 @@ export function RepositoryDetail({ slug }: { slug: string }) {
           : current,
       );
       setLikeState('idle');
+      if (result.liked) {
+        trackAnalyticsEvent('repository_liked', undefined, accessToken);
+      }
     } catch {
       setLikeState('failed');
     }

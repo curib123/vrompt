@@ -12,6 +12,7 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { apiRequest } from '@/lib/api';
+import { trackAnalyticsEvent } from '@/lib/analytics';
 import type { SearchResponse, SearchResult } from '@/lib/api';
 
 type Sort = 'relevance' | 'newest' | 'updated' | 'copies' | 'saves' | 'likes';
@@ -51,6 +52,9 @@ export function SearchView({
         if (active) {
           setResult(response);
           setError(null);
+          trackAnalyticsEvent('search_performed', {
+            resultCount: response.total,
+          });
         }
       })
       .catch(() => {

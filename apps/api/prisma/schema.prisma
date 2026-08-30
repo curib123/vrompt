@@ -159,6 +159,7 @@ model User {
   reports               Report[]
   moderationActions     ModerationAction[]
   auditLogs             AuditLog[]
+  analyticsEvents       AnalyticsEvent[]
   copyEvents            PromptCopyEvent[]
   activityEvents        ActivityEvent[]
 
@@ -353,6 +354,20 @@ model ActivityEvent {
   @@index([actorId, createdAt])
   @@index([promptRepositoryId, createdAt])
   @@index([collectionId, createdAt])
+}
+
+model AnalyticsEvent {
+  id          String       @id @default(uuid()) @db.Uuid
+  name        String       @db.VarChar(64)
+  actorId     String?      @db.Uuid
+  accountType AccountType?
+  metadata    Json?
+  createdAt   DateTime     @default(now())
+
+  actor User? @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([name, createdAt])
+  @@index([accountType, createdAt])
 }
 
 model Category {
