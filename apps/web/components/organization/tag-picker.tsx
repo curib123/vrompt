@@ -71,7 +71,7 @@ export function TagPicker({
     }
 
     if (!accessToken) {
-      setError('Sign in to create a new tag.');
+      setError('Sign in to add a new topic.');
       return;
     }
 
@@ -86,7 +86,7 @@ export function TagPicker({
       setError(
         tagError instanceof Error
           ? tagError.message
-          : 'Tag could not be added.',
+          : 'Topic could not be added.',
       );
     }
   }
@@ -96,7 +96,7 @@ export function TagPicker({
       <div className="flex flex-wrap gap-2">
         {value.map((tag) => (
           <button
-            aria-label={`Remove ${tag.name} tag`}
+            aria-label={`Remove ${tag.name} topic`}
             className="inline-flex items-center gap-2 rounded-lg border border-black bg-black px-3 py-1 text-xs font-semibold uppercase tracking-[0.12em] text-white dark:border-white dark:bg-white dark:text-black"
             key={tag.id}
             onClick={() =>
@@ -111,7 +111,7 @@ export function TagPicker({
       </div>
       <div className="flex gap-2">
         <Input
-          aria-label="Prompt tags"
+          aria-label="Prompt topics"
           maxLength={50}
           onChange={(event) => setQuery(event.target.value)}
           onKeyDown={(event) => {
@@ -120,11 +120,11 @@ export function TagPicker({
               void addTypedTag();
             }
           }}
-          placeholder="Search or add a tag"
+          placeholder="Search topics or add your own"
           value={query}
         />
-        <Button onClick={() => void addTypedTag()} variant="secondary">
-          Add
+          <Button onClick={() => void addTypedTag()} variant="secondary">
+            Add topic
         </Button>
       </div>
       {query && suggestions.length > 0 ? (
@@ -142,8 +142,8 @@ export function TagPicker({
         </div>
       ) : null}
       <p className="text-xs leading-5 text-zinc-500">
-        Tags are lowercase, whitespace-normalized, and deduplicated
-        automatically. Choose up to 8.
+        Add up to 8 topics to help people find this prompt. We will keep them
+        tidy automatically.
       </p>
       {error ? <p className="text-sm text-red-600">{error}</p> : null}
     </div>

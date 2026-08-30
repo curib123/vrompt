@@ -33,8 +33,8 @@ export function PromptOrganizationPanel() {
           <CategorySelect onChange={setCategory} value={category} />
         </FormField>
         <FormField
-          description="Add descriptive keywords for autocomplete and discovery."
-          label="Tags"
+          description="Choose a few topics that make this prompt easy to discover."
+          label="Topics"
         >
           <TagPicker onChange={setTags} value={tags} />
         </FormField>

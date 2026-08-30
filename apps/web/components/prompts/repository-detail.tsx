@@ -306,9 +306,6 @@ export function RepositoryDetail({ slug }: { slug: string }) {
             >
               Create variation
             </Link>
-            <Button disabled type="button" variant="secondary">
-              Share
-            </Button>
             <ReportRepositoryButton repositoryId={repository.id} />
           </div>
           <p className="relative mt-3 text-xs text-zinc-400">

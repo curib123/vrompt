@@ -19,7 +19,7 @@ export default function Error({
   return (
     <Card className="space-y-5">
       <p className="text-xs font-medium uppercase tracking-[0.3em] text-zinc-500">
-        Error state
+        We can fix this
       </p>
       <div className="space-y-3">
         <h1 className="text-3xl font-semibold">Something went wrong.</h1>

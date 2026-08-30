@@ -370,7 +370,10 @@ export function CreatePromptForm({ variantFrom }: { variantFrom?: string }) {
                 />
               </FormField>
             </FieldGroup>
-            <FormField label="Tags">
+            <FormField
+              description="Choose topics that describe what this prompt helps with."
+              label="Topics"
+            >
               <TagPicker onChange={setTags} value={tags} />
             </FormField>
           </Card>

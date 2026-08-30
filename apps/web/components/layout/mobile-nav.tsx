@@ -47,13 +47,13 @@ export function MobileNav() {
       <Button
         aria-expanded={open}
         aria-controls="mobile-navigation"
-        aria-label="Toggle navigation"
+        aria-label={open ? 'Close navigation' : 'Open navigation'}
         className="size-11 px-0"
         onClick={() => setOpen((current) => !current)}
         ref={triggerRef}
         variant="secondary"
       >
-        <span className="sr-only">Menu</span>
+        <span className="sr-only">{open ? 'Close menu' : 'Open menu'}</span>
         <span aria-hidden="true" className="grid w-5 gap-1">
           <span className="h-0.5 w-full bg-current" />
           <span className="h-0.5 w-full bg-current" />
