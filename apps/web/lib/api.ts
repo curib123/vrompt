@@ -202,6 +202,25 @@ export interface SavedRepositoriesResponse {
   hasNextPage: boolean;
 }
 
+export interface CommentItem {
+  id: string;
+  userId: string;
+  content: string;
+  parentId: string | null;
+  createdAt: string;
+  updatedAt: string;
+  user: { username: string };
+  replies: CommentItem[];
+}
+
+export interface CommentsResponse {
+  items: CommentItem[];
+  page: number;
+  pageSize: number;
+  total: number;
+  hasNextPage: boolean;
+}
+
 export class ApiError extends Error {
   status: number;
 

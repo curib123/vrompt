@@ -23,6 +23,8 @@ import type {
   PromptRepositoryDetail,
   PromptLineageNode,
   PromptLineageResponse,
+  CommentItem,
+  CommentsResponse,
 } from '@/lib/api';
 
 export function RepositoryDetail({ slug }: { slug: string }) {
@@ -370,9 +372,10 @@ export function RepositoryDetail({ slug }: { slug: string }) {
           },
           {
             content: (
-              <EmptyState
-                description="Activity history will appear as this repository evolves."
-                title="No activity yet"
+              <CommentsSection
+                accessToken={accessToken}
+                repositorySlug={slug}
+                userId={user?.id}
               />
             ),
             id: 'activity',
@@ -423,6 +426,343 @@ function OverviewTab({ repository }: { repository: PromptRepositoryDetail }) {
       <InfoCard label="Updated" value={formatDate(repository.updatedAt)} />
     </div>
   );
+}
+
+function CommentsSection({
+  accessToken,
+  repositorySlug,
+  userId,
+}: {
+  accessToken: string | null;
+  repositorySlug: string;
+  userId?: string;
+}) {
+  const [comments, setComments] = useState<CommentItem[]>([]);
+  const [content, setContent] = useState('');
+  const [replyTo, setReplyTo] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingContent, setEditingContent] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    void apiRequest<CommentsResponse>(
+      `/prompt-repositories/${encodeURIComponent(repositorySlug)}/comments`,
+    )
+      .then((response) => {
+        if (active) {
+          setComments(response.items);
+          setError(null);
+        }
+      })
+      .catch(() => {
+        if (active) {
+          setError('Comments could not be loaded right now.');
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [repositorySlug]);
+
+  async function submit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!accessToken || !content.trim() || saving) {
+      return;
+    }
+
+    setSaving(true);
+    setError(null);
+    try {
+      const comment = await apiRequest<CommentItem>(
+        `/prompt-repositories/${encodeURIComponent(repositorySlug)}/comments`,
+        {
+          accessToken,
+          body: JSON.stringify({
+            content,
+            ...(replyTo ? { parentId: replyTo } : {}),
+          }),
+          method: 'POST',
+        },
+      );
+      setComments((current) =>
+        replyTo
+          ? current.map((item) =>
+              item.id === replyTo
+                ? { ...item, replies: [...item.replies, comment] }
+                : item,
+            )
+          : [comment, ...current],
+      );
+      setContent('');
+      setReplyTo(null);
+    } catch (submitError: unknown) {
+      setError(
+        submitError instanceof Error
+          ? submitError.message
+          : 'Comment could not be posted.',
+      );
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function update(commentId: string) {
+    if (!accessToken || !editingContent.trim() || saving) {
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const updated = await apiRequest<CommentItem>(`/comments/${commentId}`, {
+        accessToken,
+        body: JSON.stringify({ content: editingContent }),
+        method: 'PATCH',
+      });
+      setComments((current) => replaceComment(current, updated));
+      setEditingId(null);
+      setEditingContent('');
+    } catch {
+      setError('Comment could not be updated.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function remove(commentId: string) {
+    if (!accessToken || saving) {
+      return;
+    }
+
+    setSaving(true);
+    try {
+      await apiRequest(`/comments/${commentId}`, {
+        accessToken,
+        method: 'DELETE',
+      });
+      setComments((current) => removeComment(current, commentId));
+    } catch {
+      setError('Comment could not be deleted.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Card>
+      <div className="space-y-2">
+        <Badge>Community activity</Badge>
+        <h2 className="text-2xl font-semibold">Discuss this prompt.</h2>
+        <p className="text-sm leading-6 text-zinc-600 dark:text-zinc-400">
+          Share implementation notes, ask questions, and help the repository
+          evolve.
+        </p>
+      </div>
+      {userId ? (
+        <form
+          className="mt-5 grid gap-3"
+          onSubmit={(event) => void submit(event)}
+        >
+          <Textarea
+            aria-label="Comment"
+            maxLength={2000}
+            onChange={(event) => setContent(event.target.value)}
+            placeholder={replyTo ? 'Write a reply...' : 'Add a comment...'}
+            required
+            value={content}
+          />
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="text-xs text-zinc-500">
+              {replyTo
+                ? 'Replying to a comment.'
+                : 'Keep it useful and constructive.'}
+            </p>
+            <div className="flex gap-2">
+              {replyTo ? (
+                <Button onClick={() => setReplyTo(null)} variant="ghost">
+                  Cancel reply
+                </Button>
+              ) : null}
+              <Button disabled={saving} type="submit">
+                {saving
+                  ? 'Posting...'
+                  : replyTo
+                    ? 'Post reply'
+                    : 'Post comment'}
+              </Button>
+            </div>
+          </div>
+        </form>
+      ) : (
+        <p className="mt-5 text-sm text-zinc-500">
+          <Link
+            className="font-semibold underline"
+            href={`/login?next=/p/${encodeURIComponent(repositorySlug)}`}
+          >
+            Sign in
+          </Link>{' '}
+          to join the discussion.
+        </p>
+      )}
+      {error ? <p className="mt-4 text-sm text-red-600">{error}</p> : null}
+      <div className="mt-7 grid gap-4">
+        {comments.length === 0 ? (
+          <p className="rounded-2xl border border-dashed border-zinc-300 p-5 text-sm text-zinc-500 dark:border-zinc-700">
+            No comments yet. Start the conversation.
+          </p>
+        ) : (
+          comments.map((comment) => (
+            <CommentCard
+              comment={comment}
+              editingContent={editingContent}
+              editingId={editingId}
+              key={comment.id}
+              onCancelEdit={() => setEditingId(null)}
+              onChangeEdit={setEditingContent}
+              onDelete={(id) => void remove(id)}
+              onEdit={(item) => {
+                setEditingId(item.id);
+                setEditingContent(item.content);
+              }}
+              onReply={setReplyTo}
+              onSaveEdit={(id) => void update(id)}
+              saving={saving}
+              userId={userId}
+            />
+          ))
+        )}
+      </div>
+    </Card>
+  );
+}
+
+function CommentCard({
+  comment,
+  editingContent,
+  editingId,
+  onCancelEdit,
+  onChangeEdit,
+  onDelete,
+  onEdit,
+  onReply,
+  onSaveEdit,
+  saving,
+  userId,
+}: {
+  comment: CommentItem;
+  editingContent: string;
+  editingId: string | null;
+  onCancelEdit: () => void;
+  onChangeEdit: (value: string) => void;
+  onDelete: (id: string) => void;
+  onEdit: (comment: CommentItem) => void;
+  onReply: (id: string) => void;
+  onSaveEdit: (id: string) => void;
+  saving: boolean;
+  userId?: string;
+}) {
+  return (
+    <div className="rounded-2xl border border-zinc-200 p-4 dark:border-zinc-800">
+      <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-zinc-500">
+        <span className="font-mono">@{comment.user.username}</span>
+        <span>{formatDateTime(comment.createdAt)}</span>
+      </div>
+      {editingId === comment.id ? (
+        <div className="mt-3 grid gap-3">
+          <Textarea
+            aria-label="Edit comment"
+            maxLength={2000}
+            onChange={(event) => onChangeEdit(event.target.value)}
+            value={editingContent}
+          />
+          <div className="flex gap-2">
+            <Button disabled={saving} onClick={() => onSaveEdit(comment.id)}>
+              Save edit
+            </Button>
+            <Button onClick={onCancelEdit} variant="ghost">
+              Cancel
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <p className="mt-3 whitespace-pre-wrap text-sm leading-7 text-zinc-700 dark:text-zinc-300">
+          {comment.content}
+        </p>
+      )}
+      <div className="mt-3 flex flex-wrap gap-3 text-xs font-medium">
+        {userId ? (
+          <button
+            className="underline underline-offset-4"
+            onClick={() => onReply(comment.id)}
+            type="button"
+          >
+            Reply
+          </button>
+        ) : null}
+        {userId === comment.userId ? (
+          <>
+            <button
+              className="underline underline-offset-4"
+              onClick={() => onEdit(comment)}
+              type="button"
+            >
+              Edit
+            </button>
+            <button
+              className="text-red-600 underline underline-offset-4"
+              onClick={() => onDelete(comment.id)}
+              type="button"
+            >
+              Delete
+            </button>
+          </>
+        ) : null}
+      </div>
+      {comment.replies.length > 0 ? (
+        <div className="mt-4 grid gap-3 border-l-2 border-zinc-200 pl-4 dark:border-zinc-800">
+          {comment.replies.map((reply) => (
+            <div key={reply.id}>
+              <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-zinc-500">
+                <span className="font-mono">@{reply.user.username}</span>
+                <span>{formatDateTime(reply.createdAt)}</span>
+              </div>
+              <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-zinc-700 dark:text-zinc-300">
+                {reply.content}
+              </p>
+            </div>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function replaceComment(
+  comments: CommentItem[],
+  updated: CommentItem,
+): CommentItem[] {
+  return comments.map((comment) =>
+    comment.id === updated.id
+      ? updated
+      : { ...comment, replies: replaceComment(comment.replies, updated) },
+  );
+}
+
+function removeComment(comments: CommentItem[], commentId: string) {
+  return comments
+    .filter((comment) => comment.id !== commentId)
+    .map((comment) => ({
+      ...comment,
+      replies: comment.replies.filter((reply) => reply.id !== commentId),
+    }));
+}
+
+function formatDateTime(value: string) {
+  return new Intl.DateTimeFormat('en', {
+    dateStyle: 'medium',
+  }).format(new Date(value));
 }
 
 function PromptTab({ content }: { content: string }) {
