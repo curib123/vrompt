@@ -172,6 +172,11 @@ Phase 45 adds the MVP validation runbook and a data-pending validation report
 template in `infrastructure/validation`, including cohort, conversion,
 retention, evidence comprehension, quality, and launch decision gates.
 
+Phase 46 adds the final launch audit command and release sign-off checklist in
+`infrastructure/release`. The audit distinguishes automated repository checks
+from external production prerequisites and does not claim launch readiness by
+itself.
+
 ## Docker development
 
 Start the development stack with source bind mounts and watch mode:
