@@ -13,6 +13,10 @@ async function bootstrap() {
   const logger = new Logger('Bootstrap');
 
   app.enableShutdownHooks();
+  app.enableCors({
+    origin: configService.get<string>('WEB_ORIGIN', 'http://localhost:3000'),
+    credentials: true,
+  });
   app.setGlobalPrefix(configService.get<string>('API_PREFIX', 'api/v1'));
   app.useGlobalPipes(
     new ValidationPipe({

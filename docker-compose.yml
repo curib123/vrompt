@@ -41,6 +41,12 @@ services:
       SWAGGER_ENABLED: 'true'
       DATABASE_URL: postgresql://postgres:postgres@vrompt-postgres:5432/vrompt
       REDIS_URL: redis://vrompt-redis:6379
+      WEB_ORIGIN: http://localhost:3000
+      JWT_ACCESS_SECRET: local-docker-access-secret-change-me
+      JWT_ACCESS_TTL_SECONDS: '900'
+      JWT_REFRESH_TTL_SECONDS: '604800'
+      AUTH_COOKIE_SECURE: 'false'
+      AUTH_COOKIE_SAME_SITE: lax
       MEDIA_STORAGE_PROVIDER: LOCAL
       MEDIA_STORAGE_LOCAL_DIR: /workspace/storage
       MEDIA_STORAGE_LOCAL_PUBLIC_URL: /media

@@ -13,6 +13,19 @@ export const envValidationSchema = Joi.object({
   REDIS_URL: Joi.string()
     .uri({ scheme: ['redis'] })
     .default('redis://localhost:6379'),
+  WEB_ORIGIN: Joi.string().uri().default('http://localhost:3000'),
+  JWT_ACCESS_SECRET: Joi.string()
+    .min(32)
+    .default('local-development-access-secret-change-me'),
+  JWT_ACCESS_TTL_SECONDS: Joi.number().integer().min(60).default(900),
+  JWT_REFRESH_TTL_SECONDS: Joi.number()
+    .integer()
+    .min(300)
+    .default(60 * 60 * 24 * 7),
+  AUTH_COOKIE_SECURE: Joi.boolean().default(false),
+  AUTH_COOKIE_SAME_SITE: Joi.string()
+    .valid('lax', 'strict', 'none')
+    .default('lax'),
   MEDIA_STORAGE_PROVIDER: Joi.string()
     .valid('LOCAL', 'CLOUDINARY')
     .default('LOCAL'),

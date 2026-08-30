@@ -52,6 +52,25 @@ export class RedisService implements OnApplicationShutdown {
     return client.ping();
   }
 
+  async increment(key: string, ttlSeconds: number) {
+    const client = await this.getClient();
+    const count = await client.incr(key);
+
+    if (count === 1) {
+      await client.expire(key, ttlSeconds);
+    }
+
+    return count;
+  }
+
+  async delete(key: string) {
+    if (!this.client?.isOpen) {
+      return;
+    }
+
+    await this.client.del(key);
+  }
+
   async onApplicationShutdown() {
     if (this.client?.isOpen) {
       await this.client.quit();

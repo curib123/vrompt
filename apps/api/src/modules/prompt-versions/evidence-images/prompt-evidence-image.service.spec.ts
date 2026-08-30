@@ -1,6 +1,7 @@
 import { Test } from '@nestjs/testing';
 
 import { MediaStorageService } from '../../common/media-storage/media-storage.service';
+import { RedisService } from '../../common/redis.service';
 import { PrismaService } from '../../prisma/prisma.service';
 
 import {
@@ -17,6 +18,11 @@ describe('PromptEvidenceImageService', () => {
         {
           provide: PrismaService,
           useValue: {
+            promptVersion: {
+              findUnique: jest.fn().mockResolvedValue({
+                repository: { ownerId: 'owner-id' },
+              }),
+            },
             promptEvidenceImage: {
               count: jest.fn().mockResolvedValue(MAX_PROMPT_EVIDENCE_IMAGES),
             },
@@ -26,6 +32,10 @@ describe('PromptEvidenceImageService', () => {
           provide: MediaStorageService,
           useValue: { upload },
         },
+        {
+          provide: RedisService,
+          useValue: { increment: jest.fn().mockResolvedValue(1) },
+        },
       ],
     }).compile();
 
@@ -33,6 +43,7 @@ describe('PromptEvidenceImageService', () => {
 
     await expect(
       service.addImage('version-id', {
+        actorId: 'owner-id',
         buffer: Buffer.from('image'),
         contentType: 'image/png',
         filename: 'preview.png',

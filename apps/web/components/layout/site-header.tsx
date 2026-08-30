@@ -4,13 +4,15 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
 import { MobileNav } from '@/components/layout/mobile-nav';
+import { useAuth } from '@/components/providers/auth-provider';
 import { Avatar } from '@/components/ui/avatar';
-import { getButtonClasses } from '@/components/ui/button';
+import { Button, getButtonClasses } from '@/components/ui/button';
 import { cn } from '@/lib/cn';
 import { primaryRoutes, secondaryRoutes } from '@/lib/routes';
 
 export function SiteHeader() {
   const pathname = usePathname();
+  const { isLoading, logout, user } = useAuth();
 
   return (
     <header className="sticky top-0 z-30 border-b border-zinc-200/80 bg-white/80 backdrop-blur dark:border-zinc-900 dark:bg-black/80">
@@ -23,7 +25,10 @@ export function SiteHeader() {
             <span className="inline-flex size-2 rounded-full bg-black dark:bg-white" />
             VROMPT
           </Link>
-          <nav aria-label="Primary navigation" className="hidden lg:flex lg:items-center lg:gap-2">
+          <nav
+            aria-label="Primary navigation"
+            className="hidden lg:flex lg:items-center lg:gap-2"
+          >
             {primaryRoutes.map((route) => (
               <Link
                 className={cn(
@@ -56,13 +61,29 @@ export function SiteHeader() {
             </Link>
           ))}
           <div className="mx-1 h-6 w-px bg-zinc-200 dark:bg-zinc-800" />
-          <Link className={getButtonClasses('ghost')} href="/login">
-            Login
-          </Link>
-          <Link className={getButtonClasses('primary')} href="/register">
-            Join Vrompt
-          </Link>
-          <Avatar name="Prompt Owner" />
+          {isLoading ? (
+            <span className="px-4 py-2 text-sm text-zinc-500">Loading...</span>
+          ) : user ? (
+            <>
+              <span className="px-2 text-sm text-zinc-600 dark:text-zinc-400">
+                @{user.username}
+              </span>
+              <Button onClick={() => void logout()} variant="ghost">
+                Log out
+              </Button>
+              <Avatar name={user.username} />
+            </>
+          ) : (
+            <>
+              <Link className={getButtonClasses('ghost')} href="/login">
+                Login
+              </Link>
+              <Link className={getButtonClasses('primary')} href="/register">
+                Join Vrompt
+              </Link>
+              <Avatar name="Prompt Owner" />
+            </>
+          )}
         </div>
         <MobileNav />
       </div>
