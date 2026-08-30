@@ -20,12 +20,14 @@ import type { CopyPromptDto } from './dto/copy-prompt.dto';
 import type { CreatePromptVersionDto } from './dto/create-prompt-version.dto';
 import type { CreateVariantDto } from './dto/create-variant.dto';
 import { TagsService } from '../tags/tags.service';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class PromptsService {
   constructor(
     private readonly prismaService: PrismaService,
     private readonly tagsService: TagsService,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   async create(ownerId: string, input: CreatePromptRepositoryDto) {
@@ -424,6 +426,13 @@ export class PromptsService {
         where: { id: source.id },
         data: { variantCount: { increment: 1 } },
       });
+    });
+
+    await this.notificationsService.create({
+      recipientId: source.ownerId,
+      actorId,
+      type: 'VARIANT_CREATED',
+      promptRepositoryId: source.id,
     });
 
     return { ...created, sourcePromptId: source.id, rootPromptId };

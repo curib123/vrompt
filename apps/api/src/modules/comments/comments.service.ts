@@ -12,6 +12,7 @@ import {
 import { TooManyRequestsException } from '../../common/exceptions/too-many-requests.exception';
 import { RedisService } from '../common/redis.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import type { CreateCommentDto } from './dto/create-comment.dto';
 import type { UpdateCommentDto } from './dto/update-comment.dto';
 
@@ -20,6 +21,7 @@ export class CommentsService {
   constructor(
     private readonly prismaService: PrismaService,
     private readonly redisService: RedisService,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   async list(
@@ -89,6 +91,14 @@ export class CommentsService {
         userId,
       },
       select: this.commentSelect,
+    });
+
+    await this.notificationsService.create({
+      recipientId: repository.ownerId,
+      actorId: userId,
+      type: input.parentId ? 'COMMENT_REPLIED' : 'PROMPT_COMMENTED',
+      promptRepositoryId: repository.id,
+      commentId: comment.id,
     });
 
     return comment;

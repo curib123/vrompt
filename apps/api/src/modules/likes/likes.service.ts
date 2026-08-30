@@ -7,10 +7,14 @@ import {
 
 import { slugify } from '../common/slug';
 import { PrismaService } from '../prisma/prisma.service';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class LikesService {
-  constructor(private readonly prismaService: PrismaService) {}
+  constructor(
+    private readonly prismaService: PrismaService,
+    private readonly notificationsService: NotificationsService,
+  ) {}
 
   async like(userId: string, slug: string) {
     const repository = await this.findReadableRepository(userId, slug);
@@ -36,6 +40,12 @@ export class LikesService {
       throw error;
     }
 
+    await this.notificationsService.create({
+      recipientId: repository.ownerId,
+      actorId: userId,
+      type: 'PROMPT_LIKED',
+      promptRepositoryId: repository.id,
+    });
     return { liked: true, likeCount: repository.likeCount + 1 };
   }
 

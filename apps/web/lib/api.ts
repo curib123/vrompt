@@ -174,6 +174,28 @@ export interface ActivityFeedResponse {
   hasNextPage: boolean;
 }
 
+export interface NotificationsResponse {
+  items: Array<{
+    id: string;
+    type:
+      | 'NEW_FOLLOWER'
+      | 'PROMPT_LIKED'
+      | 'PROMPT_COMMENTED'
+      | 'COMMENT_REPLIED'
+      | 'VARIANT_CREATED';
+    readAt: string | null;
+    createdAt: string;
+    actor: { username: string } | null;
+    promptRepository: { title: string; slug: string } | null;
+    comment: { id: string; content: string; promptRepositoryId: string } | null;
+  }>;
+  page: number;
+  pageSize: number;
+  total: number;
+  unreadCount: number;
+  hasNextPage: boolean;
+}
+
 interface ProfileSummary {
   id: string;
   username: string;

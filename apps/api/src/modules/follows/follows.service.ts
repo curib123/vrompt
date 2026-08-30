@@ -6,10 +6,14 @@ import {
 import { Prisma, UserStatus } from '@prisma/client';
 
 import { PrismaService } from '../prisma/prisma.service';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class FollowsService {
-  constructor(private readonly prismaService: PrismaService) {}
+  constructor(
+    private readonly prismaService: PrismaService,
+    private readonly notificationsService: NotificationsService,
+  ) {}
 
   async follow(actorId: string, username: string) {
     const target = await this.findActiveUser(username);
@@ -29,6 +33,11 @@ export class FollowsService {
       throw error;
     }
 
+    await this.notificationsService.create({
+      recipientId: target.id,
+      actorId,
+      type: 'NEW_FOLLOWER',
+    });
     return this.followState(target.id, true);
   }
 
