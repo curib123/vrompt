@@ -110,6 +110,45 @@ describe('AuthService', () => {
     expect(transaction.refreshToken.create).toHaveBeenCalled();
     expect(session.accessToken).toBe('access-token');
   });
+
+  it('does not overwrite user-managed profile details on later Google sign-ins', async () => {
+    const transaction = {
+      user: {
+        findUnique: jest.fn().mockResolvedValueOnce(user),
+        update: jest.fn().mockResolvedValue(user),
+      },
+      profile: { upsert: jest.fn().mockResolvedValue(undefined) },
+      refreshToken: { create: jest.fn().mockResolvedValue(undefined) },
+    };
+    const prismaService = {
+      $transaction: jest.fn((callback: (tx: typeof transaction) => unknown) =>
+        callback(transaction),
+      ),
+      refreshToken: { create: jest.fn().mockResolvedValue(undefined) },
+    };
+    const service = await createService(
+      prismaService,
+      configService,
+      jwtService,
+    );
+
+    await service.authenticateGoogle({
+      avatar: 'https://example.com/new-google-avatar.png',
+      displayName: 'New Google Name',
+      email: user.email,
+      subject: user.googleId,
+    });
+
+    expect(transaction.profile.upsert).toHaveBeenCalledWith({
+      where: { userId: user.id },
+      create: {
+        userId: user.id,
+        avatar: 'https://example.com/new-google-avatar.png',
+        displayName: 'New Google Name',
+      },
+      update: {},
+    });
+  });
 });
 
 async function createService(

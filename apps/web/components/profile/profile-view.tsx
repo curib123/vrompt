@@ -1,0 +1,235 @@
+'use client';
+
+import Link from 'next/link';
+import { useEffect, useState } from 'react';
+
+import { Avatar } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
+import { Card } from '@/components/ui/card';
+import { EmptyState } from '@/components/ui/empty-state';
+import { Skeleton } from '@/components/ui/skeleton';
+import { apiRequest, getMediaUrl } from '@/lib/api';
+import type { ApiError, ProfileResponse } from '@/lib/api';
+
+export function ProfileView({ username }: { username: string }) {
+  const [profile, setProfile] = useState<ProfileResponse | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+
+    void apiRequest<ProfileResponse>(
+      `/profiles/${encodeURIComponent(username)}`,
+    )
+      .then((result) => {
+        if (active) {
+          setProfile(result);
+        }
+      })
+      .catch((requestError: unknown) => {
+        if (active) {
+          setError(
+            (requestError as ApiError).status === 404
+              ? 'This profile does not exist or is no longer available.'
+              : 'We could not load this profile right now.',
+          );
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [username]);
+
+  if (error) {
+    return (
+      <EmptyState
+        actionHref="/explore"
+        actionLabel="Explore prompts"
+        description={error}
+        title="Profile unavailable"
+      />
+    );
+  }
+
+  if (!profile) {
+    return <ProfileSkeleton />;
+  }
+
+  const displayName = profile.displayName || profile.username;
+
+  return (
+    <div className="grid gap-8">
+      <Card className="relative overflow-hidden border-[#0D0D0D] bg-[#0D0D0D] text-white dark:border-white">
+        <div className="pointer-events-none absolute -right-20 -top-32 size-80 rounded-full border-[38px] border-white/10" />
+        <div className="relative flex flex-col gap-7 sm:flex-row sm:items-start sm:justify-between">
+          <div className="flex items-start gap-5">
+            <Avatar
+              avatar={getMediaUrl(profile.avatar)}
+              className="size-20 border-white/30 bg-white/10 text-white sm:size-24"
+              name={displayName}
+            />
+            <div className="space-y-3">
+              <Badge className="border-white/30 text-zinc-300">
+                Creator profile
+              </Badge>
+              <div>
+                <h1 className="text-4xl font-semibold tracking-[-0.06em] sm:text-5xl">
+                  {displayName}
+                </h1>
+                <p className="mt-2 font-mono text-sm text-zinc-400">
+                  @{profile.username}
+                </p>
+              </div>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2 text-sm text-zinc-300">
+            <span>Joined {formatDate(profile.createdAt)}</span>
+            {profile.website ? (
+              <a
+                className="underline underline-offset-4 hover:text-white"
+                href={profile.website}
+                rel="noreferrer"
+                target="_blank"
+              >
+                Website
+              </a>
+            ) : null}
+          </div>
+        </div>
+        {profile.bio ? (
+          <p className="relative mt-8 max-w-2xl text-base leading-8 text-zinc-300">
+            {profile.bio}
+          </p>
+        ) : (
+          <p className="relative mt-8 text-sm text-zinc-500">
+            No bio added yet.
+          </p>
+        )}
+      </Card>
+
+      <div className="grid grid-cols-3 gap-3 sm:gap-5">
+        <StatCard label="Repositories" value={profile.stats.repositories} />
+        <StatCard label="Followers" value={profile.stats.followers} />
+        <StatCard label="Following" value={profile.stats.following} />
+      </div>
+
+      <ContentSection
+        description="Public prompt repositories shared by this creator."
+        title="Public repositories"
+      >
+        {profile.repositories.length > 0 ? (
+          <div className="grid gap-4 md:grid-cols-2">
+            {profile.repositories.map((repository) => (
+              <Link href={`/p/${repository.slug}`} key={repository.id}>
+                <Card className="h-full transition hover:-translate-y-0.5 hover:border-black dark:hover:border-white">
+                  <p className="font-mono text-xs uppercase tracking-[0.18em] text-zinc-500">
+                    Updated {formatDate(repository.updatedAt)}
+                  </p>
+                  <h3 className="mt-4 text-xl font-semibold tracking-tight">
+                    {repository.title}
+                  </h3>
+                  <p className="mt-2 line-clamp-2 text-sm leading-6 text-zinc-600 dark:text-zinc-400">
+                    {repository.description || 'A public prompt repository.'}
+                  </p>
+                </Card>
+              </Link>
+            ))}
+          </div>
+        ) : (
+          <EmptyState
+            description="Public repositories will appear here when this creator shares one."
+            title="No public repositories yet"
+          />
+        )}
+      </ContentSection>
+
+      <ContentSection
+        description="Curated public collections from this creator."
+        title="Public collections"
+      >
+        {profile.collections.length > 0 ? (
+          <div className="grid gap-4 md:grid-cols-2">
+            {profile.collections.map((collection) => (
+              <Card key={collection.id}>
+                <div className="flex items-start justify-between gap-4">
+                  <h3 className="text-xl font-semibold tracking-tight">
+                    {collection.name}
+                  </h3>
+                  <Badge>{collection._count.items} prompts</Badge>
+                </div>
+                <p className="mt-3 text-sm leading-6 text-zinc-600 dark:text-zinc-400">
+                  {collection.description || 'A public prompt collection.'}
+                </p>
+              </Card>
+            ))}
+          </div>
+        ) : (
+          <EmptyState
+            description="Public collections will appear here when this creator publishes one."
+            title="No public collections yet"
+          />
+        )}
+      </ContentSection>
+    </div>
+  );
+}
+
+function ContentSection({
+  children,
+  description,
+  title,
+}: {
+  children: React.ReactNode;
+  description: string;
+  title: string;
+}) {
+  return (
+    <section className="grid gap-5">
+      <div className="space-y-2">
+        <p className="font-mono text-xs uppercase tracking-[0.24em] text-zinc-500">
+          Profile shelf
+        </p>
+        <h2 className="text-3xl font-semibold tracking-[-0.05em]">{title}</h2>
+        <p className="text-sm leading-6 text-zinc-600 dark:text-zinc-400">
+          {description}
+        </p>
+      </div>
+      {children}
+    </section>
+  );
+}
+
+function StatCard({ label, value }: { label: string; value: number }) {
+  return (
+    <Card className="space-y-2 p-4 sm:p-6">
+      <p className="text-3xl font-semibold tracking-[-0.06em] sm:text-4xl">
+        {value}
+      </p>
+      <p className="text-xs font-medium uppercase tracking-[0.16em] text-zinc-500">
+        {label}
+      </p>
+    </Card>
+  );
+}
+
+function ProfileSkeleton() {
+  return (
+    <div className="grid gap-8">
+      <Skeleton className="h-72 rounded-[1.5rem]" />
+      <div className="grid grid-cols-3 gap-3 sm:gap-5">
+        <Skeleton className="h-28" />
+        <Skeleton className="h-28" />
+        <Skeleton className="h-28" />
+      </div>
+      <Skeleton className="h-56 rounded-[1.5rem]" />
+    </div>
+  );
+}
+
+function formatDate(value: string) {
+  return new Intl.DateTimeFormat('en', {
+    month: 'short',
+    year: 'numeric',
+  }).format(new Date(value));
+}

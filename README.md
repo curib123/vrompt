@@ -1,6 +1,6 @@
 # Vrompt
 
-Vrompt is the repository for AI prompts. This workspace contains the Phase 1 through Phase 6 MVP foundation: a TypeScript monorepo, a Next.js frontend shell, a NestJS API shell, a normalized Prisma/PostgreSQL data model, media storage adapters, authentication, and a Docker-based local development environment.
+Vrompt is the repository for AI prompts. This workspace contains the Phase 1 through Phase 7 MVP foundation: a TypeScript monorepo, a Next.js frontend shell, a NestJS API shell, a normalized Prisma/PostgreSQL data model, media storage adapters, Google-only authentication, user profiles, and a Docker-based local development environment.
 
 ## Workspace layout
 
@@ -63,6 +63,14 @@ add `http://localhost:4000/api/v1/auth/google/callback` as an authorized
 redirect URI, and set `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` in `.env`.
 Basic Google OAuth does not require a paid Google Cloud plan. Additional profile
 details can be added later inside Vrompt.
+
+### User profiles
+
+Phase 7 adds public profiles at `/u/[username]` and signed-in profile editing at
+`/settings`. Profiles support display names, bios, websites, public repository
+and collection shelves, follower/following counts, and local avatar uploads.
+Local uploads are served by the API from `/media`; production storage can use
+the existing environment-aware adapter configuration.
 
 ## Docker development
 

@@ -66,9 +66,12 @@ export function SiteHeader() {
             <span className="px-4 py-2 text-sm text-zinc-500">Loading...</span>
           ) : user ? (
             <>
-              <span className="px-2 text-sm text-zinc-600 dark:text-zinc-400">
+              <Link
+                className="rounded-full px-2 text-sm text-zinc-600 hover:text-black dark:text-zinc-400 dark:hover:text-white"
+                href={`/u/${user.username}`}
+              >
                 @{user.username}
-              </span>
+              </Link>
               <Button onClick={() => void logout()} variant="ghost">
                 Log out
               </Button>

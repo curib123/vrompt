@@ -101,10 +101,8 @@ export class AuthService {
             avatar: identity.avatar,
             displayName: identity.displayName,
           },
-          update: {
-            avatar: identity.avatar,
-            displayName: identity.displayName,
-          },
+          // Google supplies defaults on first sign-in; user-managed profile data persists.
+          update: {},
         });
 
         return updatedUser;

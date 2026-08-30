@@ -1,9 +1,11 @@
 import { cn } from '@/lib/cn';
 
 export function Avatar({
+  avatar,
   name,
   className,
 }: {
+  avatar?: string | null;
   name: string;
   className?: string;
 }) {
@@ -23,7 +25,17 @@ export function Avatar({
       )}
       role="img"
     >
-      {initials}
+      {avatar ? (
+        // The API validates avatar uploads and Google supplies trusted HTTPS URLs.
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          alt=""
+          className="size-full rounded-full object-cover"
+          src={avatar}
+        />
+      ) : (
+        initials
+      )}
     </div>
   );
 }

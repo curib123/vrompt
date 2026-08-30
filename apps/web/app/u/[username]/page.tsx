@@ -1,4 +1,4 @@
-import { RoutePlaceholder } from '@/components/route-placeholder';
+import { ProfileView } from '@/components/profile/profile-view';
 
 export default async function ProfilePage({
   params,
@@ -7,11 +7,5 @@ export default async function ProfilePage({
 }>) {
   const { username } = await params;
 
-  return (
-    <RoutePlaceholder
-      description={`Public creator profiles will live here later. This placeholder keeps the canonical user route in place for @${username}.`}
-      eyebrow="Profile"
-      title={`@${username}`}
-    />
-  );
+  return <ProfileView username={username} />;
 }

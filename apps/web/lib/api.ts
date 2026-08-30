@@ -21,6 +21,40 @@ export interface AuthResponse {
   user: AuthUser;
 }
 
+export interface ProfileRepository {
+  id: string;
+  title: string;
+  slug: string;
+  description: string | null;
+  updatedAt: string;
+}
+
+export interface ProfileCollection {
+  id: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  updatedAt: string;
+  _count: { items: number };
+}
+
+export interface ProfileResponse {
+  id: string;
+  username: string;
+  displayName: string | null;
+  bio: string | null;
+  avatar: string | null;
+  website: string | null;
+  createdAt: string;
+  stats: {
+    repositories: number;
+    followers: number;
+    following: number;
+  };
+  repositories: ProfileRepository[];
+  collections: ProfileCollection[];
+}
+
 export class ApiError extends Error {
   status: number;
 
@@ -39,6 +73,14 @@ export function getApiBaseUrl() {
   );
 }
 
+export function getMediaUrl(url: string | null) {
+  if (!url) {
+    return null;
+  }
+
+  return new URL(url, getApiBaseUrl()).toString();
+}
+
 export async function apiRequest<T>(
   path: string,
   options: RequestInit & { accessToken?: string } = {},
@@ -46,7 +88,11 @@ export async function apiRequest<T>(
   const { accessToken, ...requestOptions } = options;
   const headers = new Headers(requestOptions.headers);
 
-  if (requestOptions.body && !headers.has('content-type')) {
+  if (
+    requestOptions.body &&
+    !(requestOptions.body instanceof FormData) &&
+    !headers.has('content-type')
+  ) {
     headers.set('content-type', 'application/json');
   }
 

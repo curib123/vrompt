@@ -1,14 +1,10 @@
 import { ProtectedRoute } from '@/components/auth/protected-route';
-import { RoutePlaceholder } from '@/components/route-placeholder';
+import { ProfileSettingsForm } from '@/components/profile/profile-settings-form';
 
 export default function SettingsPage() {
   return (
     <ProtectedRoute>
-      <RoutePlaceholder
-        description="Account settings, profile management, and personal preferences can be added here without revisiting layout groundwork."
-        eyebrow="Settings"
-        title="Tune your Vrompt workspace"
-      />
+      <ProfileSettingsForm />
     </ProtectedRoute>
   );
 }
