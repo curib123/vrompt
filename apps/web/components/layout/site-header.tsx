@@ -86,7 +86,10 @@ export function SiteHeader() {
               <Link className={getButtonClasses('ghost')} href="/login">
                 Login
               </Link>
-              <Link className={getButtonClasses('primary')} href="/register">
+              <Link
+                className={getButtonClasses('primary', 'whitespace-nowrap')}
+                href="/register"
+              >
                 Join Vrompt
               </Link>
             </>
