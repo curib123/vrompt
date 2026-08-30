@@ -147,6 +147,9 @@ renewal runbook in `infrastructure/https`.
 Phase 39 adds PR quality gates with real database/cache services, immutable
 GHCR image publishing, one-shot Prisma migration images, SSH deployment and
 rollback scripts, and a health-gated GitHub Actions release workflow.
+Phase 40 adds encrypted off-VPS PostgreSQL backup, checksum verification,
+failure alerts, disposable restore testing, production restore safeguards, and
+Cloudinary asset recovery guidance in `infrastructure/backups`.
 
 ## Docker development
 
