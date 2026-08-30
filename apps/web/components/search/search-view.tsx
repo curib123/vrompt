@@ -191,6 +191,9 @@ function ResultCard({ item, query }: { item: SearchResult; query: string }) {
         <div className="flex flex-wrap gap-2">
           <Badge>{item.visibility.toLowerCase()}</Badge>
           {item.category ? <Badge>{item.category.name}</Badge> : null}
+          {item.owner.accountType !== 'REAL' ? (
+            <Badge>{item.owner.accountType.toLowerCase()}</Badge>
+          ) : null}
         </div>
         <h2 className="mt-5 text-2xl font-semibold tracking-[-0.04em]">
           {highlight(item.title, query)}

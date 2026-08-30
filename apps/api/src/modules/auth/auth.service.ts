@@ -303,12 +303,14 @@ export class AuthService {
     email: string;
     username: string;
     role: AuthenticatedUser['role'];
+    accountType: AuthenticatedUser['accountType'];
   }): AuthenticatedUser {
     return {
       id: user.id,
       email: user.email,
       username: user.username,
       role: user.role,
+      accountType: user.accountType,
     };
   }
 
@@ -338,5 +340,6 @@ export class AuthService {
     googleId: true,
     role: true,
     status: true,
+    accountType: true,
   } as const;
 }

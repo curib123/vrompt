@@ -39,6 +39,7 @@ export class AccessTokenGuard implements CanActivate {
           email: true,
           username: true,
           role: true,
+          accountType: true,
           status: true,
         },
       });
@@ -52,6 +53,7 @@ export class AccessTokenGuard implements CanActivate {
         email: user.email,
         username: user.username,
         role: user.role,
+        accountType: user.accountType,
       };
       return true;
     } catch {

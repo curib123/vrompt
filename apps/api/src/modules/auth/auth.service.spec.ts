@@ -15,6 +15,7 @@ describe('AuthService', () => {
     googleId: 'google-subject',
     role: UserRole.USER,
     status: UserStatus.ACTIVE,
+    accountType: 'REAL',
   };
   const configService = {
     get: jest.fn((key: string, fallback?: unknown) => {

@@ -19,6 +19,12 @@ enum UserStatus {
   DELETED
 }
 
+enum AccountType {
+  REAL
+  STARTER
+  OFFICIAL
+}
+
 enum PromptVisibility {
   PUBLIC
   UNLISTED
@@ -126,15 +132,16 @@ enum ActivityType {
 }
 
 model User {
-  id           String     @id @default(uuid()) @db.Uuid
-  email        String     @unique @db.VarChar(320)
-  username     String     @unique @db.VarChar(32)
-  googleId     String?    @unique @db.VarChar(255)
-  passwordHash String?    @db.VarChar(255)
-  role         UserRole   @default(USER)
-  status       UserStatus @default(ACTIVE)
-  createdAt    DateTime   @default(now())
-  updatedAt    DateTime   @updatedAt
+  id           String      @id @default(uuid()) @db.Uuid
+  email        String      @unique @db.VarChar(320)
+  username     String      @unique @db.VarChar(32)
+  googleId     String?     @unique @db.VarChar(255)
+  passwordHash String?     @db.VarChar(255)
+  role         UserRole    @default(USER)
+  status       UserStatus  @default(ACTIVE)
+  accountType  AccountType @default(REAL)
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
   deletedAt    DateTime?
 
   profile               Profile?
@@ -363,6 +370,7 @@ model Tag {
   name           String   @db.VarChar(50)
   normalizedName String   @unique @db.VarChar(50)
   slug           String   @unique @db.VarChar(60)
+  isOfficial     Boolean  @default(false)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 

@@ -1,5 +1,9 @@
 import { Injectable } from '@nestjs/common';
-import { PromptRepositoryStatus, PromptVisibility } from '@prisma/client';
+import {
+  AccountType,
+  PromptRepositoryStatus,
+  PromptVisibility,
+} from '@prisma/client';
 
 import { PrismaService } from '../prisma/prisma.service';
 import type { SearchQueryDto } from './dto/search-query.dto';
@@ -77,7 +81,7 @@ export class SearchService {
           likeCount: true,
           variantCount: true,
           updatedAt: true,
-          owner: { select: { username: true } },
+          owner: { select: { username: true, accountType: true } },
           category: { select: { name: true, slug: true } },
           promptTags: {
             select: { tag: { select: { name: true, slug: true } } },
@@ -101,6 +105,10 @@ export class SearchService {
       status: PromptRepositoryStatus.ACTIVE,
       visibility: { in: [PromptVisibility.PUBLIC, PromptVisibility.UNLISTED] },
     };
+    const genuineWhere = {
+      ...publicWhere,
+      owner: { accountType: AccountType.REAL },
+    };
     const select = {
       id: true,
       title: true,
@@ -111,7 +119,7 @@ export class SearchService {
       likeCount: true,
       variantCount: true,
       updatedAt: true,
-      owner: { select: { username: true } },
+      owner: { select: { username: true, accountType: true } },
       category: { select: { name: true, slug: true } },
     } as const;
     const [
@@ -125,37 +133,42 @@ export class SearchService {
       starterCollections,
     ] = await Promise.all([
       this.prismaService.promptRepository.findMany({
-        where: publicWhere,
+        where: {
+          ...publicWhere,
+          owner: {
+            accountType: { in: [AccountType.REAL, AccountType.OFFICIAL] },
+          },
+        },
         orderBy: [{ likeCount: 'desc' }, { updatedAt: 'desc' }],
         take: 6,
         select,
       }),
       this.prismaService.promptRepository.findMany({
-        where: publicWhere,
+        where: genuineWhere,
         orderBy: [{ likeCount: 'desc' }, { copyCount: 'desc' }],
         take: 6,
         select,
       }),
       this.prismaService.promptRepository.findMany({
-        where: publicWhere,
+        where: genuineWhere,
         orderBy: { updatedAt: 'desc' },
         take: 6,
         select,
       }),
       this.prismaService.promptRepository.findMany({
-        where: publicWhere,
+        where: genuineWhere,
         orderBy: { copyCount: 'desc' },
         take: 6,
         select,
       }),
       this.prismaService.promptRepository.findMany({
-        where: publicWhere,
+        where: genuineWhere,
         orderBy: { saveCount: 'desc' },
         take: 6,
         select,
       }),
       this.prismaService.promptRepository.findMany({
-        where: publicWhere,
+        where: genuineWhere,
         orderBy: { variantCount: 'desc' },
         take: 6,
         select,
@@ -166,7 +179,13 @@ export class SearchService {
         select: { id: true, name: true, slug: true },
       }),
       this.prismaService.collection.findMany({
-        where: { visibility: 'PUBLIC', archivedAt: null },
+        where: {
+          visibility: 'PUBLIC',
+          archivedAt: null,
+          owner: {
+            accountType: { in: [AccountType.STARTER, AccountType.OFFICIAL] },
+          },
+        },
         orderBy: { updatedAt: 'desc' },
         take: 6,
         select: {
@@ -174,7 +193,7 @@ export class SearchService {
           name: true,
           slug: true,
           description: true,
-          owner: { select: { username: true } },
+          owner: { select: { username: true, accountType: true } },
           _count: { select: { items: true } },
         },
       }),

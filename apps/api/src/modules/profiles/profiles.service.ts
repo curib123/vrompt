@@ -15,6 +15,7 @@ const usernamePattern = /^[a-z0-9](?:[a-z0-9_]{1,30}[a-z0-9])?$/;
 const profileSelect = {
   id: true,
   username: true,
+  accountType: true,
   createdAt: true,
   profile: {
     select: {
@@ -240,6 +241,7 @@ export class ProfilesService {
     return {
       id: user.id,
       username: user.username,
+      accountType: user.accountType,
       displayName: user.profile?.displayName ?? null,
       bio: user.profile?.bio ?? null,
       avatar: user.profile?.avatar ?? null,

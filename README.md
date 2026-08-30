@@ -1,6 +1,6 @@
 # Vrompt
 
-Vrompt is the repository for AI prompts. This workspace contains the Phase 1 through Phase 29 MVP foundation: a TypeScript monorepo, a Next.js frontend shell, a NestJS API shell, a normalized Prisma/PostgreSQL data model, media storage adapters, Google-only authentication, user profiles, prompt organization, repository creation, repository detail pages, copy tracking, immutable prompt versions, Create Variant, Variant Lineage, saved prompt repositories, repository likes, community comments, creator follows, prompt collections, repository search, repository-first Explore, a repository-first homepage, a followed-creator activity feed, in-app notifications, repository activity history, user reporting, role-protected moderation, admin audit logs, and an API security baseline.
+Vrompt is the repository for AI prompts. This workspace contains the Phase 1 through Phase 30 MVP foundation: a TypeScript monorepo, a Next.js frontend shell, a NestJS API shell, a normalized Prisma/PostgreSQL data model, media storage adapters, Google-only authentication, user profiles, prompt organization, repository creation, repository detail pages, copy tracking, immutable prompt versions, Create Variant, Variant Lineage, saved prompt repositories, repository likes, community comments, creator follows, prompt collections, repository search, repository-first Explore, a repository-first homepage, a followed-creator activity feed, in-app notifications, repository activity history, user reporting, role-protected moderation, admin audit logs, an API security baseline, and labeled starter content.
 
 ## Workspace layout
 
@@ -121,6 +121,9 @@ immutable administrative records created by moderation actions.
 Phase 29 adds strict CORS origin checks, security response headers, auth
 throttling, query-safe request logging, secure production cookies, and
 signature-validated evidence uploads with path-safe filenames.
+Phase 30 adds explicit real/starter/official account types, repeatable labeled
+starter accounts, repositories, variants, collections, official categories and
+tags, and discovery metric queries that exclude seeded accounts.
 
 ## Docker development
 

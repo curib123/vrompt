@@ -173,6 +173,9 @@ function RepositoryCard({
       <Card className="h-full transition hover:-translate-y-0.5 hover:border-black dark:hover:border-white">
         <div className="flex flex-wrap gap-2">
           {item.category ? <Badge>{item.category.name}</Badge> : null}
+          {item.owner.accountType !== 'REAL' ? (
+            <Badge>{item.owner.accountType.toLowerCase()}</Badge>
+          ) : null}
           <Badge>
             {value} {metric || 'signals'}
           </Badge>

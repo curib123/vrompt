@@ -1,0 +1,7 @@
+CREATE TYPE "AccountType" AS ENUM ('REAL', 'STARTER', 'OFFICIAL');
+
+ALTER TABLE "User"
+ADD COLUMN "accountType" "AccountType" NOT NULL DEFAULT 'REAL';
+
+ALTER TABLE "Tag"
+ADD COLUMN "isOfficial" BOOLEAN NOT NULL DEFAULT false;

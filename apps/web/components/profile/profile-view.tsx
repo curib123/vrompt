@@ -110,7 +110,9 @@ export function ProfileView({ username }: { username: string }) {
             />
             <div className="space-y-3">
               <Badge className="border-white/30 text-zinc-300">
-                Creator profile
+                {profile.accountType === 'REAL'
+                  ? 'Creator profile'
+                  : `${profile.accountType.toLowerCase()} profile`}
               </Badge>
               <div>
                 <h1 className="text-4xl font-semibold tracking-[-0.06em] sm:text-5xl">

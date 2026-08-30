@@ -10,6 +10,7 @@ describe('ProfilesService', () => {
   const publicProfile = {
     id: 'user-id',
     username: 'creator',
+    accountType: 'REAL',
     createdAt: new Date('2026-08-01'),
     profile: {
       displayName: 'Prompt Creator',

@@ -14,6 +14,7 @@ export interface AuthUser {
   email: string;
   username: string;
   role: 'USER' | 'MODERATOR' | 'ADMIN';
+  accountType: 'REAL' | 'STARTER' | 'OFFICIAL';
 }
 
 export interface AuthResponse {
@@ -41,6 +42,7 @@ export interface ProfileCollection {
 export interface ProfileResponse {
   id: string;
   username: string;
+  accountType: 'REAL' | 'STARTER' | 'OFFICIAL';
   displayName: string | null;
   bio: string | null;
   avatar: string | null;
@@ -105,7 +107,7 @@ export interface SearchResult {
   likeCount: number;
   variantCount: number;
   updatedAt: string;
-  owner: { username: string };
+  owner: { username: string; accountType: 'REAL' | 'STARTER' | 'OFFICIAL' };
   category: { name: string; slug: string } | null;
   promptTags: { tag: { name: string; slug: string } }[];
 }
@@ -128,7 +130,7 @@ export interface ExploreRepository {
   likeCount: number;
   variantCount: number;
   updatedAt: string;
-  owner: { username: string };
+  owner: { username: string; accountType: 'REAL' | 'STARTER' | 'OFFICIAL' };
   category: { name: string; slug: string } | null;
 }
 
@@ -145,7 +147,7 @@ export interface ExploreResponse {
     name: string;
     slug: string;
     description: string | null;
-    owner: { username: string };
+    owner: { username: string; accountType: 'REAL' | 'STARTER' | 'OFFICIAL' };
     _count: { items: number };
   }>;
 }

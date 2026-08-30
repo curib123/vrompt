@@ -34,6 +34,7 @@ export class OptionalAccessTokenGuard implements CanActivate {
           email: true,
           username: true,
           role: true,
+          accountType: true,
           status: true,
         },
       });
@@ -44,6 +45,7 @@ export class OptionalAccessTokenGuard implements CanActivate {
           email: user.email,
           username: user.username,
           role: user.role,
+          accountType: user.accountType,
         };
       }
     } catch {
