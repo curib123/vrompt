@@ -95,7 +95,9 @@ export function RepositoryDetail({
   if (!repository && (isLoading || !error)) {
     return (
       <Card>
-        <p className="text-sm text-zinc-500">Loading prompt...</p>
+        <p className="text-sm text-zinc-600 dark:text-zinc-400">
+          Loading prompt...
+        </p>
       </Card>
     );
   }
@@ -219,16 +221,16 @@ export function RepositoryDetail({
         <div className="relative flex flex-col gap-7 lg:flex-row lg:items-end lg:justify-between">
           <div className="space-y-5">
             <div className="flex flex-wrap gap-2">
-              <Badge className="border-white/30 text-zinc-300">
+              <Badge className="!border-white/30 !text-zinc-300">
                 {repository.visibility.toLowerCase()}
               </Badge>
               {repository.category ? (
-                <Badge className="border-white/30 text-zinc-300">
+                <Badge className="!border-white/30 !text-zinc-300">
                   {repository.category.name}
                 </Badge>
               ) : null}
               {activeVersion ? (
-                <Badge className="border-white/30 text-zinc-300">
+                <Badge className="!border-white/30 !text-zinc-300">
                   {selectedVersion ? 'Earlier' : 'Current'} update{' '}
                   {activeVersion.versionNumber}
                 </Badge>
@@ -248,7 +250,7 @@ export function RepositoryDetail({
             >
               <Avatar
                 avatar={getMediaUrl(repository.owner.profile?.avatar ?? null)}
-                className="size-9 border-white/30 bg-white/10 text-white"
+                className="size-9 !border-white/30 !bg-white/10 !text-white"
                 name={displayName}
               />
               <span>
@@ -346,7 +348,7 @@ export function RepositoryDetail({
 
       {repository.sourcePrompt ? (
         <Card className="border-dashed">
-          <p className="text-xs font-medium uppercase tracking-[0.2em] text-zinc-500">
+          <p className="text-xs font-medium uppercase tracking-[0.2em] text-zinc-600 dark:text-zinc-400">
             Attribution
           </p>
           <p className="mt-3 text-sm text-zinc-600 dark:text-zinc-400">
@@ -508,7 +510,9 @@ function ActivityTab({
           </h2>
         </div>
         {events.length === 0 ? (
-          <p className="mt-5 text-sm text-zinc-500">No history to show yet.</p>
+          <p className="mt-5 text-sm text-zinc-600 dark:text-zinc-400">
+            No history to show yet.
+          </p>
         ) : (
           <div className="mt-5 grid gap-3">
             {events.map((event) => (
@@ -526,7 +530,7 @@ function ActivityTab({
                   {activityLabel(event.type, event.metadata)}
                 </p>
                 <time
-                  className="text-xs text-zinc-500"
+                  className="text-xs text-zinc-600 dark:text-zinc-400"
                   dateTime={event.createdAt}
                 >
                   {formatDateTime(event.createdAt)}
@@ -706,7 +710,7 @@ function CommentsSection({
             value={content}
           />
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <p className="text-xs text-zinc-500">
+            <p className="text-xs text-zinc-600 dark:text-zinc-400">
               {replyTo
                 ? 'Replying to a comment.'
                 : 'Keep it useful and constructive.'}
@@ -728,7 +732,7 @@ function CommentsSection({
           </div>
         </form>
       ) : (
-        <p className="mt-5 text-sm text-zinc-500">
+        <p className="mt-5 text-sm text-zinc-600 dark:text-zinc-400">
           <Link
             className="font-semibold underline"
             href={`/login?next=/p/${encodeURIComponent(repositorySlug)}`}
@@ -738,10 +742,12 @@ function CommentsSection({
           to join the discussion.
         </p>
       )}
-      {error ? <p className="mt-4 text-sm text-red-600">{error}</p> : null}
+      {error ? (
+        <p className="mt-4 text-sm text-red-600 dark:text-red-400">{error}</p>
+      ) : null}
       <div className="mt-7 grid gap-4">
         {comments.length === 0 ? (
-          <p className="rounded-2xl border border-dashed border-zinc-300 p-5 text-sm text-zinc-500 dark:border-zinc-700">
+          <p className="rounded-2xl border border-dashed border-zinc-300 p-5 text-sm text-zinc-600 dark:border-zinc-700 dark:text-zinc-400">
             No comments yet. Start the conversation.
           </p>
         ) : (
@@ -797,7 +803,7 @@ function CommentCard({
 }) {
   return (
     <div className="rounded-2xl border border-zinc-200 p-4 dark:border-zinc-800">
-      <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-zinc-500">
+      <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-zinc-600 dark:text-zinc-400">
         <span className="font-mono">@{comment.user.username}</span>
         <span>{formatDateTime(comment.createdAt)}</span>
       </div>
@@ -843,7 +849,7 @@ function CommentCard({
               Edit
             </button>
             <button
-              className="text-red-600 underline underline-offset-4"
+              className="text-red-600 underline underline-offset-4 dark:text-red-400"
               onClick={() => onDelete(comment.id)}
               type="button"
             >
@@ -856,7 +862,7 @@ function CommentCard({
         <div className="mt-4 grid gap-3 border-l-2 border-zinc-200 pl-4 dark:border-zinc-800">
           {comment.replies.map((reply) => (
             <div key={reply.id}>
-              <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-zinc-500">
+              <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-zinc-600 dark:text-zinc-400">
                 <span className="font-mono">@{reply.user.username}</span>
                 <span>{formatDateTime(reply.createdAt)}</span>
               </div>
@@ -904,7 +910,7 @@ function PromptTab({ content }: { content: string }) {
         <span className="font-mono text-xs uppercase tracking-[0.2em] text-zinc-400">
           Current prompt
         </span>
-        <span className="text-xs text-zinc-500">Preview</span>
+        <span className="text-xs text-zinc-400">Preview</span>
       </div>
       <pre className="overflow-x-auto whitespace-pre-wrap p-6 font-mono text-sm leading-8 text-zinc-200">
         {content}
@@ -979,7 +985,7 @@ function VersionsTab({
             >
               <span>
                 <strong>Update {version.versionNumber}</strong>
-                <span className="ml-3 text-sm text-zinc-500">
+                <span className="ml-3 text-sm text-zinc-600 dark:text-zinc-400">
                   {version.changelog || 'No update note'}
                 </span>
               </span>
@@ -1083,7 +1089,9 @@ function NewVersionForm({
           required
           value={changelog}
         />
-        {error ? <p className="text-sm text-red-600">{error}</p> : null}
+        {error ? (
+          <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+        ) : null}
         <div className="flex justify-end">
           <Button disabled={saving} type="submit">
             {saving ? 'Publishing...' : 'Publish update'}
@@ -1146,7 +1154,7 @@ function ExamplesTab({
           </div>
         </Card>
       ) : null}
-      <p className="text-sm leading-6 text-zinc-500">
+      <p className="text-sm leading-6 text-zinc-600 dark:text-zinc-400">
         Results can vary depending on the AI tool and settings you use.
       </p>
       {examples.length === 0 && evidenceImages.length === 0 ? (
@@ -1186,7 +1194,9 @@ function LineageTab({ repositorySlug }: { repositorySlug: string }) {
   if (!lineage) {
     return (
       <Card>
-        <p className="text-sm text-zinc-500">Loading prompt evolution...</p>
+        <p className="text-sm text-zinc-600 dark:text-zinc-400">
+          Loading prompt evolution...
+        </p>
       </Card>
     );
   }
@@ -1200,7 +1210,7 @@ function LineageTab({ repositorySlug }: { repositorySlug: string }) {
             Prompt evolution, kept readable.
           </h2>
         </div>
-        <p className="text-sm text-zinc-500">
+        <p className="text-sm text-zinc-600 dark:text-zinc-400">
           {lineage.variantCount} direct variations
         </p>
       </div>
@@ -1212,7 +1222,7 @@ function LineageTab({ repositorySlug }: { repositorySlug: string }) {
           />{' '}
         </div>
       ) : (
-        <p className="mt-6 text-sm text-zinc-500">
+        <p className="mt-6 text-sm text-zinc-600 dark:text-zinc-400">
           No evolution history is available yet.
         </p>
       )}
@@ -1237,11 +1247,11 @@ function LineageItem({
         style={{ marginLeft: `${depth * 1.25}rem` }}
       >
         <span>
-          <span className="font-mono text-xs text-zinc-500">
+          <span className="font-mono text-xs text-zinc-600 dark:text-zinc-400">
             {depth === 0 ? 'Original' : 'Variation'}
           </span>
           <strong className="ml-3">{node.title}</strong>
-          <span className="ml-2 text-sm text-zinc-500">
+          <span className="ml-2 text-sm text-zinc-600 dark:text-zinc-400">
             @{node.ownerUsername}
           </span>
         </span>
@@ -1262,7 +1272,7 @@ function LineageItem({
 function CodeBlock({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-2xl bg-zinc-100 p-4 dark:bg-zinc-900">
-      <p className="font-mono text-xs uppercase tracking-[0.18em] text-zinc-500">
+      <p className="font-mono text-xs uppercase tracking-[0.18em] text-zinc-600 dark:text-zinc-400">
         {label}
       </p>
       <pre className="mt-3 whitespace-pre-wrap font-mono text-sm leading-6">
@@ -1275,7 +1285,7 @@ function CodeBlock({ label, value }: { label: string; value: string }) {
 function InfoCard({ label, value }: { label: string; value: string }) {
   return (
     <Card className="space-y-2 p-5">
-      <p className="text-xs font-medium uppercase tracking-[0.16em] text-zinc-500">
+      <p className="text-xs font-medium uppercase tracking-[0.16em] text-zinc-600 dark:text-zinc-400">
         {label}
       </p>
       <p className="text-lg font-semibold">{value}</p>

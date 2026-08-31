@@ -1,5 +1,6 @@
 import {
   Controller,
+  DefaultValuePipe,
   Delete,
   Get,
   Param,
@@ -32,8 +33,9 @@ export class BookmarksController {
   @Get('saved')
   list(
     @CurrentUser() user: AuthenticatedUser,
-    @Query('page', new ParseIntPipe({ optional: true })) page?: number,
-    @Query('pageSize', new ParseIntPipe({ optional: true })) pageSize?: number,
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+    @Query('pageSize', new DefaultValuePipe(12), ParseIntPipe)
+    pageSize: number,
     @Query('sort') sort?: 'newest' | 'updated',
   ) {
     return this.bookmarksService.list(

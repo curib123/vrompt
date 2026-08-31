@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  DefaultValuePipe,
   Delete,
   Get,
   Param,
@@ -27,9 +28,10 @@ export class CommentsController {
   @UseGuards(OptionalAccessTokenGuard)
   list(
     @Param('slug') slug: string,
-    @CurrentUser() user?: AuthenticatedUser,
-    @Query('page', new ParseIntPipe({ optional: true })) page?: number,
-    @Query('pageSize', new ParseIntPipe({ optional: true })) pageSize?: number,
+    @CurrentUser() user: AuthenticatedUser | undefined,
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+    @Query('pageSize', new DefaultValuePipe(20), ParseIntPipe)
+    pageSize: number,
   ) {
     return this.commentsService.list(slug, user?.id, page, pageSize);
   }

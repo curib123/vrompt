@@ -53,7 +53,9 @@ export function ModerationView() {
       <EmptyState description={error} title="Moderation unavailable" />
     ) : (
       <Card>
-        <p className="text-sm text-zinc-500">Loading moderation queue...</p>
+        <p className="text-sm text-zinc-600 dark:text-zinc-400">
+          Loading moderation queue...
+        </p>
       </Card>
     );
 
@@ -94,7 +96,7 @@ export function ModerationView() {
     <div className="grid gap-8">
       <Card className="relative overflow-hidden border-[#0D0D0D] bg-[#0D0D0D] text-white dark:border-white">
         <div className="relative space-y-4">
-          <Badge className="border-white/30 text-zinc-300">
+          <Badge className="!border-white/30 !text-zinc-300">
             Admin / Moderation
           </Badge>
           <h1 className="text-4xl font-semibold tracking-[-0.07em] sm:text-7xl">
@@ -125,7 +127,7 @@ export function ModerationView() {
                     Reported by @{report.reporter.username}
                     {report.description ? `: ${report.description}` : '.'}
                   </p>
-                  <p className="font-mono text-xs text-zinc-500">
+                  <p className="font-mono text-xs text-zinc-600 dark:text-zinc-400">
                     Target {report.targetId}
                   </p>
                 </div>

@@ -56,7 +56,9 @@ export function AuditView() {
   if (!audit)
     return (
       <Card>
-        <p className="text-sm text-zinc-500">Loading audit log...</p>
+        <p className="text-sm text-zinc-600 dark:text-zinc-400">
+          Loading audit log...
+        </p>
       </Card>
     );
 
@@ -64,7 +66,9 @@ export function AuditView() {
     <div className="grid gap-8">
       <Card className="relative overflow-hidden border-[#0D0D0D] bg-[#0D0D0D] text-white dark:border-white">
         <div className="relative space-y-4">
-          <Badge className="border-white/30 text-zinc-300">Admin / Audit</Badge>
+          <Badge className="!border-white/30 !text-zinc-300">
+            Admin / Audit
+          </Badge>
           <h1 className="text-4xl font-semibold tracking-[-0.07em] sm:text-7xl">
             The record stays readable.
           </h1>
@@ -136,7 +140,7 @@ export function AuditView() {
                   </p>
                 </div>
                 <time
-                  className="text-xs text-zinc-500"
+                  className="text-xs text-zinc-600 dark:text-zinc-400"
                   dateTime={item.createdAt}
                 >
                   {new Intl.DateTimeFormat('en', {

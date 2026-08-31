@@ -1,8 +1,10 @@
-node_modules
-.turbo
+**/node_modules
+**/.turbo
 .git
 .env*
-apps/web/.next
+apps/web/.next*
+apps/web/playwright-report
+apps/web/test-results
+**/coverage
 apps/api/dist
-apps/api/coverage
 packages/*/dist

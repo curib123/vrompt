@@ -48,6 +48,8 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
+      - name: Generate Prisma client
+        run: npm run prisma:generate --workspace @vrompt/api
       - run: npm run prisma:deploy --workspace @vrompt/api
       - run: npm run lint --workspace @vrompt/api
       - run: npm run lint --workspace @vrompt/web
@@ -60,7 +62,7 @@ jobs:
       - run: npm run build --workspace @vrompt/api
 
   production:
-    name: Build, publish, and deploy production images
+    name: Build and publish production images
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     needs: quality
     runs-on: ubuntu-latest
@@ -104,19 +106,31 @@ jobs:
           file: infrastructure/docker/nginx.Dockerfile
           push: true
           tags: ${{ env.IMAGE_PREFIX }}/nginx:${{ env.IMAGE_TAG }}
+
+  deployment:
+    name: Deploy production images
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: production
+    runs-on: ubuntu-latest
+    env:
+      IMAGE_PREFIX: ghcr.io/${{ github.repository_owner }}/vrompt
+      IMAGE_TAG: ${{ github.sha }}
+      VPS_HOST: ${{ secrets.VPS_HOST }}
+      VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+      VPS_USER: ${{ secrets.VPS_USER }}
+    steps:
+      - name: Report unconfigured deployment
+        if: env.VPS_HOST == '' || env.VPS_SSH_KEY == '' || env.VPS_USER == ''
+        run: echo "::notice::VPS deployment skipped because VPS_HOST, VPS_SSH_KEY, and VPS_USER are not all configured."
       - name: Configure SSH
-        env:
-          VPS_HOST: ${{ secrets.VPS_HOST }}
-          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+        if: env.VPS_HOST != '' && env.VPS_SSH_KEY != '' && env.VPS_USER != ''
         run: |
           install -m 700 -d ~/.ssh
           printf '%s\n' "$VPS_SSH_KEY" > ~/.ssh/vrompt_deploy
           chmod 600 ~/.ssh/vrompt_deploy
           ssh-keyscan -H "$VPS_HOST" >> ~/.ssh/known_hosts
       - name: Deploy and verify
-        env:
-          VPS_HOST: ${{ secrets.VPS_HOST }}
-          VPS_USER: ${{ secrets.VPS_USER }}
+        if: env.VPS_HOST != '' && env.VPS_SSH_KEY != '' && env.VPS_USER != ''
         run: |
           ssh -i ~/.ssh/vrompt_deploy "$VPS_USER@$VPS_HOST" \
             "cd /srv/vrompt && IMAGE_TAG=$IMAGE_TAG VROMPT_IMAGE_PREFIX=$IMAGE_PREFIX ./infrastructure/deploy/deploy.sh"

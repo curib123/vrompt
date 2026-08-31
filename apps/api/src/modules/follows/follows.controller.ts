@@ -1,5 +1,6 @@
 import {
   Controller,
+  DefaultValuePipe,
   Delete,
   Get,
   Param,
@@ -39,8 +40,9 @@ export class FollowsController {
   @Get(':username/followers')
   followers(
     @Param('username') username: string,
-    @Query('page', new ParseIntPipe({ optional: true })) page?: number,
-    @Query('pageSize', new ParseIntPipe({ optional: true })) pageSize?: number,
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+    @Query('pageSize', new DefaultValuePipe(30), ParseIntPipe)
+    pageSize: number,
   ) {
     return this.followsService.list(username, 'followers', page, pageSize);
   }
@@ -48,8 +50,9 @@ export class FollowsController {
   @Get(':username/following')
   following(
     @Param('username') username: string,
-    @Query('page', new ParseIntPipe({ optional: true })) page?: number,
-    @Query('pageSize', new ParseIntPipe({ optional: true })) pageSize?: number,
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+    @Query('pageSize', new DefaultValuePipe(30), ParseIntPipe)
+    pageSize: number,
   ) {
     return this.followsService.list(username, 'following', page, pageSize);
   }

@@ -79,7 +79,7 @@ export default function RootLayout({
 }>) {
   return (
     <html className={displayFont.variable} lang="en" suppressHydrationWarning>
-      <body className="min-h-screen bg-white text-[#0D0D0D] antialiased dark:bg-[#0D0D0D] dark:text-white">
+      <body className="min-h-screen bg-white text-foreground antialiased dark:bg-[#0D0D0D]">
         <JsonLd
           data={[
             {

@@ -10,6 +10,10 @@
   --color-brand-mid: var(--brand-mid);
   --color-brand-soft: var(--brand-soft);
   --color-brand-paper: var(--brand-paper);
+  --color-on-dark: #ffffff;
+  --color-on-dark-muted: #bdbdbd;
+  --color-on-light: #0d0d0d;
+  --color-on-light-muted: #4d4d4d;
 }
 
 :root {
@@ -24,6 +28,11 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
+    --brand-ink: #ffffff;
+    --brand-charcoal: #e6e6e6;
+    --brand-mid: #bdbdbd;
+    --brand-soft: #1a1a1a;
+    --brand-paper: #0d0d0d;
     --brand-grid: rgba(255, 255, 255, 0.055);
   }
 }

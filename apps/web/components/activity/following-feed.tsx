@@ -56,7 +56,7 @@ export function FollowingFeed({ embedded = false }: { embedded?: boolean }) {
         }
       >
         <div className="relative space-y-4">
-          <Badge className="border-white/30 text-zinc-300">Following</Badge>
+          <Badge className="!border-white/30 !text-zinc-300">Following</Badge>
           <h1 className="text-4xl font-semibold tracking-[-0.07em] sm:text-7xl">
             Keep up with useful work.
           </h1>
@@ -143,7 +143,10 @@ function ActivityCard({
         </Link>{' '}
         {action} {target}.
       </p>
-      <time className="text-xs text-zinc-500" dateTime={item.createdAt}>
+      <time
+        className="text-xs text-zinc-600 dark:text-zinc-400"
+        dateTime={item.createdAt}
+      >
         {formatDate(item.createdAt)}
       </time>
     </Card>

@@ -62,7 +62,7 @@ export function PromptManager({ variantFrom }: { variantFrom?: string }) {
         <div className="pointer-events-none absolute -right-20 -top-28 size-80 rounded-full border-[40px] border-white/10" />
         <div className="relative flex flex-col gap-8 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <Badge className="border-white/30 text-zinc-300">Workspace</Badge>
+            <Badge className="!border-white/30 !text-zinc-300">Workspace</Badge>
             <h1 className="mt-4 text-4xl font-semibold tracking-[-0.07em] sm:text-6xl">
               Your prompts, in one place.
             </h1>
@@ -72,7 +72,7 @@ export function PromptManager({ variantFrom }: { variantFrom?: string }) {
             </p>
           </div>
           <Button
-            className="shrink-0 border-white bg-white !text-[#0D0D0D] hover:bg-[#E6E6E6]"
+            className="shrink-0 border-white bg-white !text-on-light hover:bg-[#E6E6E6]"
             onClick={() => setCreateOpen(true)}
             variant="secondary"
           >
@@ -92,7 +92,7 @@ export function PromptManager({ variantFrom }: { variantFrom?: string }) {
       ) : prompts.length === 0 ? (
         <Card className="grid min-h-72 place-items-center text-center">
           <div className="max-w-md">
-            <p className="font-mono text-xs uppercase tracking-[0.2em] text-zinc-500">
+            <p className="font-mono text-xs uppercase tracking-[0.2em] text-zinc-600 dark:text-zinc-400">
               Ready when you are
             </p>
             <h2 className="mt-3 text-3xl font-semibold tracking-[-0.05em]">
@@ -121,7 +121,7 @@ export function PromptManager({ variantFrom }: { variantFrom?: string }) {
                     {prompt.currentVersion?.status.toLowerCase() ?? 'empty'}
                   </Badge>
                 </div>
-                <span className="font-mono text-xs text-zinc-500">
+                <span className="font-mono text-xs text-zinc-600 dark:text-zinc-400">
                   v{prompt.currentVersion?.versionNumber ?? 0}
                 </span>
               </div>
@@ -133,7 +133,7 @@ export function PromptManager({ variantFrom }: { variantFrom?: string }) {
                   {prompt.description || 'No description yet.'}
                 </p>
               </div>
-              <div className="mt-6 flex flex-wrap items-center justify-between gap-4 border-t border-[#E6E6E6] pt-5 text-xs text-zinc-500 dark:border-[#4D4D4D]">
+              <div className="mt-6 flex flex-wrap items-center justify-between gap-4 border-t border-[#E6E6E6] pt-5 text-xs text-zinc-600 dark:border-[#4D4D4D] dark:text-zinc-400">
                 <span>Updated {formatDate(prompt.updatedAt)}</span>
                 <span>
                   {prompt._count.bookmarks} saves · {prompt._count.variants}{' '}

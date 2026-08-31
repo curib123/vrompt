@@ -35,10 +35,10 @@ export default function RegisterPage() {
           </span>
           Continue with Google
         </Button>
-        <p className="text-sm text-zinc-500">
+        <p className="text-sm text-zinc-600 dark:text-zinc-400">
           Already have an account?{' '}
           <Link
-            className="font-semibold text-[#0D0D0D] underline dark:text-white"
+            className="font-semibold text-foreground underline"
             href="/login"
           >
             Sign in

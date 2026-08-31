@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  DefaultValuePipe,
   Get,
   Param,
   ParseIntPipe,
@@ -24,8 +25,8 @@ export class TagsController {
 
   @Get()
   search(
-    @Query('q') query?: string,
-    @Query('limit', new ParseIntPipe({ optional: true })) limit?: number,
+    @Query('q') query: string | undefined,
+    @Query('limit', new DefaultValuePipe(12), ParseIntPipe) limit: number,
   ) {
     return this.tagsService.search(query, limit);
   }

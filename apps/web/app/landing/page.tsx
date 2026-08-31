@@ -24,7 +24,7 @@ export default function LandingPage() {
               <BrandLockup compact inverted />
               <BrandMark className="size-9 text-white/80" />
             </div>
-            <Badge className="w-fit border-white/30 text-zinc-300">
+            <Badge className="w-fit !border-white/30 !text-zinc-300">
               The prompt community
             </Badge>
             <div className="grid gap-5">
@@ -42,7 +42,7 @@ export default function LandingPage() {
               <Link
                 className={getButtonClasses(
                   'secondary',
-                  'w-full border-white bg-white text-[#0D0D0D] hover:border-white hover:bg-[#E6E6E6] sm:w-auto',
+                  'w-full border-white bg-white text-on-light hover:border-white hover:bg-[#E6E6E6] sm:w-auto',
                 )}
                 href="/explore"
               >
@@ -64,7 +64,7 @@ export default function LandingPage() {
           </div>
 
           <div className="relative rounded-[1.75rem] border border-white/15 bg-white/[0.08] p-3 backdrop-blur sm:p-4">
-            <div className="rounded-[1.25rem] bg-white p-5 text-[#0D0D0D] shadow-2xl sm:p-7">
+            <div className="rounded-[1.25rem] bg-white p-5 text-on-light shadow-2xl sm:p-7">
               <div className="flex items-center justify-between gap-4 border-b border-[#E6E6E6] pb-5">
                 <div className="flex items-center gap-2">
                   <BrandMark className="size-6" />
@@ -79,11 +79,11 @@ export default function LandingPage() {
                 <h2 className="text-3xl font-semibold leading-[0.98] tracking-[-0.065em] sm:text-4xl">
                   Turn a rough idea into a clear plan.
                 </h2>
-                <p className="text-sm leading-7 text-[#4D4D4D]">
+                <p className="text-sm leading-7 text-on-light-muted">
                   A practical prompt with examples, notes, and the lessons that
                   make the next attempt stronger.
                 </p>
-                <div className="grid gap-3 border-t border-[#E6E6E6] pt-5 text-xs text-[#4D4D4D]">
+                <div className="grid gap-3 border-t border-[#E6E6E6] pt-5 text-xs text-on-light-muted">
                   <div className="flex items-center justify-between gap-4">
                     <span>Built from experience</span>
                     <span className="font-mono">01 / 03</span>
@@ -100,7 +100,7 @@ export default function LandingPage() {
 
       <section className="grid gap-8 lg:grid-cols-[0.8fr_1.2fr] lg:gap-16">
         <div className="grid content-start gap-4">
-          <p className="font-mono text-xs uppercase tracking-[0.24em] text-zinc-500">
+          <p className="font-mono text-xs uppercase tracking-[0.24em] text-zinc-600 dark:text-zinc-400">
             Why Vrompt
           </p>
           <h2 className="max-w-md text-4xl font-semibold leading-[0.98] tracking-[-0.07em] sm:text-6xl">
@@ -132,7 +132,7 @@ export default function LandingPage() {
 
       <section className="grid gap-5 rounded-[2rem] border border-[#E6E6E6] bg-white p-5 shadow-[0_18px_50px_rgba(13,13,13,0.06)] sm:grid-cols-[1fr_auto] sm:items-center sm:p-8 dark:border-[#1A1A1A] dark:bg-[#1A1A1A]">
         <div className="grid gap-3">
-          <p className="font-mono text-xs uppercase tracking-[0.24em] text-zinc-500">
+          <p className="font-mono text-xs uppercase tracking-[0.24em] text-zinc-600 dark:text-zinc-400">
             Made for every level
           </p>
           <h2 className="max-w-2xl text-3xl font-semibold leading-tight tracking-[-0.06em] sm:text-5xl">
@@ -165,7 +165,9 @@ function ValueCard({
 }) {
   return (
     <article className="grid min-h-56 content-between gap-8 p-5 sm:min-h-64 sm:p-6">
-      <span className="font-mono text-xs text-zinc-500">{number}</span>
+      <span className="font-mono text-xs text-zinc-600 dark:text-zinc-400">
+        {number}
+      </span>
       <div className="grid gap-3">
         <h3 className="text-2xl font-semibold tracking-[-0.05em]">{title}</h3>
         <p className="text-sm leading-7 text-zinc-600 dark:text-zinc-400">

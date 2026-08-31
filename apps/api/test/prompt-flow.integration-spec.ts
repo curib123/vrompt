@@ -58,6 +58,9 @@ describeIntegration('Prompt workflow integration', () => {
           media.delete(image.storageKey, image.storageProvider),
         ),
       );
+      await prisma.report.deleteMany({
+        where: { reporterId: { in: userIds } },
+      });
       await prisma.promptRepository.deleteMany({
         where: { ownerId: { in: userIds } },
       });

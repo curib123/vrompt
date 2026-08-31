@@ -91,7 +91,10 @@ export function AccountMenu() {
           <span className="hidden max-w-28 truncate text-sm font-medium sm:block">
             {displayName}
           </span>
-          <span aria-hidden="true" className="text-xs text-zinc-500">
+          <span
+            aria-hidden="true"
+            className="text-xs text-zinc-600 dark:text-zinc-400"
+          >
             ⌄
           </span>
         </button>
@@ -162,7 +165,7 @@ function MenuLink({
 }) {
   return (
     <Link
-      className="block min-h-11 rounded-2xl px-4 py-3 text-sm font-medium text-[#4D4D4D] transition hover:bg-[#E6E6E6] hover:text-[#0D0D0D] dark:text-zinc-300 dark:hover:bg-[#1A1A1A] dark:hover:text-white"
+      className="block min-h-11 rounded-2xl px-4 py-3 text-sm font-medium text-brand-mid transition hover:bg-[#E6E6E6] hover:text-foreground dark:hover:bg-[#1A1A1A]"
       href={href}
       onClick={onSelect}
       role="menuitem"

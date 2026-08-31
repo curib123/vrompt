@@ -93,7 +93,7 @@ export function NotificationsView() {
       <Card className="relative overflow-hidden border-[#0D0D0D] bg-[#0D0D0D] text-white dark:border-white">
         <div className="relative flex flex-wrap items-end justify-between gap-5">
           <div className="space-y-4">
-            <Badge className="border-white/30 text-zinc-300">
+            <Badge className="!border-white/30 !text-zinc-300">
               Notifications
             </Badge>
             <h1 className="text-4xl font-semibold tracking-[-0.07em] sm:text-7xl">
@@ -179,7 +179,7 @@ function NotificationCard({
         ) : null}
       </div>
       <time
-        className="mt-3 block text-xs text-zinc-500"
+        className="mt-3 block text-xs text-zinc-600 dark:text-zinc-400"
         dateTime={item.createdAt}
       >
         {new Intl.DateTimeFormat('en', { dateStyle: 'medium' }).format(

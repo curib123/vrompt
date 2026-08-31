@@ -153,11 +153,11 @@ export function ProfileSettingsForm({
       }
     >
       <Card className="space-y-6 bg-[#0D0D0D] text-white dark:border-white">
-        <Badge className="border-white/30 text-zinc-300">Your identity</Badge>
+        <Badge className="!border-white/30 !text-zinc-300">Your identity</Badge>
         <div className="flex items-center gap-4">
           <Avatar
             avatar={getMediaUrl(profile.avatar)}
-            className="size-20 border-white/30 bg-white/10 text-white"
+            className="size-20 !border-white/30 !bg-white/10 !text-white"
             name={profile.displayName || profile.username}
           />
           <div>
@@ -259,14 +259,18 @@ export function ProfileSettingsForm({
               value={form.website}
             />
           </FormField>
-          {error ? <p className="text-sm text-red-600">{error}</p> : null}
+          {error ? (
+            <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+          ) : null}
           {message ? (
             <p className="text-sm text-emerald-700 dark:text-emerald-400">
               {message}
             </p>
           ) : null}
           <div className="flex items-center justify-between gap-4">
-            <p className="text-xs text-zinc-500">Signed in as {user?.email}</p>
+            <p className="text-xs text-zinc-600 dark:text-zinc-400">
+              Signed in as {user?.email}
+            </p>
             <Button disabled={isSaving} type="submit">
               {isSaving ? 'Saving...' : 'Save profile'}
             </Button>

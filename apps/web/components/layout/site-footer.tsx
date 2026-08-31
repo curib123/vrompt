@@ -22,11 +22,11 @@ export function SiteFooter() {
           <Link aria-label="Vrompt home" className="w-fit" href="/search">
             <BrandLockup compact />
           </Link>
-          <p className="max-w-lg text-sm leading-7 text-[#4D4D4D] dark:text-[#BDBDBD]">
+          <p className="max-w-lg text-sm leading-7 text-brand-mid">
             A community library for prompts shaped by real use, shared
             experience, and better results.
           </p>
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#4D4D4D] dark:text-[#BDBDBD]">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-mid">
             {isLoading
               ? 'Browse, save, and share prompts that improve your work.'
               : user
@@ -38,7 +38,7 @@ export function SiteFooter() {
           <nav aria-label="Footer navigation" className="flex flex-wrap gap-2">
             {footerLinks.map((link) => (
               <Link
-                className="rounded-full px-4 py-2.5 text-sm font-medium text-[#4D4D4D] transition hover:bg-white hover:text-[#0D0D0D] focus-visible:bg-white dark:text-[#BDBDBD] dark:hover:bg-[#1A1A1A] dark:hover:text-white dark:focus-visible:bg-[#1A1A1A]"
+                className="rounded-full px-4 py-2.5 text-sm font-medium text-brand-mid transition hover:bg-white hover:text-foreground focus-visible:bg-white dark:hover:bg-[#1A1A1A] dark:focus-visible:bg-[#1A1A1A]"
                 href={link.href as Route}
                 key={link.href}
               >
@@ -47,14 +47,14 @@ export function SiteFooter() {
             ))}
             {!isLoading ? (
               <Link
-                className="rounded-full px-4 py-2.5 text-sm font-medium text-[#4D4D4D] transition hover:bg-white hover:text-[#0D0D0D] focus-visible:bg-white dark:text-[#BDBDBD] dark:hover:bg-[#1A1A1A] dark:hover:text-white dark:focus-visible:bg-[#1A1A1A]"
+                className="rounded-full px-4 py-2.5 text-sm font-medium text-brand-mid transition hover:bg-white hover:text-foreground focus-visible:bg-white dark:hover:bg-[#1A1A1A] dark:focus-visible:bg-[#1A1A1A]"
                 href={user ? `/u/${user.username}` : '/login'}
               >
                 {user ? 'Your profile' : 'Sign in'}
               </Link>
             ) : null}
           </nav>
-          <p className="text-xs text-[#4D4D4D] dark:text-[#BDBDBD]">
+          <p className="text-xs text-brand-mid">
             © {new Date().getFullYear()} Vrompt
           </p>
         </div>

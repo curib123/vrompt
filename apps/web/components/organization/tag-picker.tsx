@@ -123,8 +123,8 @@ export function TagPicker({
           placeholder="Search topics or add your own"
           value={query}
         />
-          <Button onClick={() => void addTypedTag()} variant="secondary">
-            Add topic
+        <Button onClick={() => void addTypedTag()} variant="secondary">
+          Add topic
         </Button>
       </div>
       {query && suggestions.length > 0 ? (
@@ -141,11 +141,13 @@ export function TagPicker({
             ))}
         </div>
       ) : null}
-      <p className="text-xs leading-5 text-zinc-500">
+      <p className="text-xs leading-5 text-zinc-600 dark:text-zinc-400">
         Add up to 8 topics to help people find this prompt. We will keep them
         tidy automatically.
       </p>
-      {error ? <p className="text-sm text-red-600">{error}</p> : null}
+      {error ? (
+        <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+      ) : null}
     </div>
   );
 }

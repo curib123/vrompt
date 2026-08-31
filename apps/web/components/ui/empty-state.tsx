@@ -19,7 +19,7 @@ export function EmptyState({
   return (
     <Card className="flex min-h-56 flex-col items-start justify-between gap-7 bg-linear-to-br from-white to-[#F7F7F7] dark:from-[#1A1A1A] dark:to-[#111111]">
       <div className="grid gap-4">
-        <span className="grid size-11 place-items-center rounded-2xl bg-[#0D0D0D] text-white dark:bg-white dark:text-[#0D0D0D]">
+        <span className="grid size-11 place-items-center rounded-2xl bg-[#0D0D0D] text-background dark:bg-white">
           <BrandMark className="size-6" />
         </span>
         <h3 className="text-2xl font-semibold tracking-[-0.04em] text-black dark:text-white">

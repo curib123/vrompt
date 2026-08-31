@@ -63,7 +63,7 @@ export function CollectionDetailView({
     <div className="grid gap-8">
       <Card className="relative overflow-hidden border-[#0D0D0D] bg-[#0D0D0D] text-white dark:border-white">
         <div className="relative space-y-4">
-          <Badge className="border-white/30 text-zinc-300">
+          <Badge className="!border-white/30 !text-zinc-300">
             {collection.visibility.toLowerCase()} collection
           </Badge>
           <h1 className="text-4xl font-semibold tracking-[-0.07em] sm:text-7xl">
@@ -92,7 +92,7 @@ export function CollectionDetailView({
               slug={item.promptRepository.slug}
               title={item.promptRepository.title}
             >
-              <p className="font-mono text-xs uppercase tracking-[0.18em] text-zinc-500">
+              <p className="font-mono text-xs uppercase tracking-[0.18em] text-zinc-600 dark:text-zinc-400">
                 {String(index + 1).padStart(2, '0')} / @
                 {item.promptRepository.owner.username}
               </p>

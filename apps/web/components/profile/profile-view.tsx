@@ -255,7 +255,7 @@ function ProfileOverview({ profile }: { profile: ProfileResponse }) {
                 slug={repository.slug}
                 title={repository.title}
               >
-                <p className="font-mono text-xs uppercase tracking-[0.18em] text-zinc-500">
+                <p className="font-mono text-xs uppercase tracking-[0.18em] text-zinc-600 dark:text-zinc-400">
                   Updated {formatDate(repository.updatedAt)}
                 </p>
                 <h3 className="mt-4 text-xl font-semibold tracking-tight">
@@ -324,7 +324,7 @@ function ContentSection({
   return (
     <section className="grid gap-5">
       <div className="space-y-2">
-        <p className="font-mono text-xs uppercase tracking-[0.24em] text-zinc-500">
+        <p className="font-mono text-xs uppercase tracking-[0.24em] text-zinc-600 dark:text-zinc-400">
           Profile shelf
         </p>
         <h2 className="text-3xl font-semibold tracking-[-0.05em]">{title}</h2>
@@ -343,7 +343,7 @@ function StatCard({ label, value }: { label: string; value: number }) {
       <p className="text-3xl font-semibold tracking-[-0.06em] sm:text-4xl">
         {value}
       </p>
-      <p className="text-xs font-medium uppercase tracking-[0.16em] text-zinc-500">
+      <p className="text-xs font-medium uppercase tracking-[0.16em] text-zinc-600 dark:text-zinc-400">
         {label}
       </p>
     </Card>

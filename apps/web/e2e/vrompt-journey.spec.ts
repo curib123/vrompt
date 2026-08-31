@@ -181,7 +181,7 @@ test('keeps the signed-out desktop navigation focused', async ({ page }) => {
   });
   await expect(navigation.getByRole('link', { name: 'Home' })).toBeVisible();
   await expect(navigation.getByRole('link', { name: 'Explore' })).toBeVisible();
-  await expect(navigation.getByRole('link', { name: 'Search' })).toBeVisible();
+  await expect(navigation.getByRole('link', { name: 'Landing' })).toBeVisible();
   await expect(navigation.getByRole('link', { name: 'Create' })).toHaveCount(0);
   await expect(navigation.getByRole('link', { name: 'Saved' })).toHaveCount(0);
   await expect(navigation.getByRole('link', { name: 'Following' })).toHaveCount(
@@ -234,6 +234,7 @@ test('opens the mobile navigation drawer from the left-side hamburger', async ({
   });
   await expect(closeButton).toBeFocused();
   await expect(drawer.getByRole('link', { name: 'Explore' })).toBeVisible();
+  await expect(drawer.getByRole('link', { name: 'Landing' })).toBeVisible();
   const joinLink = drawer.getByRole('link', { name: 'Become a creator' });
   await expect(joinLink).toBeVisible();
   await expect(joinLink).toHaveCSS('color', 'rgb(255, 255, 255)');

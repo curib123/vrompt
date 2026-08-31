@@ -109,7 +109,7 @@ export function SearchView({
       <Card className="relative overflow-hidden rounded-[2rem] !border-[#0D0D0D] !bg-[#0D0D0D] p-5 !text-white dark:!border-white sm:p-8">
         <div className="pointer-events-none absolute -right-24 -top-28 size-80 rounded-full border-[40px] border-white/10" />
         <div className="relative space-y-4">
-          <Badge className="border-white/30 text-zinc-300">Discover</Badge>
+          <Badge className="!border-white/30 !text-zinc-300">Discover</Badge>
           <h1 className="text-4xl font-semibold tracking-[-0.07em] sm:text-6xl">
             Find a better prompt.
           </h1>
@@ -148,7 +148,7 @@ export function SearchView({
               <span>
                 Refine results
                 {activeFilterCount > 0 ? (
-                  <span className="ml-2 rounded-full bg-[#0D0D0D] px-2 py-0.5 text-xs text-white dark:bg-white dark:text-[#0D0D0D]">
+                  <span className="ml-2 rounded-full bg-[#0D0D0D] px-2 py-0.5 text-xs text-background dark:bg-white">
                     {activeFilterCount}
                   </span>
                 ) : null}
@@ -175,7 +175,7 @@ export function SearchView({
               />
               <select
                 aria-label="Sort results"
-                className="min-h-11 rounded-2xl border border-zinc-300 bg-white px-4 text-sm text-[#0D0D0D] dark:border-zinc-700 dark:bg-zinc-950 dark:text-white"
+                className="min-h-11 rounded-2xl border border-zinc-300 bg-white px-4 text-sm text-foreground dark:border-zinc-700 dark:bg-zinc-950"
                 onChange={(event) => setSort(event.target.value as Sort)}
                 value={sort}
               >
@@ -198,7 +198,7 @@ export function SearchView({
       >
         {error ? (
           <div
-            className="rounded-2xl border border-[#E6E6E6] bg-[#F7F7F7] px-4 py-3 text-sm text-[#4D4D4D] dark:border-[#4D4D4D] dark:bg-[#111111] dark:text-[#BDBDBD]"
+            className="rounded-2xl border border-[#E6E6E6] bg-[#F7F7F7] px-4 py-3 text-sm text-brand-mid dark:border-[#4D4D4D] dark:bg-[#111111]"
             role="status"
           >
             {error}
@@ -223,7 +223,7 @@ export function SearchView({
               className="flex items-end justify-between gap-3"
             >
               <div>
-                <p className="font-mono text-xs uppercase tracking-[0.2em] text-zinc-500">
+                <p className="font-mono text-xs uppercase tracking-[0.2em] text-zinc-600 dark:text-zinc-400">
                   Prompt library
                 </p>
                 <h2 className="mt-1 text-2xl font-semibold tracking-[-0.04em]">
@@ -234,7 +234,9 @@ export function SearchView({
                     : `${result.total} prompts to explore`}
                 </h2>
               </div>
-              <p className="text-xs text-zinc-500">Page {result.page}</p>
+              <p className="text-xs text-zinc-600 dark:text-zinc-400">
+                Page {result.page}
+              </p>
             </div>
             <div
               className={`grid gap-4 transition-opacity md:grid-cols-2 ${
@@ -257,7 +259,7 @@ export function SearchView({
               >
                 Previous
               </Button>
-              <span className="text-xs font-medium text-zinc-500">
+              <span className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
                 Page {page}
               </span>
               <Button
@@ -294,7 +296,7 @@ function ResultCard({ item, query }: { item: SearchResult; query: string }) {
       <p className="mt-3 line-clamp-3 text-sm leading-7 text-zinc-600 dark:text-zinc-400">
         {highlight(item.description || 'A reusable prompt.', query)}
       </p>
-      <div className="mt-auto flex flex-wrap gap-x-4 gap-y-2 pt-6 text-xs text-zinc-500">
+      <div className="mt-auto flex flex-wrap gap-x-4 gap-y-2 pt-6 text-xs text-zinc-600 dark:text-zinc-400">
         <span>By @{item.owner.username}</span>
         <span>{item.copyCount} copies</span>
         <span>{item.saveCount} saves</span>

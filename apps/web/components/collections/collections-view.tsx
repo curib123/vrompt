@@ -113,7 +113,7 @@ export function CollectionsView({ embedded = false }: { embedded?: boolean }) {
       >
         <div className="pointer-events-none absolute -right-24 -top-28 size-80 rounded-full border-[40px] border-white/10" />
         <div className="relative">
-          <Badge className="border-white/30 text-zinc-300">Collections</Badge>
+          <Badge className="!border-white/30 !text-zinc-300">Collections</Badge>
           <h1 className="mt-4 text-4xl font-semibold tracking-[-0.06em] sm:text-5xl">
             Organize your prompt shelf.
           </h1>
@@ -164,7 +164,9 @@ export function CollectionsView({ embedded = false }: { embedded?: boolean }) {
           </div>
         </form>
       </Card>
-      {error ? <p className="text-sm text-red-600">{error}</p> : null}
+      {error ? (
+        <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+      ) : null}
       {collections.length === 0 ? (
         <EmptyState
           description="Create a collection to bring related prompts together."
@@ -201,7 +203,7 @@ export function CollectionsView({ embedded = false }: { embedded?: boolean }) {
                 <p className="mt-3 text-sm leading-7 text-zinc-600 dark:text-zinc-400">
                   {collection.description || 'A curated prompt collection.'}
                 </p>
-                <p className="mt-5 text-xs uppercase tracking-[0.18em] text-zinc-500">
+                <p className="mt-5 text-xs uppercase tracking-[0.18em] text-zinc-600 dark:text-zinc-400">
                   {collection.items.length} prompts
                 </p>
               </Link>
@@ -210,7 +212,7 @@ export function CollectionsView({ embedded = false }: { embedded?: boolean }) {
         </div>
       )}
       {user ? (
-        <p className="text-xs text-zinc-500">
+        <p className="text-xs text-zinc-600 dark:text-zinc-400">
           Public collections can be shared from your profile.
         </p>
       ) : null}

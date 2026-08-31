@@ -53,7 +53,7 @@ export function ExploreView({
   return (
     <div className="grid gap-14">
       <header className="max-w-3xl border-b border-[#E6E6E6] pb-8 dark:border-[#1A1A1A]">
-        <p className="font-mono text-xs uppercase tracking-[0.24em] text-zinc-500">
+        <p className="font-mono text-xs uppercase tracking-[0.24em] text-zinc-600 dark:text-zinc-400">
           Prompt library
         </p>
         <h1 className="mt-3 text-4xl font-semibold tracking-[-0.06em] sm:text-6xl">
@@ -141,7 +141,9 @@ function ExploreSection({
     <section className="grid gap-5">
       <SectionHeading title={title} />
       {items.length === 0 ? (
-        <p className="text-sm text-zinc-500">No prompts in this view yet.</p>
+        <p className="text-sm text-zinc-600 dark:text-zinc-400">
+          No prompts in this view yet.
+        </p>
       ) : (
         <div className="grid auto-cols-[minmax(17rem,85vw)] grid-flow-col gap-4 overflow-x-auto overscroll-x-contain pb-3 pr-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:auto-cols-auto md:grid-flow-row md:grid-cols-2 md:overflow-visible md:pb-0 md:pr-0">
           {items.slice(0, 4).map((item) => (
@@ -197,7 +199,9 @@ function RepositoryCard({
       <p className="mt-2 line-clamp-2 text-sm leading-6 text-zinc-600 dark:text-zinc-400">
         {item.description || 'A reusable prompt.'}
       </p>
-      <p className="mt-5 text-xs text-zinc-500">by @{item.owner.username}</p>
+      <p className="mt-5 text-xs text-zinc-600 dark:text-zinc-400">
+        by @{item.owner.username}
+      </p>
     </PromptPreviewCard>
   );
 }
@@ -212,7 +216,7 @@ function SectionHeading({
   return (
     <div className="flex items-end justify-between gap-4">
       <div>
-        <p className="font-mono text-xs uppercase tracking-[0.24em] text-zinc-500">
+        <p className="font-mono text-xs uppercase tracking-[0.24em] text-zinc-600 dark:text-zinc-400">
           Prompt library
         </p>
         <h2 className="mt-2 text-3xl font-semibold tracking-[-0.05em]">
@@ -220,7 +224,7 @@ function SectionHeading({
         </h2>
       </div>
       {showSwipe ? (
-        <p className="pb-1 text-xs font-medium text-zinc-500 md:hidden">
+        <p className="pb-1 text-xs font-medium text-zinc-600 md:hidden dark:text-zinc-400">
           Swipe to browse
         </p>
       ) : null}

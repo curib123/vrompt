@@ -306,7 +306,7 @@ export function CreatePromptForm({
       >
         <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
           <div className="space-y-3">
-            <Badge className="border-white/30 text-zinc-300">
+            <Badge className="!border-white/30 !text-zinc-300">
               Create prompt
             </Badge>
             <h1
@@ -506,7 +506,7 @@ export function CreatePromptForm({
               </div>
             ))}
             {variables.length === 0 ? (
-              <p className="text-sm text-zinc-500">
+              <p className="text-sm text-zinc-600 dark:text-zinc-400">
                 No variables yet. Add one when your prompt has reusable inputs.
               </p>
             ) : null}
@@ -584,7 +584,7 @@ export function CreatePromptForm({
               </div>
             ))}
             {examples.length === 0 ? (
-              <p className="text-sm text-zinc-500">
+              <p className="text-sm text-zinc-600 dark:text-zinc-400">
                 Examples are optional, but they make a prompt easier to trust.
               </p>
             ) : null}
@@ -611,7 +611,7 @@ export function CreatePromptForm({
               <span className="text-sm font-medium">
                 Drop images here or choose files
               </span>
-              <span className="mt-2 text-xs text-zinc-500">
+              <span className="mt-2 text-xs text-zinc-600 dark:text-zinc-400">
                 JPEG, PNG, or WebP up to 5 MB each
               </span>
               <input

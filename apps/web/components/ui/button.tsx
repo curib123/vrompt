@@ -12,11 +12,11 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 
 const variantClasses: Record<ButtonVariant, string> = {
   primary:
-    'bg-[#0D0D0D] !text-white hover:bg-[#1A1A1A] focus-visible:outline-black dark:bg-white dark:!text-[#0D0D0D] dark:hover:bg-[#E6E6E6]',
+    'bg-[#0D0D0D] !text-background hover:bg-[#1A1A1A] focus-visible:outline-black dark:bg-white dark:hover:bg-[#E6E6E6]',
   secondary:
-    'border border-[#E6E6E6] bg-white !text-[#0D0D0D] hover:border-[#0D0D0D] hover:bg-[#E6E6E6] focus-visible:outline-black dark:border-[#4D4D4D] dark:bg-[#1A1A1A] dark:!text-white dark:hover:border-white dark:hover:bg-[#0D0D0D]',
+    'border border-[#E6E6E6] bg-white !text-foreground hover:border-[#0D0D0D] hover:bg-[#E6E6E6] focus-visible:outline-black dark:border-[#4D4D4D] dark:bg-[#1A1A1A] dark:hover:border-white dark:hover:bg-[#0D0D0D]',
   ghost:
-    'bg-transparent !text-[#0D0D0D] hover:bg-[#E6E6E6] focus-visible:outline-black dark:!text-white dark:hover:bg-[#1A1A1A]',
+    'bg-transparent !text-foreground hover:bg-[#E6E6E6] focus-visible:outline-black dark:hover:bg-[#1A1A1A]',
 };
 
 export function getButtonClasses(variant: ButtonVariant, className?: string) {

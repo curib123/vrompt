@@ -108,7 +108,7 @@ export function SavedRepositories({
         <div className="pointer-events-none absolute -right-24 -top-28 size-80 rounded-full border-[40px] border-white/10" />
         <div className="relative flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <Badge className="border-white/30 text-zinc-300">Library</Badge>
+            <Badge className="!border-white/30 !text-zinc-300">Library</Badge>
             <h1 className="mt-4 text-4xl font-semibold tracking-[-0.06em] sm:text-5xl">
               Saved prompts
             </h1>
@@ -138,7 +138,9 @@ export function SavedRepositories({
         </div>
       </Card>
 
-      {error ? <p className="text-sm text-red-600">{error}</p> : null}
+      {error ? (
+        <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+      ) : null}
       {result.items.length === 0 ? (
         <EmptyState
           actionHref="/explore"
@@ -187,7 +189,7 @@ export function SavedRepositories({
                     {repository.description || 'A reusable prompt.'}
                   </p>
                 </PromptPreviewCard>
-                <div className="mt-6 flex flex-wrap gap-x-4 gap-y-2 text-xs text-zinc-500">
+                <div className="mt-6 flex flex-wrap gap-x-4 gap-y-2 text-xs text-zinc-600 dark:text-zinc-400">
                   <span>by @{repository.owner.username}</span>
                   <span>Saved {formatDate(item.createdAt)}</span>
                   <span>Updated {formatDate(repository.updatedAt)}</span>
@@ -200,7 +202,7 @@ export function SavedRepositories({
 
       {result.total > 0 ? (
         <div className="flex items-center justify-between gap-4">
-          <p className="text-sm text-zinc-500">
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
             Page {result.page} of{' '}
             {Math.max(Math.ceil(result.total / result.pageSize), 1)}
           </p>

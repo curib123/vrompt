@@ -213,7 +213,7 @@ export function PromptPreviewProvider({ children }: { children: ReactNode }) {
         ) : error && selected ? (
           <div className="rounded-[1.5rem] border border-dashed border-[#BDBDBD] p-6 text-center dark:border-[#4D4D4D]">
             <p className="font-semibold">This preview could not be loaded.</p>
-            <p className="mt-2 text-sm text-zinc-500">
+            <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
               Open the full page to try again or browse another prompt.
             </p>
             <Link
@@ -289,9 +289,9 @@ function PromptPreviewContent({
         {version ? <Badge>Update {version.versionNumber}</Badge> : null}
       </div>
 
-      <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-zinc-500">
+      <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-zinc-600 dark:text-zinc-400">
         <Link
-          className="font-semibold text-[#0D0D0D] underline underline-offset-4 dark:text-white"
+          className="font-semibold text-foreground underline underline-offset-4"
           href={`/u/${repository.owner.username}`}
         >
           By @{repository.owner.username}
@@ -328,7 +328,7 @@ function PromptPreviewContent({
         </Link>
       </div>
       {copyState === 'failed' ? (
-        <p className="text-sm text-red-600">
+        <p className="text-sm text-red-600 dark:text-red-400">
           Could not copy. Please try again.
         </p>
       ) : null}
@@ -337,7 +337,7 @@ function PromptPreviewContent({
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
             <p className="font-semibold">Share this prompt</p>
-            <p className="mt-1 text-xs text-zinc-500">
+            <p className="mt-1 text-xs text-zinc-600 dark:text-zinc-400">
               Create a ready-to-post message or copy its public details link.
             </p>
           </div>
@@ -351,7 +351,7 @@ function PromptPreviewContent({
           <>
             <textarea
               aria-label="Share post template"
-              className="mt-4 min-h-40 w-full resize-y rounded-2xl border border-[#E6E6E6] bg-[#F7F7F7] p-4 text-sm leading-6 text-[#0D0D0D] outline-none dark:border-[#4D4D4D] dark:bg-[#111111] dark:text-white"
+              className="mt-4 min-h-40 w-full resize-y rounded-2xl border border-[#E6E6E6] bg-[#F7F7F7] p-4 text-sm leading-6 text-foreground outline-none dark:border-[#4D4D4D] dark:bg-[#111111]"
               readOnly
               value={postTemplate}
             />
@@ -385,7 +385,7 @@ function PromptPreviewContent({
               ))}
             </div>
             {shareState === 'failed' ? (
-              <p className="mt-3 text-sm text-red-600">
+              <p className="mt-3 text-sm text-red-600 dark:text-red-400">
                 Sharing is unavailable. Copy the post or public link instead.
               </p>
             ) : null}

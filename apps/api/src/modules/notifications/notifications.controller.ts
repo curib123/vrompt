@@ -1,5 +1,6 @@
 import {
   Controller,
+  DefaultValuePipe,
   Get,
   Param,
   ParseIntPipe,
@@ -22,8 +23,9 @@ export class NotificationsController {
   @Get()
   list(
     @CurrentUser() user: AuthenticatedUser,
-    @Query('page', new ParseIntPipe({ optional: true })) page?: number,
-    @Query('pageSize', new ParseIntPipe({ optional: true })) pageSize?: number,
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+    @Query('pageSize', new DefaultValuePipe(20), ParseIntPipe)
+    pageSize: number,
   ) {
     return this.notificationsService.list(user.id, page, pageSize);
   }

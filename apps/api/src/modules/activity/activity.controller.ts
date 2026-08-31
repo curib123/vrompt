@@ -1,5 +1,6 @@
 import {
   Controller,
+  DefaultValuePipe,
   Get,
   Param,
   ParseIntPipe,
@@ -21,8 +22,9 @@ export class ActivityController {
   @UseGuards(AccessTokenGuard)
   feed(
     @CurrentUser() user: AuthenticatedUser,
-    @Query('page', new ParseIntPipe({ optional: true })) page?: number,
-    @Query('pageSize', new ParseIntPipe({ optional: true })) pageSize?: number,
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+    @Query('pageSize', new DefaultValuePipe(20), ParseIntPipe)
+    pageSize: number,
   ) {
     return this.activityService.feed(user.id, page, pageSize);
   }
