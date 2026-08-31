@@ -2022,6 +2022,8 @@ The MVP core cannot be considered complete if this flow fails.
 
 **# Phase 36 — Production Docker**
 
+**# Phase 36 — Production Docker**
+
 Create production Docker configuration.
 
 Containers:
@@ -2705,3 +2707,4 @@ Do not implement Phase 2 features as part of this task.
 When all acceptance checks pass, consider:
 
 **\*\*Vrompt Phase 1 MVP — Production Ready.\*\***
+
