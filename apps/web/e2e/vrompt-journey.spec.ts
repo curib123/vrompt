@@ -250,6 +250,62 @@ test('opens the mobile navigation drawer from the left-side hamburger', async ({
   await expect(drawer).not.toBeVisible();
 });
 
+test('shows the signed-in creator profile and workspace links in the drawer', async ({
+  page,
+}) => {
+  await page.emulateMedia({ colorScheme: 'dark' });
+  await page.route(`${apiOrigin}/**`, async (route) => {
+    const url = new URL(route.request().url());
+    if (url.pathname === '/api/v1/auth/refresh') {
+      await route.fulfill({
+        json: { accessToken: 'token-author', user: author },
+      });
+      return;
+    }
+    if (url.pathname === '/api/v1/profiles/me') {
+      await route.fulfill({
+        json: {
+          ...profile(author),
+          stats: { repositories: 12, followers: 48, following: 7 },
+        },
+      });
+      return;
+    }
+    await route.abort();
+  });
+
+  await page.goto('/search');
+  await page.getByRole('button', { name: 'Open navigation' }).click();
+
+  const drawer = page.getByRole('dialog', {
+    name: 'Mobile navigation drawer',
+  });
+  const profileCard = drawer.getByRole('link', {
+    name: "View Author A's profile",
+  });
+  await expect(profileCard).toBeVisible();
+  await expect(profileCard.getByRole('img', { name: 'Author A avatar' })).toBeVisible();
+  await expect(profileCard.getByText('@author')).toBeVisible();
+  await expect(profileCard.getByText('Creator', { exact: true })).toBeVisible();
+  await expect(profileCard.getByText('12')).toBeVisible();
+  await expect(profileCard.getByText('48')).toBeVisible();
+  await expect(profileCard.getByText('7')).toBeVisible();
+  await expect(drawer.getByRole('link', { name: 'Saved' })).toHaveAttribute(
+    'href',
+    '/u/author?tab=saved',
+  );
+  await expect(
+    drawer.getByRole('link', { name: 'Collections' }),
+  ).toHaveAttribute('href', '/u/author?tab=collections');
+  await expect(drawer.getByRole('link', { name: 'Following' })).toHaveAttribute(
+    'href',
+    '/u/author?tab=following',
+  );
+  await expect(
+    drawer.getByRole('link', { name: 'Notifications' }),
+  ).toHaveAttribute('href', '/notifications');
+});
+
 test('keeps Explore focused without a duplicate search panel', async ({
   page,
 }) => {
