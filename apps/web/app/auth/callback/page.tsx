@@ -13,7 +13,7 @@ export default function AuthCallbackPage() {
   const completeAuth = useEffectEvent(async () => {
     try {
       await refreshSession();
-      router.replace('/');
+      router.replace('/search');
     } catch {
       router.replace('/login?error=google_auth_failed');
     }

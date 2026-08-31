@@ -78,7 +78,7 @@ export class AuthController {
         session.refreshExpiresAt,
       );
       response.clearCookie(GOOGLE_STATE_COOKIE, this.cookieOptions());
-      return response.redirect(this.webOrigin);
+      return response.redirect(`${this.webOrigin}/search`);
     } catch {
       return this.redirectToFailure(response);
     }
