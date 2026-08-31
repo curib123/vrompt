@@ -32,6 +32,25 @@ describe('shared accessibility primitives', () => {
     expect(screen.getByRole('button', { name: 'Confirm' })).toHaveFocus();
   });
 
+  it('renders modals at the document root instead of inside their trigger layout', () => {
+    render(
+      <header data-testid="sticky-header">
+        <Modal
+          description="Dialog description"
+          onClose={() => undefined}
+          open
+          title="Portal dialog"
+        >
+          <button type="button">Confirm</button>
+        </Modal>
+      </header>,
+    );
+
+    const dialog = screen.getByRole('dialog', { name: 'Portal dialog' });
+    expect(dialog.closest('[data-testid="sticky-header"]')).toBeNull();
+    expect(dialog.parentElement).toBe(document.body);
+  });
+
   it('moves between tabs with arrow keys', () => {
     render(
       <Tabs

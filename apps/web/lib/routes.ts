@@ -1,11 +1,11 @@
 export const publicPrimaryRoutes = [
-  { href: '/', label: 'Home' },
-  { href: '/search', label: 'Search' },
+  { href: '/search', label: 'Home' },
   { href: '/explore', label: 'Explore' },
+  { href: '/landing', label: 'Landing' },
 ] as const;
 
 export const memberPrimaryRoutes = [
-  { href: '/search', label: 'Search' },
+  { href: '/search', label: 'Home' },
   { href: '/explore', label: 'Explore' },
   { href: '/create', label: 'Prompts' },
 ] as const;

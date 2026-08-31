@@ -7,6 +7,15 @@ const nextConfig: NextConfig = {
   output: 'standalone',
   outputFileTracingRoot: path.join(__dirname, '../../'),
   typedRoutes: true,
+  async redirects() {
+    return [
+      {
+        source: '/',
+        destination: '/search',
+        permanent: false,
+      },
+    ];
+  },
 };
 
 export default nextConfig;

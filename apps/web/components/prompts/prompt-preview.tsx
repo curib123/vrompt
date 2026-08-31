@@ -22,6 +22,12 @@ import { apiRequest } from '@/lib/api';
 import type { PromptRepositoryDetail } from '@/lib/api';
 import { cn } from '@/lib/cn';
 import { copyToClipboard, getCopyClientKey } from '@/lib/clipboard';
+import {
+  buildPromptPostTemplate,
+  buildPublicPromptUrl,
+} from '@/lib/prompt-sharing';
+
+type ShareState = 'idle' | 'link-copied' | 'post-copied' | 'shared' | 'failed';
 
 type PromptPreviewSeed = {
   description?: string | null;
@@ -48,9 +54,7 @@ export function PromptPreviewProvider({ children }: { children: ReactNode }) {
   const [copyState, setCopyState] = useState<'idle' | 'copied' | 'failed'>(
     'idle',
   );
-  const [shareState, setShareState] = useState<'idle' | 'copied' | 'failed'>(
-    'idle',
-  );
+  const [shareState, setShareState] = useState<ShareState>('idle');
 
   const openPrompt = useCallback((prompt: PromptPreviewSeed) => {
     setSelected(prompt);
@@ -134,21 +138,49 @@ export function PromptPreviewProvider({ children }: { children: ReactNode }) {
     if (!repository) return;
 
     const url = getPromptUrl(repository.slug);
+    const post = getPromptPost(repository, url);
     try {
       if (navigator.share) {
         await navigator.share({
           title: `${repository.title} | Vrompt`,
-          text: repository.description || 'A useful prompt from Vrompt.',
+          text: post,
           url,
         });
+        setShareState('shared');
+        window.setTimeout(() => setShareState('idle'), 2200);
         return;
       }
 
-      await copyToClipboard(url);
-      setShareState('copied');
+      await copyToClipboard(post);
+      setShareState('post-copied');
       window.setTimeout(() => setShareState('idle'), 2200);
     } catch (shareError: unknown) {
       if ((shareError as Error).name !== 'AbortError') setShareState('failed');
+    }
+  }
+
+  async function copyShareLink() {
+    if (!repository) return;
+
+    try {
+      await copyToClipboard(getPromptUrl(repository.slug));
+      setShareState('link-copied');
+      window.setTimeout(() => setShareState('idle'), 2200);
+    } catch {
+      setShareState('failed');
+    }
+  }
+
+  async function copySharePost() {
+    if (!repository) return;
+
+    try {
+      const url = getPromptUrl(repository.slug);
+      await copyToClipboard(getPromptPost(repository, url));
+      setShareState('post-copied');
+      window.setTimeout(() => setShareState('idle'), 2200);
+    } catch {
+      setShareState('failed');
     }
   }
 
@@ -172,6 +204,8 @@ export function PromptPreviewProvider({ children }: { children: ReactNode }) {
           <PromptPreviewContent
             copyState={copyState}
             onCopy={() => void copyPrompt()}
+            onCopyLink={() => void copyShareLink()}
+            onCopyPost={() => void copySharePost()}
             onShare={() => void sharePrompt()}
             repository={repository}
             shareState={shareState}
@@ -224,23 +258,26 @@ export function PromptPreviewCard({
 function PromptPreviewContent({
   copyState,
   onCopy,
+  onCopyLink,
+  onCopyPost,
   onShare,
   repository,
   shareState,
 }: {
   copyState: 'idle' | 'copied' | 'failed';
   onCopy: () => void;
+  onCopyLink: () => void;
+  onCopyPost: () => void;
   onShare: () => void;
   repository: PromptRepositoryDetail;
-  shareState: 'idle' | 'copied' | 'failed';
+  shareState: ShareState;
 }) {
   const version = repository.currentVersion;
   const promptUrl = getPromptUrl(repository.slug);
-  const socialLinks = getSocialShareLinks(
-    promptUrl,
-    repository.title,
-    repository.description,
-  );
+  const postTemplate = getPromptPost(repository, promptUrl);
+  const isShareable =
+    repository.visibility !== 'PRIVATE' && repository.status === 'ACTIVE';
+  const socialLinks = getSocialShareLinks(promptUrl, postTemplate);
 
   return (
     <div className="grid gap-5">
@@ -301,35 +338,64 @@ function PromptPreviewContent({
           <div>
             <p className="font-semibold">Share this prompt</p>
             <p className="mt-1 text-xs text-zinc-500">
-              Send the public prompt page in one tap.
+              Create a ready-to-post message or copy its public details link.
             </p>
           </div>
-          <Button onClick={onShare} type="button" variant="secondary">
-            {shareState === 'copied' ? 'Link copied' : 'Share'}
-          </Button>
+          {isShareable ? (
+            <Button onClick={onShare} type="button" variant="secondary">
+              {shareState === 'shared' ? 'Shared' : 'Share'}
+            </Button>
+          ) : null}
         </div>
-        <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
-          {socialLinks.map((link) => (
-            <a
-              aria-label={`Share on ${link.label}`}
-              className={getButtonClasses(
-                'ghost',
-                'min-h-10 border border-[#E6E6E6] px-3 py-2 dark:border-[#4D4D4D]',
-              )}
-              href={link.href}
-              key={link.label}
-              rel="noreferrer"
-              target="_blank"
-            >
-              {link.label}
-            </a>
-          ))}
-        </div>
-        {shareState === 'failed' ? (
-          <p className="mt-3 text-sm text-red-600">
-            Sharing is unavailable. Try a platform below.
+        {isShareable ? (
+          <>
+            <textarea
+              aria-label="Share post template"
+              className="mt-4 min-h-40 w-full resize-y rounded-2xl border border-[#E6E6E6] bg-[#F7F7F7] p-4 text-sm leading-6 text-[#0D0D0D] outline-none dark:border-[#4D4D4D] dark:bg-[#111111] dark:text-white"
+              readOnly
+              value={postTemplate}
+            />
+            <div className="mt-3 grid gap-2 sm:grid-cols-2">
+              <Button onClick={onCopyPost} type="button">
+                {shareState === 'post-copied'
+                  ? 'Post copied'
+                  : 'Copy post template'}
+              </Button>
+              <Button onClick={onCopyLink} type="button" variant="secondary">
+                {shareState === 'link-copied'
+                  ? 'Public link copied'
+                  : 'Copy public link'}
+              </Button>
+            </div>
+            <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
+              {socialLinks.map((link) => (
+                <a
+                  aria-label={`Share on ${link.label}`}
+                  className={getButtonClasses(
+                    'ghost',
+                    'min-h-10 border border-[#E6E6E6] px-3 py-2 dark:border-[#4D4D4D]',
+                  )}
+                  href={link.href}
+                  key={link.label}
+                  rel="noreferrer"
+                  target="_blank"
+                >
+                  {link.label}
+                </a>
+              ))}
+            </div>
+            {shareState === 'failed' ? (
+              <p className="mt-3 text-sm text-red-600">
+                Sharing is unavailable. Copy the post or public link instead.
+              </p>
+            ) : null}
+          </>
+        ) : (
+          <p className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-300">
+            Set this prompt to Public or Unlisted before sharing its details
+            link.
           </p>
-        ) : null}
+        )}
       </div>
     </div>
   );
@@ -346,15 +412,21 @@ function usePromptPreview() {
 }
 
 function getPromptUrl(slug: string) {
-  return new URL(`/p/${slug}`, window.location.origin).toString();
+  const publicOrigin =
+    process.env.NEXT_PUBLIC_SITE_URL?.trim() || window.location.origin;
+  return buildPublicPromptUrl(slug, publicOrigin);
 }
 
-function getSocialShareLinks(
-  url: string,
-  title: string,
-  description: string | null,
-) {
-  const message = `${title} - ${description || 'A useful prompt from Vrompt.'}`;
+function getPromptPost(repository: PromptRepositoryDetail, url: string) {
+  return buildPromptPostTemplate({
+    description: repository.description,
+    ownerUsername: repository.owner.username,
+    title: repository.title,
+    url,
+  });
+}
+
+function getSocialShareLinks(url: string, postTemplate: string) {
   return [
     {
       label: 'Facebook',
@@ -362,7 +434,7 @@ function getSocialShareLinks(
     },
     {
       label: 'X',
-      href: `https://twitter.com/intent/tweet?text=${encodeURIComponent(message)}&url=${encodeURIComponent(url)}`,
+      href: `https://twitter.com/intent/tweet?text=${encodeURIComponent(postTemplate)}`,
     },
     {
       label: 'LinkedIn',
@@ -370,7 +442,7 @@ function getSocialShareLinks(
     },
     {
       label: 'WhatsApp',
-      href: `https://wa.me/?text=${encodeURIComponent(`${message} ${url}`)}`,
+      href: `https://wa.me/?text=${encodeURIComponent(postTemplate)}`,
     },
   ];
 }

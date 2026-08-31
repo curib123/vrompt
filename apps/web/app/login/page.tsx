@@ -1,7 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useEffect } from 'react';
 
 import { BrandLockup, BrandMark } from '@/components/brand/brand-mark';
 import { useAuth } from '@/components/providers/auth-provider';
@@ -10,12 +11,19 @@ import { Card } from '@/components/ui/card';
 import { useToast } from '@/components/ui/toast';
 
 export default function LoginPage() {
+  const router = useRouter();
   const searchParams = useSearchParams();
-  const { beginGoogleLogin } = useAuth();
+  const { beginGoogleLogin, isLoading, user } = useAuth();
   const { pushToast } = useToast();
   const hasGoogleError = searchParams.get('error') === 'google_auth_failed';
   const hasGoogleConfigError =
     searchParams.get('error') === 'google_not_configured';
+
+  useEffect(() => {
+    if (!isLoading && user) {
+      router.replace('/search');
+    }
+  }, [isLoading, router, user]);
 
   function handleGoogleLogin() {
     if (hasGoogleError) {
@@ -32,6 +40,17 @@ export default function LoginPage() {
       });
     }
     beginGoogleLogin();
+  }
+
+  if (isLoading || user) {
+    return (
+      <div
+        className="grid min-h-72 place-items-center rounded-[2rem] border border-[#E6E6E6] bg-white/95 p-8 text-sm text-[#4D4D4D] dark:border-[#1A1A1A] dark:bg-[#1A1A1A]/95 dark:text-[#BDBDBD]"
+        role="status"
+      >
+        {user ? 'Opening your workspace...' : 'Checking your session...'}
+      </div>
+    );
   }
 
   return (
@@ -62,8 +81,8 @@ export default function LoginPage() {
             className="rounded-2xl border border-[#BDBDBD] bg-[#E6E6E6] p-4 text-sm leading-6 text-[#4D4D4D]"
             role="status"
           >
-            Google sign-in is not ready yet. Please ask the site owner to
-            finish the sign-in setup.
+            Google sign-in is not ready yet. Please ask the site owner to finish
+            the sign-in setup.
           </p>
         ) : hasGoogleError ? (
           <p
@@ -137,8 +156,14 @@ export default function LoginPage() {
 
             <div className="grid gap-3">
               <Benefit number="01" text="Save prompts you want to use again" />
-              <Benefit number="02" text="Follow creators and join discussions" />
-              <Benefit number="03" text="Publish, improve, and share your own prompts" />
+              <Benefit
+                number="02"
+                text="Follow creators and join discussions"
+              />
+              <Benefit
+                number="03"
+                text="Publish, improve, and share your own prompts"
+              />
             </div>
           </div>
 

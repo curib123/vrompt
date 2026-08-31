@@ -1,6 +1,6 @@
 import { createSocialImage } from '@/components/seo/social-image';
 
-export const alt = 'Vrompt — Better prompts start here';
+export const alt = 'Vrompt — high-quality AI prompts from real creators';
 export const contentType = 'image/png';
 export const size = { height: 630, width: 1200 };
 

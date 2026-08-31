@@ -25,7 +25,7 @@ export function SiteHeader() {
             <Link
               aria-label="Vrompt home"
               className="group inline-flex rounded-lg px-1 py-1 transition hover:bg-[#E6E6E6] dark:hover:bg-[#1A1A1A]"
-              href={user ? '/search' : '/'}
+              href="/search"
             >
               <BrandLockup compact />
             </Link>
@@ -80,7 +80,7 @@ export function SiteHeader() {
                   className={getButtonClasses('primary', 'whitespace-nowrap')}
                   href="/register"
                 >
-                  Join Vrompt
+                  Become a creator
                 </Link>
               </>
             )}
@@ -91,7 +91,7 @@ export function SiteHeader() {
           <Link
             aria-label="Vrompt home"
             className="inline-flex min-w-0 rounded-lg px-1 py-1 transition hover:bg-[#E6E6E6] dark:hover:bg-[#1A1A1A]"
-            href={user ? '/search' : '/'}
+            href="/search"
           >
             <BrandLockup compact />
           </Link>
@@ -112,7 +112,7 @@ export function SiteHeader() {
                 )}
                 href="/register"
               >
-                Join
+                Become a creator
               </Link>
             )}
           </div>

@@ -16,7 +16,9 @@ export async function generateMetadata({
   const collection = await getCollectionSeoData(username, slug);
 
   return createPageMetadata({
-    title: collection ? `${collection.name} — Prompt Collection` : 'Collection unavailable',
+    title: collection
+      ? `${collection.name} — Prompt Collection`
+      : 'Collection unavailable',
     description:
       collection?.description ||
       `Explore a curated collection of reusable AI prompts by @${username} on Vrompt.`,

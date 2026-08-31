@@ -17,6 +17,7 @@ export default function robots(): MetadataRoute.Robots {
         '/notifications',
         '/register',
         '/saved',
+        '/search?*',
         '/settings',
       ],
     },

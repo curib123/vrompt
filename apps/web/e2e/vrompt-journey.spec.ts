@@ -189,7 +189,9 @@ test('keeps the signed-out desktop navigation focused', async ({ page }) => {
   );
   const header = page.getByRole('banner');
   await expect(header.getByRole('link', { name: 'Sign in' })).toBeVisible();
-  await expect(header.getByRole('link', { name: 'Join Vrompt' })).toBeVisible();
+  await expect(
+    header.getByRole('link', { name: 'Become a creator' }),
+  ).toBeVisible();
 });
 
 test('opens the mobile navigation drawer from the left-side hamburger', async ({
@@ -232,7 +234,7 @@ test('opens the mobile navigation drawer from the left-side hamburger', async ({
   });
   await expect(closeButton).toBeFocused();
   await expect(drawer.getByRole('link', { name: 'Explore' })).toBeVisible();
-  const joinLink = drawer.getByRole('link', { name: 'Join Vrompt' });
+  const joinLink = drawer.getByRole('link', { name: 'Become a creator' });
   await expect(joinLink).toBeVisible();
   await expect(joinLink).toHaveCSS('color', 'rgb(255, 255, 255)');
   await expect(drawer.getByRole('link', { name: 'Create' })).toHaveCount(0);

@@ -9,7 +9,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const data = await getSitemapData();
   const staticEntries: MetadataRoute.Sitemap = [
     {
-      url: absoluteUrl('/'),
+      url: absoluteUrl('/landing'),
       changeFrequency: 'weekly',
       priority: 1,
     },

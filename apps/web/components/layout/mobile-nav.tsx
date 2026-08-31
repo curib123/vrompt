@@ -107,7 +107,7 @@ export function MobileNav() {
               <div className="flex items-center justify-between gap-4">
                 <Link
                   aria-label="Vrompt home"
-                  href={user ? '/search' : '/'}
+                  href="/search"
                   onClick={closeDrawer}
                 >
                   <BrandLockup compact />
@@ -205,7 +205,7 @@ export function MobileNav() {
                     href="/register"
                     onClick={closeDrawer}
                   >
-                    Join Vrompt
+                    Become a creator
                   </Link>
                 </div>
               )}

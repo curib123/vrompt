@@ -6,7 +6,9 @@ import {
 
 describe('SEO metadata helpers', () => {
   it('normalizes long text and builds canonical public metadata', () => {
-    expect(truncateSeoText(`  ${'useful '.repeat(30)}  `, 40)).toHaveLength(40);
+    const truncated = truncateSeoText(`  ${'useful '.repeat(30)}  `, 40);
+    expect(truncated).toHaveLength(40);
+    expect(truncated.endsWith('…')).toBe(true);
 
     const metadata = createPageMetadata({
       title: 'Explore prompts',
@@ -31,5 +33,19 @@ describe('SEO metadata helpers', () => {
     expect(metadata.robots).toMatchObject({ index: false, follow: false });
     expect(metadata.alternates).toBeUndefined();
     expect(metadata.openGraph).toBeUndefined();
+  });
+
+  it('keeps the Home search page crawlable without indexing results', () => {
+    const metadata = createPageMetadata({
+      title: 'Prompt search',
+      description: 'Find useful prompts from real creators.',
+      path: '/search',
+      index: false,
+      follow: true,
+    });
+
+    expect(metadata.alternates).toEqual({ canonical: '/search' });
+    expect(metadata.robots).toMatchObject({ index: false, follow: true });
+    expect(metadata.openGraph).toMatchObject({ url: '/search' });
   });
 });

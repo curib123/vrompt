@@ -4,6 +4,7 @@ const fallbackSiteUrl = 'http://localhost:3000';
 
 export const siteConfig = {
   name: 'Vrompt',
+  defaultTitle: 'Vrompt — High-Quality AI Prompts',
   description:
     'Discover, copy, and improve high-quality AI prompts shared by prompt engineers, creators, and experienced AI users.',
   shortDescription: 'A living library of high-quality AI prompts.',
@@ -41,11 +42,13 @@ export function createPageMetadata({
   description,
   path,
   index = true,
+  follow = index,
 }: {
   title: string;
   description: string;
   path: string;
   index?: boolean;
+  follow?: boolean;
 }): Metadata {
   const conciseTitle = truncateSeoText(title, 60);
   const conciseDescription = truncateSeoText(description);
@@ -61,19 +64,28 @@ export function createPageMetadata({
       title: conciseTitle,
       description: conciseDescription,
       url: path,
+      images: [
+        {
+          url: '/opengraph-image',
+          width: 1200,
+          height: 630,
+          alt: 'Vrompt — high-quality AI prompts from real creators',
+        },
+      ],
     },
     twitter: {
       card: 'summary_large_image',
       title: conciseTitle,
       description: conciseDescription,
+      images: ['/opengraph-image'],
     },
     robots: index
       ? {
           index: true,
-          follow: true,
+          follow,
           googleBot: {
             index: true,
-            follow: true,
+            follow,
             'max-image-preview': 'large',
             'max-snippet': -1,
             'max-video-preview': -1,
@@ -81,8 +93,8 @@ export function createPageMetadata({
         }
       : {
           index: false,
-          follow: false,
-          googleBot: { index: false, follow: false },
+          follow,
+          googleBot: { index: false, follow },
         },
   };
 }

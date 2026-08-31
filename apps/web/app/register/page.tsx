@@ -15,7 +15,7 @@ export default function RegisterPage() {
     <div className="grid gap-8 lg:grid-cols-[1fr_0.9fr]">
       <RoutePlaceholder
         description="Create your Vrompt identity with Google. Your public profile can be refined later, after the account is ready."
-        eyebrow="Join Vrompt"
+        eyebrow="Become a creator"
         title="Start with your Google account"
       />
       <Card className="flex flex-col justify-between gap-10">

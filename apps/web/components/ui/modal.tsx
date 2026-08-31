@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from 'react';
 import type { ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/cn';
@@ -77,16 +78,16 @@ export function Modal({
     };
   }, [open]);
 
-  if (!open) {
+  if (!open || typeof document === 'undefined') {
     return null;
   }
 
-  return (
+  return createPortal(
     <div
       aria-modal="true"
       aria-describedby="modal-description"
       aria-labelledby="modal-title"
-      className="fixed inset-0 z-40 flex items-end justify-center bg-black/50 p-4 md:items-center"
+      className="fixed inset-0 z-[100] flex items-end justify-center bg-black/50 p-4 md:items-center"
       role="dialog"
     >
       <button
@@ -128,6 +129,7 @@ export function Modal({
         </div>
         <div className="mt-6">{children}</div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

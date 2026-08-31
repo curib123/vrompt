@@ -5,11 +5,12 @@ import { fetchSearchData } from '@/lib/api';
 import { createPageMetadata } from '@/lib/seo';
 
 export const metadata: Metadata = createPageMetadata({
-  title: 'Search AI Prompts',
+  title: 'Home — Discover AI Prompts',
   description:
     'Search the Vrompt prompt library by topic, category, AI compatibility, and community activity.',
   path: '/search',
   index: false,
+  follow: true,
 });
 
 export default async function SearchPage({

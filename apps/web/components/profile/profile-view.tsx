@@ -118,17 +118,17 @@ export function ProfileView({
 
   return (
     <div className="grid gap-8">
-      <Card className="relative overflow-hidden border-[#0D0D0D] bg-[#0D0D0D] text-white dark:border-white">
+      <Card className="relative overflow-hidden border-[#0D0D0D] bg-[#0D0D0D] !text-white dark:border-white">
         <div className="pointer-events-none absolute -right-20 -top-32 size-80 rounded-full border-[38px] border-white/10" />
         <div className="relative flex flex-col gap-7 sm:flex-row sm:items-start sm:justify-between">
           <div className="flex items-start gap-5">
             <Avatar
               avatar={getMediaUrl(profile.avatar)}
-              className="size-20 border-white/30 bg-white/10 text-white sm:size-24"
+              className="size-20 !border-white/30 !bg-white/10 !text-white sm:size-24"
               name={displayName}
             />
             <div className="space-y-3">
-              <Badge className="border-white/30 text-zinc-300">
+              <Badge className="!border-white/30 !text-zinc-300">
                 {isOwnProfile
                   ? 'Your profile workspace'
                   : profile.accountType === 'REAL'
@@ -136,20 +136,20 @@ export function ProfileView({
                     : `${profile.accountType.toLowerCase()} profile`}
               </Badge>
               <div>
-                <h1 className="text-4xl font-semibold tracking-[-0.06em] sm:text-5xl">
+                <h1 className="text-4xl font-semibold tracking-[-0.06em] !text-white sm:text-5xl">
                   {displayName}
                 </h1>
-                <p className="mt-2 font-mono text-sm text-zinc-400">
+                <p className="mt-2 font-mono text-sm !text-zinc-300">
                   @{profile.username}
                 </p>
               </div>
             </div>
           </div>
-          <div className="flex flex-wrap gap-2 text-sm text-zinc-300">
+          <div className="flex flex-wrap gap-2 text-sm !text-zinc-300">
             <span>Joined {formatDate(profile.createdAt)}</span>
             {profile.website ? (
               <a
-                className="underline underline-offset-4 hover:text-white"
+                className="underline underline-offset-4 hover:!text-white"
                 href={profile.website}
                 rel="noreferrer"
                 target="_blank"
@@ -178,11 +178,11 @@ export function ProfileView({
           </p>
         ) : null}
         {profile.bio ? (
-          <p className="relative mt-8 max-w-2xl text-base leading-8 text-zinc-300">
+          <p className="relative mt-8 max-w-2xl text-base leading-8 !text-zinc-200">
             {profile.bio}
           </p>
         ) : (
-          <p className="relative mt-8 text-sm text-zinc-500">
+          <p className="relative mt-8 text-sm !text-zinc-400">
             No bio added yet.
           </p>
         )}
