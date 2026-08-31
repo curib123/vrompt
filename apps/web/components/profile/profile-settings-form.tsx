@@ -27,7 +27,11 @@ const emptyForm: ProfileForm = {
   website: '',
 };
 
-export function ProfileSettingsForm() {
+export function ProfileSettingsForm({
+  embedded = false,
+}: {
+  embedded?: boolean;
+}) {
   const { accessToken, refreshSession, user } = useAuth();
   const [profile, setProfile] = useState<ProfileResponse | null>(null);
   const [form, setForm] = useState<ProfileForm>(emptyForm);
@@ -84,6 +88,7 @@ export function ProfileSettingsForm() {
       setForm((current) => ({ ...current, username: result.username }));
       await refreshSession();
       setMessage('Profile updated.');
+      window.dispatchEvent(new Event('vrompt:profile-updated'));
     } catch (saveError: unknown) {
       setError(
         saveError instanceof Error
@@ -117,6 +122,7 @@ export function ProfileSettingsForm() {
       });
       setProfile(result);
       setMessage('Avatar updated.');
+      window.dispatchEvent(new Event('vrompt:profile-updated'));
     } catch (uploadError: unknown) {
       setError(
         uploadError instanceof Error
@@ -139,7 +145,13 @@ export function ProfileSettingsForm() {
   }
 
   return (
-    <div className="grid gap-8 lg:grid-cols-[0.7fr_1.3fr]">
+    <div
+      className={
+        embedded
+          ? 'grid gap-6 pt-4 lg:grid-cols-[0.7fr_1.3fr]'
+          : 'grid gap-8 lg:grid-cols-[0.7fr_1.3fr]'
+      }
+    >
       <Card className="space-y-6 bg-[#0D0D0D] text-white dark:border-white">
         <Badge className="border-white/30 text-zinc-300">Your identity</Badge>
         <div className="flex items-center gap-4">
@@ -176,7 +188,13 @@ export function ProfileSettingsForm() {
       <Card>
         <div className="mb-8 space-y-2">
           <Badge>Profile settings</Badge>
-          <h1 className="text-3xl font-semibold tracking-[-0.05em]">
+          <h1
+            className={
+              embedded
+                ? 'text-2xl font-semibold tracking-[-0.05em]'
+                : 'text-3xl font-semibold tracking-[-0.05em]'
+            }
+          >
             Make your profile yours.
           </h1>
           <p className="text-sm leading-6 text-zinc-600 dark:text-zinc-400">

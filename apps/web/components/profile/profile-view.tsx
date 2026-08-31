@@ -2,8 +2,14 @@
 
 import Link from 'next/link';
 import type { Route } from 'next';
+import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
+import { FollowingFeed } from '@/components/activity/following-feed';
+import { SavedRepositories } from '@/components/bookmarks/saved-repositories';
+import { CollectionsView } from '@/components/collections/collections-view';
+import { ProfileSettingsForm } from '@/components/profile/profile-settings-form';
+import { PromptPreviewCard } from '@/components/prompts/prompt-preview';
 import { Avatar } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -11,18 +17,24 @@ import { useAuth } from '@/components/providers/auth-provider';
 import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Tabs } from '@/components/ui/tabs';
 import { apiRequest, getMediaUrl } from '@/lib/api';
 import type { ApiError, ProfileResponse } from '@/lib/api';
 
 export function ProfileView({
   username,
   initialProfile = null,
+  initialTab,
 }: {
   username: string;
   initialProfile?: ProfileResponse | null;
+  initialTab?: string;
 }) {
+  const router = useRouter();
   const { accessToken, isLoading, user } = useAuth();
-  const [profile, setProfile] = useState<ProfileResponse | null>(initialProfile);
+  const [profile, setProfile] = useState<ProfileResponse | null>(
+    initialProfile,
+  );
   const [error, setError] = useState<string | null>(null);
   const [followState, setFollowState] = useState<'idle' | 'saving' | 'failed'>(
     'idle',
@@ -73,6 +85,7 @@ export function ProfileView({
   const displayName = profile.displayName || profile.username;
   const profileUsername = profile.username;
   const profileIsFollowing = profile.isFollowing;
+  const isOwnProfile = user?.username === profile.username;
 
   async function toggleFollow() {
     if (!accessToken || followState === 'saving') {
@@ -116,9 +129,11 @@ export function ProfileView({
             />
             <div className="space-y-3">
               <Badge className="border-white/30 text-zinc-300">
-                {profile.accountType === 'REAL'
-                  ? 'Creator profile'
-                  : `${profile.accountType.toLowerCase()} profile`}
+                {isOwnProfile
+                  ? 'Your profile workspace'
+                  : profile.accountType === 'REAL'
+                    ? 'Creator profile'
+                    : `${profile.accountType.toLowerCase()} profile`}
               </Badge>
               <div>
                 <h1 className="text-4xl font-semibold tracking-[-0.06em] sm:text-5xl">
@@ -179,6 +194,53 @@ export function ProfileView({
         <StatCard label="Following" value={profile.stats.following} />
       </div>
 
+      {isOwnProfile ? (
+        <Tabs
+          ariaLabel="Profile workspace"
+          initialId={initialTab}
+          items={[
+            {
+              id: 'overview',
+              label: 'Overview',
+              content: <ProfileOverview profile={profile} />,
+            },
+            {
+              id: 'saved',
+              label: 'Saved',
+              content: <SavedRepositories embedded />,
+            },
+            {
+              id: 'collections',
+              label: 'Collections',
+              content: <CollectionsView embedded />,
+            },
+            {
+              id: 'following',
+              label: 'Following',
+              content: <FollowingFeed embedded />,
+            },
+            {
+              id: 'settings',
+              label: 'Profile settings',
+              content: <ProfileSettingsForm embedded />,
+            },
+          ]}
+          onChange={(tab) =>
+            router.replace(`/u/${profile.username}?tab=${tab}`, {
+              scroll: false,
+            })
+          }
+        />
+      ) : (
+        <ProfileOverview profile={profile} />
+      )}
+    </div>
+  );
+}
+
+function ProfileOverview({ profile }: { profile: ProfileResponse }) {
+  return (
+    <div className="grid gap-8 pt-2">
       <ContentSection
         description="Public prompts shared by this creator."
         title="Public prompts"
@@ -186,19 +248,23 @@ export function ProfileView({
         {profile.repositories.length > 0 ? (
           <div className="grid gap-4 md:grid-cols-2">
             {profile.repositories.map((repository) => (
-              <Link href={`/p/${repository.slug}`} key={repository.id}>
-                <Card className="h-full transition hover:-translate-y-0.5 hover:border-black dark:hover:border-white">
-                  <p className="font-mono text-xs uppercase tracking-[0.18em] text-zinc-500">
-                    Updated {formatDate(repository.updatedAt)}
-                  </p>
-                  <h3 className="mt-4 text-xl font-semibold tracking-tight">
-                    {repository.title}
-                  </h3>
-                  <p className="mt-2 line-clamp-2 text-sm leading-6 text-zinc-600 dark:text-zinc-400">
-                    {repository.description || 'A public prompt.'}
-                  </p>
-                </Card>
-              </Link>
+              <PromptPreviewCard
+                className="h-full"
+                description={repository.description}
+                key={repository.id}
+                slug={repository.slug}
+                title={repository.title}
+              >
+                <p className="font-mono text-xs uppercase tracking-[0.18em] text-zinc-500">
+                  Updated {formatDate(repository.updatedAt)}
+                </p>
+                <h3 className="mt-4 text-xl font-semibold tracking-tight">
+                  {repository.title}
+                </h3>
+                <p className="mt-2 line-clamp-2 text-sm leading-6 text-zinc-600 dark:text-zinc-400">
+                  {repository.description || 'A public prompt.'}
+                </p>
+              </PromptPreviewCard>
             ))}
           </div>
         ) : (
@@ -208,7 +274,6 @@ export function ProfileView({
           />
         )}
       </ContentSection>
-
       <ContentSection
         description="Curated public collections from this creator."
         title="Public collections"

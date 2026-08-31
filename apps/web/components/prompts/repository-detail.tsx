@@ -16,6 +16,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { apiRequest, getMediaUrl } from '@/lib/api';
 import { trackAnalyticsEvent } from '@/lib/analytics';
+import { copyToClipboard, getCopyClientKey } from '@/lib/clipboard';
 import { ReportRepositoryButton } from '@/components/reports/report-repository-button';
 import type {
   PromptEvidenceImage,
@@ -82,9 +83,7 @@ export function RepositoryDetail({
       })
       .catch(() => {
         if (active) {
-          setError(
-            'This prompt is private, unavailable, or does not exist.',
-          );
+          setError('This prompt is private, unavailable, or does not exist.');
         }
       });
 
@@ -509,9 +508,7 @@ function ActivityTab({
           </h2>
         </div>
         {events.length === 0 ? (
-          <p className="mt-5 text-sm text-zinc-500">
-            No history to show yet.
-          </p>
+          <p className="mt-5 text-sm text-zinc-500">No history to show yet.</p>
         ) : (
           <div className="mt-5 grid gap-3">
             {events.map((event) => (
@@ -1062,9 +1059,7 @@ function NewVersionForm({
     <Card>
       <div className="space-y-2">
         <Badge>Create an update</Badge>
-        <h2 className="text-2xl font-semibold">
-          Keep your prompt growing.
-        </h2>
+        <h2 className="text-2xl font-semibold">Keep your prompt growing.</h2>
         <p className="text-sm leading-6 text-zinc-600 dark:text-zinc-400">
           Published updates stay unchanged. Add a new update when you want to
           improve the prompt while keeping earlier results available.
@@ -1294,38 +1289,4 @@ function formatDate(value: string) {
     month: 'short',
     year: 'numeric',
   }).format(new Date(value));
-}
-
-async function copyToClipboard(value: string) {
-  if (navigator.clipboard?.writeText) {
-    await navigator.clipboard.writeText(value);
-    return;
-  }
-
-  const textarea = document.createElement('textarea');
-  textarea.value = value;
-  textarea.style.position = 'fixed';
-  textarea.style.opacity = '0';
-  document.body.appendChild(textarea);
-  textarea.focus();
-  textarea.select();
-  const copied = document.execCommand('copy');
-  textarea.remove();
-
-  if (!copied) {
-    throw new Error('Clipboard unavailable');
-  }
-}
-
-function getCopyClientKey() {
-  const storageKey = 'vrompt-copy-client-key';
-  const existing = window.localStorage.getItem(storageKey);
-
-  if (existing) {
-    return existing;
-  }
-
-  const value = crypto.randomUUID();
-  window.localStorage.setItem(storageKey, value);
-  return value;
 }

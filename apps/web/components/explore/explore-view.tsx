@@ -3,11 +3,10 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 
+import { PromptPreviewCard } from '@/components/prompts/prompt-preview';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
-import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { apiRequest } from '@/lib/api';
 import type { ExploreRepository, ExploreResponse } from '@/lib/api';
@@ -53,106 +52,18 @@ export function ExploreView({
 
   return (
     <div className="grid gap-14">
-      <Card className="relative overflow-hidden rounded-[2rem] !border-[#0D0D0D] !bg-[#0D0D0D] p-5 !text-white dark:!border-white sm:p-8">
-        <div className="pointer-events-none absolute -right-24 -top-28 size-80 rounded-full border-[40px] border-white/10" />
-        <div className="relative max-w-4xl space-y-5">
-          <Badge className="border-white/40 !text-white">Discover</Badge>
-          <h1 className="max-w-3xl text-4xl font-semibold leading-[0.95] tracking-[-0.07em] !text-white sm:text-6xl">
-            Useful prompts, less wandering.
-          </h1>
-          <p className="max-w-2xl text-base leading-8 !text-zinc-200">
-            Explore real prompt activity, shaped by what creators and
-            collaborators are sharing.
-          </p>
-          <form
-            action="/search"
-            className="grid gap-3 rounded-[1.5rem] border border-white/20 bg-white p-3 text-[#0D0D0D] shadow-[0_18px_50px_rgba(0,0,0,0.22)] sm:p-4"
-            method="get"
-          >
-            <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
-              <Input
-                aria-label="Search prompts"
-                className="border-[#E6E6E6] bg-white !text-[#0D0D0D] placeholder:!text-[#4D4D4D] dark:border-[#E6E6E6] dark:bg-white dark:!text-[#0D0D0D]"
-                name="q"
-                placeholder="What do you want AI to help you do?"
-                type="search"
-              />
-              <Button
-                className="w-full whitespace-nowrap bg-[#0D0D0D] !text-white dark:bg-[#0D0D0D] dark:!text-white sm:w-auto"
-                type="submit"
-              >
-                Search prompts
-              </Button>
-            </div>
-            <details className="group rounded-2xl border border-[#E6E6E6] bg-[#F7F7F7] open:bg-white">
-              <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-4 px-4 py-2 text-sm font-semibold text-[#0D0D0D] marker:hidden">
-                Advanced filters
-                <span
-                  aria-hidden="true"
-                  className="text-xl font-normal leading-none transition group-open:rotate-45"
-                >
-                  +
-                </span>
-              </summary>
-              <div className="grid gap-3 border-t border-[#E6E6E6] p-3 sm:grid-cols-3">
-                <label className="grid gap-1.5 text-xs font-semibold text-[#4D4D4D]">
-                  Category
-                  <select
-                    className="min-h-11 w-full rounded-2xl border border-[#E6E6E6] bg-white px-4 text-sm font-normal text-[#0D0D0D] outline-none focus:border-[#0D0D0D]"
-                    name="category"
-                  >
-                    <option value="">All categories</option>
-                    {explore.categories.map((category) => (
-                      <option key={category.id} value={category.slug}>
-                        {category.name}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label className="grid gap-1.5 text-xs font-semibold text-[#4D4D4D]">
-                  AI compatibility
-                  <Input
-                    className="border-[#E6E6E6] bg-white !text-[#0D0D0D] placeholder:!text-[#4D4D4D] dark:border-[#E6E6E6] dark:bg-white dark:!text-[#0D0D0D]"
-                    name="aiCompatibility"
-                    placeholder="Any AI model"
-                  />
-                </label>
-                <label className="grid gap-1.5 text-xs font-semibold text-[#4D4D4D]">
-                  Sort results
-                  <select
-                    className="min-h-11 w-full rounded-2xl border border-[#E6E6E6] bg-white px-4 text-sm font-normal text-[#0D0D0D] outline-none focus:border-[#0D0D0D]"
-                    defaultValue="relevance"
-                    name="sort"
-                  >
-                    <option value="relevance">Most relevant</option>
-                    <option value="newest">Newest</option>
-                    <option value="updated">Recently updated</option>
-                    <option value="copies">Most copied</option>
-                    <option value="saves">Most saved</option>
-                    <option value="likes">Most liked</option>
-                  </select>
-                </label>
-              </div>
-            </details>
-          </form>
-          {explore.categories.length > 0 ? (
-            <div className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-              <span className="shrink-0 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-zinc-400">
-                Browse by topic
-              </span>
-              {explore.categories.slice(0, 6).map((category) => (
-                <Link
-                  className="shrink-0 rounded-full border border-white/20 px-3 py-2 text-xs font-medium !text-white transition hover:border-white hover:bg-white/10"
-                  href={`/search?category=${encodeURIComponent(category.slug)}`}
-                  key={category.id}
-                >
-                  {category.name}
-                </Link>
-              ))}
-            </div>
-          ) : null}
-        </div>
-      </Card>
+      <header className="max-w-3xl border-b border-[#E6E6E6] pb-8 dark:border-[#1A1A1A]">
+        <p className="font-mono text-xs uppercase tracking-[0.24em] text-zinc-500">
+          Prompt library
+        </p>
+        <h1 className="mt-3 text-4xl font-semibold tracking-[-0.06em] sm:text-6xl">
+          Explore prompts.
+        </h1>
+        <p className="mt-4 max-w-2xl text-sm leading-7 text-zinc-600 sm:text-base dark:text-zinc-400">
+          Browse useful prompts shaped by real creators and proven through
+          practical work.
+        </p>
+      </header>
       <ExploreSection items={explore.featured} title="Featured" />
       <div className="grid gap-10 lg:grid-cols-2">
         <ExploreSection items={explore.popular} title="Popular" />
@@ -230,9 +141,7 @@ function ExploreSection({
     <section className="grid gap-5">
       <SectionHeading title={title} />
       {items.length === 0 ? (
-        <p className="text-sm text-zinc-500">
-          No prompts in this view yet.
-        </p>
+        <p className="text-sm text-zinc-500">No prompts in this view yet.</p>
       ) : (
         <div className="grid auto-cols-[minmax(17rem,85vw)] grid-flow-col gap-4 overflow-x-auto overscroll-x-contain pb-3 pr-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:auto-cols-auto md:grid-flow-row md:grid-cols-2 md:overflow-visible md:pb-0 md:pr-0">
           {items.slice(0, 4).map((item) => (
@@ -260,33 +169,36 @@ function RepositoryCard({
           ? item.variantCount
           : item.likeCount;
   return (
-    <Link className="snap-start" href={`/p/${item.slug}`}>
-      <Card className="h-full min-h-52 transition hover:-translate-y-0.5 hover:border-black dark:hover:border-white">
-        <div className="flex flex-wrap gap-2">
-          {item.category ? <Badge>{item.category.name}</Badge> : null}
-          {item.owner.accountType !== 'REAL' ? (
-            <Badge>{item.owner.accountType.toLowerCase()}</Badge>
-          ) : null}
-          <Badge>
-            {value}{' '}
-            {metric === 'copies'
-              ? 'shares'
-              : metric === 'saves'
-                ? 'saves'
-                : metric === 'variants'
-                  ? 'variations'
-                  : 'likes'}
-          </Badge>
-        </div>
-        <h3 className="mt-4 text-xl font-semibold tracking-tight">
-          {item.title}
-        </h3>
-        <p className="mt-2 line-clamp-2 text-sm leading-6 text-zinc-600 dark:text-zinc-400">
-            {item.description || 'A reusable prompt.'}
-        </p>
-        <p className="mt-5 text-xs text-zinc-500">by @{item.owner.username}</p>
-      </Card>
-    </Link>
+    <PromptPreviewCard
+      className="h-full min-h-52 snap-start"
+      description={item.description}
+      slug={item.slug}
+      title={item.title}
+    >
+      <div className="flex flex-wrap gap-2">
+        {item.category ? <Badge>{item.category.name}</Badge> : null}
+        {item.owner.accountType !== 'REAL' ? (
+          <Badge>{item.owner.accountType.toLowerCase()}</Badge>
+        ) : null}
+        <Badge>
+          {value}{' '}
+          {metric === 'copies'
+            ? 'shares'
+            : metric === 'saves'
+              ? 'saves'
+              : metric === 'variants'
+                ? 'variations'
+                : 'likes'}
+        </Badge>
+      </div>
+      <h3 className="mt-4 text-xl font-semibold tracking-tight">
+        {item.title}
+      </h3>
+      <p className="mt-2 line-clamp-2 text-sm leading-6 text-zinc-600 dark:text-zinc-400">
+        {item.description || 'A reusable prompt.'}
+      </p>
+      <p className="mt-5 text-xs text-zinc-500">by @{item.owner.username}</p>
+    </PromptPreviewCard>
   );
 }
 
@@ -319,11 +231,10 @@ function ExploreSkeleton() {
   return (
     <div className="grid gap-10" role="status">
       <span className="sr-only">Loading prompt recommendations</span>
-      <div className="grid min-h-72 content-center gap-4 rounded-[2rem] bg-[#0D0D0D] p-5 sm:p-8">
-        <Skeleton className="h-5 w-28 bg-white/15" />
-        <Skeleton className="h-12 w-full max-w-xl bg-white/15" />
-        <Skeleton className="h-5 w-full max-w-lg bg-white/15" />
-        <Skeleton className="mt-3 h-16 w-full bg-white/15" />
+      <div className="grid max-w-3xl gap-4 border-b border-[#E6E6E6] pb-8 dark:border-[#1A1A1A]">
+        <Skeleton className="h-4 w-28" />
+        <Skeleton className="h-14 w-full max-w-md" />
+        <Skeleton className="h-5 w-full max-w-xl" />
       </div>
       <div className="grid gap-4 sm:grid-cols-2">
         <Skeleton className="h-48 rounded-[1.5rem]" />

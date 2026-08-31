@@ -1,10 +1,10 @@
 import { ProtectedRoute } from '@/components/auth/protected-route';
-import { FollowingFeed } from '@/components/activity/following-feed';
+import { ProfileSectionRedirect } from '@/components/profile/profile-section-redirect';
 
 export default function FollowingPage() {
   return (
     <ProtectedRoute>
-      <FollowingFeed />
+      <ProfileSectionRedirect tab="following" />
     </ProtectedRoute>
   );
 }

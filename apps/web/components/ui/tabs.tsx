@@ -11,17 +11,32 @@ interface TabItem {
   label: string;
 }
 
-export function Tabs({ items }: { items: TabItem[] }) {
-  const [activeTab, setActiveTab] = useState(items[0]?.id ?? '');
+export function Tabs({
+  ariaLabel = 'Sections',
+  initialId,
+  items,
+  onChange,
+}: {
+  ariaLabel?: string;
+  initialId?: string;
+  items: TabItem[];
+  onChange?: (id: string) => void;
+}) {
+  const [activeTab, setActiveTab] = useState(
+    items.some((item) => item.id === initialId)
+      ? initialId!
+      : (items[0]?.id ?? ''),
+  );
   const idPrefix = useId();
   const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const currentTab =
     items.find((item) => item.id === activeTab)?.id ?? items[0]?.id ?? '';
+  const currentItem = items.find((item) => item.id === currentTab);
 
   return (
     <div className="space-y-4">
       <div
-        aria-label="Sections"
+        aria-label={ariaLabel}
         className="flex max-w-full gap-2 overflow-x-auto rounded-full border border-zinc-200 p-2 dark:border-zinc-800"
         role="tablist"
       >
@@ -40,7 +55,10 @@ export function Tabs({ items }: { items: TabItem[] }) {
               )}
               id={`${idPrefix}-${item.id}-tab`}
               key={item.id}
-              onClick={() => setActiveTab(item.id)}
+              onClick={() => {
+                setActiveTab(item.id);
+                onChange?.(item.id);
+              }}
               ref={(element) => {
                 tabRefs.current[index] = element;
               }}
@@ -68,6 +86,7 @@ export function Tabs({ items }: { items: TabItem[] }) {
 
                 if (nextItem) {
                   setActiveTab(nextItem.id);
+                  onChange?.(nextItem.id);
                   tabRefs.current[nextIndex]?.focus();
                 }
               }}
@@ -79,17 +98,15 @@ export function Tabs({ items }: { items: TabItem[] }) {
           );
         })}
       </div>
-      {items.map((item) => (
+      {currentItem ? (
         <div
-          aria-labelledby={`${idPrefix}-${item.id}-tab`}
-          className={cn(item.id === currentTab ? 'block' : 'hidden')}
-          id={`${idPrefix}-${item.id}`}
-          key={item.id}
+          aria-labelledby={`${idPrefix}-${currentItem.id}-tab`}
+          id={`${idPrefix}-${currentItem.id}`}
           role="tabpanel"
         >
-          {item.content}
+          {currentItem.content}
         </div>
-      ))}
+      ) : null}
     </div>
   );
 }

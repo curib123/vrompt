@@ -50,7 +50,17 @@ const blankVariable: DraftVariable = {
 
 const blankExample: DraftExample = { input: '', output: '', title: '' };
 
-export function CreatePromptForm({ variantFrom }: { variantFrom?: string }) {
+export function CreatePromptForm({
+  embedded = false,
+  onCreated,
+  onDirtyChange,
+  variantFrom,
+}: {
+  embedded?: boolean;
+  onCreated?: (repository: PromptCreateResponse) => void;
+  onDirtyChange?: (dirty: boolean) => void;
+  variantFrom?: string;
+}) {
   const router = useRouter();
   const { accessToken } = useAuth();
   const [title, setTitle] = useState('');
@@ -107,6 +117,10 @@ export function CreatePromptForm({ variantFrom }: { variantFrom?: string }) {
     examples.length ||
     evidence.length,
   );
+
+  useEffect(() => {
+    onDirtyChange?.(isDirty && !created);
+  }, [created, isDirty, onDirtyChange]);
 
   useEffect(() => {
     if (!isDirty || created) {
@@ -198,9 +212,7 @@ export function CreatePromptForm({ variantFrom }: { variantFrom?: string }) {
     setCreated(null);
 
     if (!accessToken) {
-      setError(
-        'Your session expired. Sign in again before creating a prompt.',
-      );
+      setError('Your session expired. Sign in again before creating a prompt.');
       return;
     }
 
@@ -267,7 +279,11 @@ export function CreatePromptForm({ variantFrom }: { variantFrom?: string }) {
       }
 
       setMessage('Prompt and first update saved.');
-      router.push(`/p/${repository.slug}`);
+      if (onCreated) {
+        onCreated(repository);
+      } else {
+        router.push(`/p/${repository.slug}`);
+      }
     } catch (submitError: unknown) {
       setError(
         submitError instanceof Error
@@ -281,13 +297,25 @@ export function CreatePromptForm({ variantFrom }: { variantFrom?: string }) {
 
   return (
     <form className="grid gap-8" onSubmit={(event) => void submit(event)}>
-      <Card className="grid gap-8 border-[#0D0D0D] bg-[#0D0D0D] text-white dark:border-white">
+      <Card
+        className={
+          embedded
+            ? 'grid gap-6 border-[#0D0D0D] bg-[#0D0D0D] text-white dark:border-white'
+            : 'grid gap-8 border-[#0D0D0D] bg-[#0D0D0D] text-white dark:border-white'
+        }
+      >
         <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
           <div className="space-y-3">
             <Badge className="border-white/30 text-zinc-300">
               Create prompt
             </Badge>
-            <h1 className="text-4xl font-semibold tracking-[-0.06em] sm:text-6xl">
+            <h1
+              className={
+                embedded
+                  ? 'text-3xl font-semibold tracking-[-0.06em] sm:text-4xl'
+                  : 'text-4xl font-semibold tracking-[-0.06em] sm:text-6xl'
+              }
+            >
               Make the useful thing reusable.
             </h1>
             <p className="max-w-2xl text-sm leading-7 text-zinc-300">

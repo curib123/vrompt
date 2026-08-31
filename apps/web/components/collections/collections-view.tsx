@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
+import { ConfirmationModal } from '@/components/ui/feedback-modal';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
@@ -16,7 +17,7 @@ import { apiRequest } from '@/lib/api';
 import { trackAnalyticsEvent } from '@/lib/analytics';
 import type { CollectionDetail } from '@/lib/api';
 
-export function CollectionsView() {
+export function CollectionsView({ embedded = false }: { embedded?: boolean }) {
   const { accessToken, isLoading, user } = useAuth();
   const [collections, setCollections] = useState<CollectionDetail[] | null>(
     null,
@@ -26,6 +27,10 @@ export function CollectionsView() {
   const [visibility, setVisibility] = useState<'PUBLIC' | 'PRIVATE'>('PRIVATE');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [pendingArchive, setPendingArchive] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
 
   useEffect(() => {
     if (isLoading || !accessToken) return;
@@ -98,8 +103,14 @@ export function CollectionsView() {
   }
 
   return (
-    <div className="grid gap-8">
-      <Card className="relative overflow-hidden border-[#0D0D0D] bg-[#0D0D0D] text-white dark:border-white">
+    <div className={embedded ? 'grid gap-6 pt-4' : 'grid gap-8'}>
+      <Card
+        className={
+          embedded
+            ? 'hidden'
+            : 'relative overflow-hidden border-[#0D0D0D] bg-[#0D0D0D] text-white dark:border-white'
+        }
+      >
         <div className="pointer-events-none absolute -right-24 -top-28 size-80 rounded-full border-[40px] border-white/10" />
         <div className="relative">
           <Badge className="border-white/30 text-zinc-300">Collections</Badge>
@@ -167,7 +178,12 @@ export function CollectionsView() {
                 <Badge>{collection.visibility.toLowerCase()}</Badge>
                 <Button
                   disabled={saving}
-                  onClick={() => void archiveCollection(collection.id)}
+                  onClick={() =>
+                    setPendingArchive({
+                      id: collection.id,
+                      name: collection.name,
+                    })
+                  }
                   variant="ghost"
                 >
                   Archive
@@ -198,6 +214,20 @@ export function CollectionsView() {
           Public collections can be shared from your profile.
         </p>
       ) : null}
+      <ConfirmationModal
+        confirmLabel="Archive collection"
+        description={`“${pendingArchive?.name ?? 'This collection'}” will disappear from your active collections. Its prompts will not be deleted.`}
+        destructive
+        isConfirming={saving}
+        onCancel={() => setPendingArchive(null)}
+        onConfirm={() => {
+          const id = pendingArchive?.id;
+          setPendingArchive(null);
+          if (id) void archiveCollection(id);
+        }}
+        open={Boolean(pendingArchive)}
+        title="Archive this collection?"
+      />
     </div>
   );
 }

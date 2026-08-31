@@ -9,15 +9,11 @@ import { BrandLockup } from '@/components/brand/brand-mark';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/components/providers/auth-provider';
 import { cn } from '@/lib/cn';
-import {
-  primaryRoutes,
-  publicPrimaryRoutes,
-  secondaryRoutes,
-} from '@/lib/routes';
+import { primaryRoutes, publicPrimaryRoutes } from '@/lib/routes';
 
 export function MobileNav() {
   const pathname = usePathname();
-  const { isLoading, logout, user } = useAuth();
+  const { isLoading, user } = useAuth();
   const [open, setOpen] = useState(false);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const drawerRef = useRef<HTMLElement>(null);
@@ -70,9 +66,7 @@ export function MobileNav() {
     triggerRef.current?.focus();
   }
 
-  const visibleRoutes = user
-    ? [...primaryRoutes, ...secondaryRoutes.slice(0, 2)]
-    : publicPrimaryRoutes;
+  const visibleRoutes = user ? primaryRoutes : publicPrimaryRoutes;
 
   return (
     <div className="lg:hidden">
@@ -111,7 +105,11 @@ export function MobileNav() {
           >
             <div className="border-b border-[#E6E6E6] pb-5 dark:border-[#1A1A1A]">
               <div className="flex items-center justify-between gap-4">
-                <Link aria-label="Vrompt home" href="/" onClick={closeDrawer}>
+                <Link
+                  aria-label="Vrompt home"
+                  href={user ? '/search' : '/'}
+                  onClick={closeDrawer}
+                >
                   <BrandLockup compact />
                 </Link>
                 <Button
@@ -140,29 +138,29 @@ export function MobileNav() {
                 Explore Vrompt
               </p>
               {visibleRoutes.map((route) => (
-                  <Link
+                <Link
+                  className={cn(
+                    'group flex min-h-12 items-center gap-3 rounded-2xl px-3.5 py-3 text-base font-medium transition',
+                    pathname === route.href
+                      ? 'bg-[#0D0D0D] !text-white shadow-[0_10px_24px_rgba(13,13,13,0.16)] dark:bg-white dark:!text-[#0D0D0D] dark:shadow-none'
+                      : '!text-[#4D4D4D] hover:bg-[#E6E6E6] dark:!text-zinc-300 dark:hover:bg-[#1A1A1A]',
+                  )}
+                  href={route.href as Route}
+                  key={route.href}
+                  onClick={closeDrawer}
+                >
+                  <span
+                    aria-hidden="true"
                     className={cn(
-                      'group flex min-h-12 items-center gap-3 rounded-2xl px-3.5 py-3 text-base font-medium transition',
+                      'size-2 rounded-full border border-current transition',
                       pathname === route.href
-                        ? 'bg-[#0D0D0D] !text-white shadow-[0_10px_24px_rgba(13,13,13,0.16)] dark:bg-white dark:!text-[#0D0D0D] dark:shadow-none'
-                        : '!text-[#4D4D4D] hover:bg-[#E6E6E6] dark:!text-zinc-300 dark:hover:bg-[#1A1A1A]',
+                        ? 'bg-current'
+                        : 'group-hover:bg-current',
                     )}
-                    href={route.href as Route}
-                    key={route.href}
-                    onClick={closeDrawer}
-                  >
-                    <span
-                      aria-hidden="true"
-                      className={cn(
-                        'size-2 rounded-full border border-current transition',
-                        pathname === route.href
-                          ? 'bg-current'
-                          : 'group-hover:bg-current',
-                      )}
-                    />
-                    {route.label}
-                  </Link>
-                ))}
+                  />
+                  {route.label}
+                </Link>
+              ))}
             </nav>
             <div className="grid shrink-0 gap-3 border-t border-[#E6E6E6] pt-4 dark:border-[#1A1A1A]">
               <div className="rounded-2xl bg-[#0D0D0D] px-4 py-4 text-white shadow-[0_14px_28px_rgba(13,13,13,0.18)] dark:border dark:border-[#4D4D4D] dark:bg-[#1A1A1A] dark:shadow-none">
@@ -189,16 +187,9 @@ export function MobileNav() {
                       @{user.username}
                     </span>
                   </Link>
-                  <Button
-                    className="shrink-0 px-3 text-xs"
-                    onClick={() => {
-                      closeDrawer();
-                      void logout();
-                    }}
-                    variant="ghost"
-                  >
-                    Log out
-                  </Button>
+                  <span className="shrink-0 rounded-full bg-[#E6E6E6] px-3 py-1.5 text-xs text-[#4D4D4D] dark:bg-[#1A1A1A] dark:text-zinc-300">
+                    Workspace
+                  </span>
                 </div>
               ) : (
                 <div className="grid grid-cols-2 gap-2">

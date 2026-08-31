@@ -1,24 +1,33 @@
 'use client';
 
-import Link from 'next/link';
 import { useEffect, useState } from 'react';
 
+import { PromptPreviewCard } from '@/components/prompts/prompt-preview';
 import { useAuth } from '@/components/providers/auth-provider';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
+import { ConfirmationModal } from '@/components/ui/feedback-modal';
 import { Skeleton } from '@/components/ui/skeleton';
 import { apiRequest } from '@/lib/api';
 import type { SavedRepositoriesResponse } from '@/lib/api';
 
-export function SavedRepositories() {
+export function SavedRepositories({
+  embedded = false,
+}: {
+  embedded?: boolean;
+}) {
   const { accessToken, isLoading } = useAuth();
   const [sort, setSort] = useState<'newest' | 'updated'>('newest');
   const [page, setPage] = useState(1);
   const [result, setResult] = useState<SavedRepositoriesResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [removingSlug, setRemovingSlug] = useState<string | null>(null);
+  const [pendingRemoval, setPendingRemoval] = useState<{
+    slug: string;
+    title: string;
+  } | null>(null);
 
   useEffect(() => {
     if (isLoading || !accessToken) {
@@ -88,8 +97,14 @@ export function SavedRepositories() {
   }
 
   return (
-    <div className="grid gap-8">
-      <Card className="relative overflow-hidden border-[#0D0D0D] bg-[#0D0D0D] text-white dark:border-white">
+    <div className={embedded ? 'grid gap-6 pt-4' : 'grid gap-8'}>
+      <Card
+        className={
+          embedded
+            ? 'hidden'
+            : 'relative overflow-hidden border-[#0D0D0D] bg-[#0D0D0D] text-white dark:border-white'
+        }
+      >
         <div className="pointer-events-none absolute -right-24 -top-28 size-80 rounded-full border-[40px] border-white/10" />
         <div className="relative flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
           <div>
@@ -146,7 +161,12 @@ export function SavedRepositories() {
                   </div>
                   <Button
                     disabled={removingSlug === repository.slug}
-                    onClick={() => void remove(repository.slug)}
+                    onClick={() =>
+                      setPendingRemoval({
+                        slug: repository.slug,
+                        title: repository.title,
+                      })
+                    }
                     variant="ghost"
                   >
                     {removingSlug === repository.slug
@@ -154,9 +174,11 @@ export function SavedRepositories() {
                       : 'Remove'}
                   </Button>
                 </div>
-                <Link
-                  className="mt-5 block flex-1"
-                  href={`/p/${repository.slug}`}
+                <PromptPreviewCard
+                  className="mt-5 flex-1 border-0 bg-transparent p-0 shadow-none hover:translate-y-0 hover:border-transparent focus-visible:outline-offset-4 sm:p-0 dark:border-0 dark:bg-transparent dark:hover:border-transparent"
+                  description={repository.description}
+                  slug={repository.slug}
+                  title={repository.title}
                 >
                   <h2 className="text-2xl font-semibold tracking-[-0.04em]">
                     {repository.title}
@@ -164,7 +186,7 @@ export function SavedRepositories() {
                   <p className="mt-3 line-clamp-3 text-sm leading-7 text-zinc-600 dark:text-zinc-400">
                     {repository.description || 'A reusable prompt.'}
                   </p>
-                </Link>
+                </PromptPreviewCard>
                 <div className="mt-6 flex flex-wrap gap-x-4 gap-y-2 text-xs text-zinc-500">
                   <span>by @{repository.owner.username}</span>
                   <span>Saved {formatDate(item.createdAt)}</span>
@@ -200,6 +222,20 @@ export function SavedRepositories() {
           </div>
         </div>
       ) : null}
+      <ConfirmationModal
+        confirmLabel="Remove saved prompt"
+        description={`“${pendingRemoval?.title ?? 'This prompt'}” will be removed from your saved library. The original prompt will not be deleted.`}
+        destructive
+        isConfirming={Boolean(removingSlug)}
+        onCancel={() => setPendingRemoval(null)}
+        onConfirm={() => {
+          const slug = pendingRemoval?.slug;
+          setPendingRemoval(null);
+          if (slug) void remove(slug);
+        }}
+        open={Boolean(pendingRemoval)}
+        title="Remove from saved prompts?"
+      />
     </div>
   );
 }

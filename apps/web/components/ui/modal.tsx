@@ -8,12 +8,14 @@ import { cn } from '@/lib/cn';
 
 export function Modal({
   children,
+  className,
   description,
   onClose,
   open,
   title,
 }: {
   children: ReactNode;
+  className?: string;
   description: string;
   onClose: () => void;
   open: boolean;
@@ -22,6 +24,11 @@ export function Modal({
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
+  const onCloseRef = useRef(onClose);
+
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
 
   useEffect(() => {
     if (!open) {
@@ -29,11 +36,13 @@ export function Modal({
     }
 
     previousFocusRef.current = document.activeElement as HTMLElement | null;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
     closeButtonRef.current?.focus();
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
-        onClose();
+        onCloseRef.current();
         return;
       }
 
@@ -63,9 +72,10 @@ export function Modal({
 
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
+      document.body.style.overflow = previousOverflow;
       previousFocusRef.current?.focus();
     };
-  }, [onClose, open]);
+  }, [open]);
 
   if (!open) {
     return null;
@@ -88,6 +98,7 @@ export function Modal({
       <div
         className={cn(
           'relative z-10 max-h-[90dvh] w-full max-w-xl overflow-y-auto rounded-[2rem] border border-zinc-200 bg-white p-4 shadow-2xl sm:p-6 dark:border-zinc-800 dark:bg-zinc-950',
+          className,
         )}
         ref={dialogRef}
       >

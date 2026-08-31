@@ -247,7 +247,9 @@ test('opens the mobile navigation drawer from the left-side hamburger', async ({
   await expect(drawer).not.toBeVisible();
 });
 
-test('searches prompts from Explore with advanced filters', async ({ page }) => {
+test('keeps Explore focused without a duplicate search panel', async ({
+  page,
+}) => {
   await page.route(`${apiOrigin}/**`, async (route) => {
     const url = new URL(route.request().url());
     if (url.pathname === '/api/v1/auth/refresh') {
@@ -287,20 +289,20 @@ test('searches prompts from Explore with advanced filters', async ({ page }) => 
   });
 
   await page.goto('/explore');
-  await page.getByLabel('Search prompts').fill('research brief');
-  await page.locator('summary').filter({ hasText: 'Advanced filters' }).click();
-  await page.getByLabel('Category').selectOption('writing');
-  await page.getByLabel('AI compatibility').fill('GPT-5');
-  await page.getByLabel('Sort results').selectOption('copies');
-  await page.getByRole('button', { name: 'Search prompts' }).click();
+  await expect(
+    page.getByRole('heading', { name: 'Explore prompts.' }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole('button', { name: 'Search prompts' }),
+  ).toHaveCount(0);
+  await expect(page.getByText('Advanced filters')).toHaveCount(0);
+  await expect(page.getByText('Browse by topic')).toHaveCount(0);
+  await page.getByRole('link', { name: 'Writing' }).click();
 
   await page.waitForURL((url) => {
     return (
       url.pathname === '/search' &&
-      url.searchParams.get('q') === 'research brief' &&
-      url.searchParams.get('category') === 'writing' &&
-      url.searchParams.get('aiCompatibility') === 'GPT-5' &&
-      url.searchParams.get('sort') === 'copies'
+      url.searchParams.get('category') === 'writing'
     );
   });
 });
@@ -308,7 +310,7 @@ test('searches prompts from Explore with advanced filters', async ({ page }) => 
 test('completes the two-user prompt and evidence journey on mobile', async ({
   page,
 }) => {
-  test.setTimeout(90_000);
+  test.setTimeout(180_000);
   let currentUser = author;
   let promptVersion = version(
     'version-1',
@@ -327,6 +329,7 @@ test('completes the two-user prompt and evidence journey on mobile', async ({
     [],
   );
   let variantCreated = false;
+  let promptCreated = false;
 
   await page.route(`${apiOrigin}/**`, async (route) => {
     const request = route.request();
@@ -358,7 +361,43 @@ test('completes the two-user prompt and evidence journey on mobile', async ({
       await route.fulfill({ json: [] });
       return;
     }
+    if (path === '/prompt-repositories/mine' && method === 'GET') {
+      const hasPrompt =
+        currentUser.username === 'author' ? promptCreated : variantCreated;
+      await route.fulfill({
+        json: hasPrompt
+          ? [
+              {
+                id:
+                  currentUser.username === 'author' ? 'repo-a' : 'repo-variant',
+                title:
+                  currentUser.username === 'author'
+                    ? 'Prompt A'
+                    : 'Prompt A Variant',
+                slug:
+                  currentUser.username === 'author'
+                    ? 'prompt-a'
+                    : 'prompt-a-variant',
+                description: 'A reusable prompt for focused work.',
+                visibility: 'PUBLIC',
+                status: 'ACTIVE',
+                createdAt: now,
+                updatedAt: now,
+                category: { name: 'Writing', slug: 'writing' },
+                currentVersion: {
+                  versionNumber: 1,
+                  status: 'PUBLISHED',
+                  updatedAt: now,
+                },
+                _count: { bookmarks: 0, variants: 0 },
+              },
+            ]
+          : [],
+      });
+      return;
+    }
     if (path === '/prompt-repositories' && method === 'POST') {
+      promptCreated = true;
       await route.fulfill({
         json: { id: 'repo-a', slug: 'prompt-a', promptVersionId: 'version-1' },
       });
@@ -542,7 +581,7 @@ test('completes the two-user prompt and evidence journey on mobile', async ({
     page.getByRole('link', { name: 'Create an account' }),
   ).toBeVisible();
 
-  await page.goto('/settings');
+  await page.goto('/u/author?tab=settings');
   await expect(
     page.getByRole('heading', { name: 'Make your profile yours.' }),
   ).toBeVisible();
@@ -551,6 +590,7 @@ test('completes the two-user prompt and evidence journey on mobile', async ({
   await expect(page.getByText('Profile updated.')).toBeVisible();
 
   await page.goto('/create');
+  await page.getByRole('button', { name: 'New prompt' }).click();
   await page
     .getByRole('textbox', { name: 'Title', exact: true })
     .fill('Prompt A');
@@ -574,6 +614,8 @@ test('completes the two-user prompt and evidence journey on mobile', async ({
   await page.getByLabel('Result 2 caption').fill('Second result');
   await page.getByLabel('Result 3 image description').fill('Third result');
   await page.getByRole('button', { name: 'Save prompt' }).click();
+  await expect(page.getByRole('heading', { name: 'Prompt A' })).toBeVisible();
+  await page.getByRole('link', { name: 'Open and manage' }).click();
   await page.waitForURL('**/p/prompt-a');
 
   await page.getByRole('button', { name: 'Copy Prompt' }).click();
@@ -594,7 +636,29 @@ test('completes the two-user prompt and evidence journey on mobile', async ({
   await page.goto('/search?q=Prompt+A');
   await page.getByRole('button', { name: 'Search prompts' }).click();
   await expect(page.getByText('1 match')).toBeVisible();
-  await page.getByRole('link', { name: 'Prompt A' }).first().click();
+  await page.getByRole('button', { name: 'Preview Prompt A' }).click();
+  const preview = page.getByRole('dialog', { name: 'Prompt A' });
+  await expect(preview).toBeVisible();
+  await expect(
+    preview.getByText('Write a concise research brief with sources.'),
+  ).toBeVisible();
+  await preview.getByRole('button', { name: 'Copy prompt' }).click();
+  await expect(
+    preview.getByRole('button', { name: 'Prompt copied' }),
+  ).toBeVisible();
+  await expect(
+    preview.getByRole('link', { name: 'Share on Facebook' }),
+  ).toHaveAttribute('href', /facebook\.com\/sharer/);
+  await expect(
+    preview.getByRole('link', { name: 'Share on LinkedIn' }),
+  ).toHaveAttribute('href', /linkedin\.com\/sharing/);
+  await expect(
+    preview.getByRole('link', { name: 'Share on WhatsApp' }),
+  ).toHaveAttribute('href', /wa\.me/);
+  await expect(
+    preview.getByRole('link', { name: 'Share on X' }),
+  ).toHaveAttribute('href', /twitter\.com\/intent/);
+  await preview.getByRole('link', { name: 'View full details' }).click();
   await page.waitForURL('**/p/prompt-a');
   await expect(page.getByRole('heading', { name: 'Prompt A' })).toBeVisible();
 
@@ -607,10 +671,13 @@ test('completes the two-user prompt and evidence journey on mobile', async ({
   await page.getByRole('link', { name: 'Create variation' }).click();
   await page.waitForURL('**/create?variantFrom=prompt-a');
   await expect(
+    page.getByRole('heading', { name: 'Make the useful thing reusable.' }),
+  ).toBeVisible({ timeout: 15_000 });
+  await expect(
     page.getByText(
       'Prefilled from Prompt A. Attribution will be kept automatically.',
     ),
-  ).toBeVisible();
+  ).toBeVisible({ timeout: 15_000 });
   await expect(page.getByText('0/3 images.')).toBeVisible();
   await page
     .getByRole('textbox', { name: 'Title', exact: true })
@@ -620,6 +687,10 @@ test('completes the two-user prompt and evidence journey on mobile', async ({
     .setInputFiles(pngFile('variant.png'));
   await expect(page.getByText('1/3 images.')).toBeVisible();
   await page.getByRole('button', { name: 'Save prompt' }).click();
+  await expect(
+    page.getByRole('heading', { name: 'Prompt A Variant' }),
+  ).toBeVisible();
+  await page.getByRole('link', { name: 'Open and manage' }).click();
   await page.waitForURL('**/p/prompt-a-variant');
   await expect(page.getByText('Attribution')).toBeVisible();
   await expect(page.getByRole('link', { name: '@author' })).toBeVisible();

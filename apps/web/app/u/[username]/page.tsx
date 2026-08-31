@@ -7,6 +7,7 @@ import { getProfileSeoData } from '@/lib/seo-data';
 
 type ProfilePageProps = Readonly<{
   params: Promise<{ username: string }>;
+  searchParams: Promise<{ tab?: string }>;
 }>;
 
 export async function generateMetadata({
@@ -17,7 +18,9 @@ export async function generateMetadata({
   const displayName = profile?.displayName || profile?.username || username;
 
   return createPageMetadata({
-    title: profile ? `${displayName} (@${profile.username})` : 'Creator unavailable',
+    title: profile
+      ? `${displayName} (@${profile.username})`
+      : 'Creator unavailable',
     description:
       profile?.bio ||
       `Explore AI prompts and public collections shared by ${displayName} on Vrompt.`,
@@ -26,8 +29,12 @@ export async function generateMetadata({
   });
 }
 
-export default async function ProfilePage({ params }: ProfilePageProps) {
+export default async function ProfilePage({
+  params,
+  searchParams,
+}: ProfilePageProps) {
   const { username } = await params;
+  const { tab } = await searchParams;
   const profile = await getProfileSeoData(username);
   const displayName = profile?.displayName || profile?.username || username;
 
@@ -50,7 +57,11 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
           }}
         />
       ) : null}
-      <ProfileView initialProfile={profile} username={username} />
+      <ProfileView
+        initialProfile={profile}
+        initialTab={tab}
+        username={username}
+      />
     </>
   );
 }

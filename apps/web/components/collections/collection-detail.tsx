@@ -1,8 +1,8 @@
 'use client';
 
-import Link from 'next/link';
 import { useEffect, useState } from 'react';
 
+import { PromptPreviewCard } from '@/components/prompts/prompt-preview';
 import { useAuth } from '@/components/providers/auth-provider';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
@@ -86,24 +86,23 @@ export function CollectionDetailView({
       ) : (
         <div className="grid gap-4">
           {collection.items.map((item, index) => (
-            <Link
-              href={`/p/${item.promptRepository.slug}`}
+            <PromptPreviewCard
+              description={item.promptRepository.description}
               key={item.promptRepositoryId}
+              slug={item.promptRepository.slug}
+              title={item.promptRepository.title}
             >
-              <Card className="transition hover:-translate-y-0.5 hover:border-black dark:hover:border-white">
-                <p className="font-mono text-xs uppercase tracking-[0.18em] text-zinc-500">
-                  {String(index + 1).padStart(2, '0')} / @
-                  {item.promptRepository.owner.username}
-                </p>
-                <h2 className="mt-3 text-2xl font-semibold tracking-[-0.04em]">
-                  {item.promptRepository.title}
-                </h2>
-                <p className="mt-2 line-clamp-2 text-sm leading-7 text-zinc-600 dark:text-zinc-400">
-                  {item.promptRepository.description ||
-                    'A reusable prompt.'}
-                </p>
-              </Card>
-            </Link>
+              <p className="font-mono text-xs uppercase tracking-[0.18em] text-zinc-500">
+                {String(index + 1).padStart(2, '0')} / @
+                {item.promptRepository.owner.username}
+              </p>
+              <h2 className="mt-3 text-2xl font-semibold tracking-[-0.04em]">
+                {item.promptRepository.title}
+              </h2>
+              <p className="mt-2 line-clamp-2 text-sm leading-7 text-zinc-600 dark:text-zinc-400">
+                {item.promptRepository.description || 'A reusable prompt.'}
+              </p>
+            </PromptPreviewCard>
           ))}
         </div>
       )}

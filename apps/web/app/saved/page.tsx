@@ -1,10 +1,10 @@
 import { ProtectedRoute } from '@/components/auth/protected-route';
-import { SavedRepositories } from '@/components/bookmarks/saved-repositories';
+import { ProfileSectionRedirect } from '@/components/profile/profile-section-redirect';
 
 export default function SavedPage() {
   return (
     <ProtectedRoute>
-      <SavedRepositories />
+      <ProfileSectionRedirect tab="saved" />
     </ProtectedRoute>
   );
 }

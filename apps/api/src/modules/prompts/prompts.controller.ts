@@ -23,6 +23,12 @@ export class PromptsController {
     return this.promptsService.create(user.id, input);
   }
 
+  @Get('mine')
+  @UseGuards(AccessTokenGuard)
+  listOwned(@CurrentUser() user: AuthenticatedUser) {
+    return this.promptsService.listOwned(user.id);
+  }
+
   @Post(':slug/copy')
   @UseGuards(OptionalAccessTokenGuard)
   copy(

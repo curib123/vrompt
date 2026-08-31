@@ -1,10 +1,10 @@
 'use client';
 
-import Link from 'next/link';
 import type { Route } from 'next';
 import { useRouter } from 'next/navigation';
 import { useRef, useState } from 'react';
 
+import { PromptPreviewCard } from '@/components/prompts/prompt-preview';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -92,7 +92,10 @@ export function SearchView({
     setPage(safePage);
     router.replace(`/search?${params.toString()}` as Route, { scroll: false });
     void runSearch(appliedFilters, safePage).then(() => {
-      resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      resultsRef.current?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start',
+      });
     });
   }
 
@@ -111,8 +114,8 @@ export function SearchView({
             Find a better prompt.
           </h1>
           <p className="max-w-2xl text-sm leading-7 text-zinc-300 sm:text-base">
-            Describe the outcome you want. Search across prompt ideas,
-            creators, topics, and tools.
+            Describe the outcome you want. Search across prompt ideas, creators,
+            topics, and tools.
           </p>
         </div>
       </Card>
@@ -274,36 +277,37 @@ export function SearchView({
 
 function ResultCard({ item, query }: { item: SearchResult; query: string }) {
   return (
-    <Link className="group" href={`/p/${item.slug}`}>
-      <Card className="flex h-full min-h-60 flex-col transition group-hover:-translate-y-0.5 group-hover:border-black dark:group-hover:border-white">
-        <div className="flex flex-wrap gap-2">
-          {item.category ? <Badge>{item.category.name}</Badge> : null}
-          {item.aiCompatibility ? <Badge>{item.aiCompatibility}</Badge> : null}
-          {item.owner.accountType !== 'REAL' ? (
-            <Badge>Vrompt pick</Badge>
-          ) : null}
+    <PromptPreviewCard
+      className="group flex h-full min-h-60 flex-col"
+      description={item.description}
+      slug={item.slug}
+      title={item.title}
+    >
+      <div className="flex flex-wrap gap-2">
+        {item.category ? <Badge>{item.category.name}</Badge> : null}
+        {item.aiCompatibility ? <Badge>{item.aiCompatibility}</Badge> : null}
+        {item.owner.accountType !== 'REAL' ? <Badge>Vrompt pick</Badge> : null}
+      </div>
+      <h3 className="mt-5 text-2xl font-semibold tracking-[-0.04em] group-hover:underline group-hover:decoration-[#BDBDBD] group-hover:underline-offset-4">
+        {highlight(item.title, query)}
+      </h3>
+      <p className="mt-3 line-clamp-3 text-sm leading-7 text-zinc-600 dark:text-zinc-400">
+        {highlight(item.description || 'A reusable prompt.', query)}
+      </p>
+      <div className="mt-auto flex flex-wrap gap-x-4 gap-y-2 pt-6 text-xs text-zinc-500">
+        <span>By @{item.owner.username}</span>
+        <span>{item.copyCount} copies</span>
+        <span>{item.saveCount} saves</span>
+        <span>{item.likeCount} likes</span>
+      </div>
+      {item.promptTags.length > 0 ? (
+        <div className="mt-4 flex flex-wrap gap-2">
+          {item.promptTags.slice(0, 4).map(({ tag }) => (
+            <Badge key={tag.slug}>{highlight(tag.name, query)}</Badge>
+          ))}
         </div>
-        <h3 className="mt-5 text-2xl font-semibold tracking-[-0.04em] group-hover:underline group-hover:decoration-[#BDBDBD] group-hover:underline-offset-4">
-          {highlight(item.title, query)}
-        </h3>
-        <p className="mt-3 line-clamp-3 text-sm leading-7 text-zinc-600 dark:text-zinc-400">
-          {highlight(item.description || 'A reusable prompt.', query)}
-        </p>
-        <div className="mt-auto flex flex-wrap gap-x-4 gap-y-2 pt-6 text-xs text-zinc-500">
-          <span>By @{item.owner.username}</span>
-          <span>{item.copyCount} copies</span>
-          <span>{item.saveCount} saves</span>
-          <span>{item.likeCount} likes</span>
-        </div>
-        {item.promptTags.length > 0 ? (
-          <div className="mt-4 flex flex-wrap gap-2">
-            {item.promptTags.slice(0, 4).map(({ tag }) => (
-              <Badge key={tag.slug}>{highlight(tag.name, query)}</Badge>
-            ))}
-          </div>
-        ) : null}
-      </Card>
-    </Link>
+      ) : null}
+    </PromptPreviewCard>
   );
 }
 

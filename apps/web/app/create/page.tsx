@@ -1,5 +1,5 @@
 import { ProtectedRoute } from '@/components/auth/protected-route';
-import { CreatePromptForm } from '@/components/prompts/create-prompt-form';
+import { PromptManager } from '@/components/prompts/prompt-manager';
 
 export default async function CreatePage({
   searchParams,
@@ -8,7 +8,7 @@ export default async function CreatePage({
 
   return (
     <ProtectedRoute>
-      <CreatePromptForm variantFrom={variantFrom} />
+      <PromptManager variantFrom={variantFrom} />
     </ProtectedRoute>
   );
 }

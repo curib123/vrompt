@@ -151,6 +151,29 @@ export class PromptsService {
     }
   }
 
+  async listOwned(ownerId: string) {
+    return this.prismaService.promptRepository.findMany({
+      where: { ownerId },
+      orderBy: { updatedAt: 'desc' },
+      take: 100,
+      select: {
+        id: true,
+        title: true,
+        slug: true,
+        description: true,
+        visibility: true,
+        status: true,
+        createdAt: true,
+        updatedAt: true,
+        category: { select: { name: true, slug: true } },
+        currentVersion: {
+          select: { versionNumber: true, status: true, updatedAt: true },
+        },
+        _count: { select: { bookmarks: true, variants: true } },
+      },
+    });
+  }
+
   async getBySlug(slug: string, viewerId?: string) {
     const repository = await this.prismaService.promptRepository.findUnique({
       where: { slug: slugify(slug) },

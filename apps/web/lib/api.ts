@@ -284,6 +284,24 @@ export interface PromptCreateResponse {
   promptVersionId: string;
 }
 
+export interface OwnedPromptRepository {
+  id: string;
+  title: string;
+  slug: string;
+  description: string | null;
+  visibility: 'PUBLIC' | 'UNLISTED' | 'PRIVATE';
+  status: 'ACTIVE' | 'HIDDEN' | 'ARCHIVED';
+  createdAt: string;
+  updatedAt: string;
+  category: { name: string; slug: string } | null;
+  currentVersion: {
+    versionNumber: number;
+    status: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
+    updatedAt: string;
+  } | null;
+  _count: { bookmarks: number; variants: number };
+}
+
 export interface PromptEvidenceImage {
   id: string;
   secureUrl: string;

@@ -1,10 +1,10 @@
 import { ProtectedRoute } from '@/components/auth/protected-route';
-import { ProfileSettingsForm } from '@/components/profile/profile-settings-form';
+import { ProfileSectionRedirect } from '@/components/profile/profile-section-redirect';
 
 export default function SettingsPage() {
   return (
     <ProtectedRoute>
-      <ProfileSettingsForm />
+      <ProfileSectionRedirect tab="settings" />
     </ProtectedRoute>
   );
 }

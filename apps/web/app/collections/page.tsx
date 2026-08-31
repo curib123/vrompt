@@ -1,10 +1,10 @@
 import { ProtectedRoute } from '@/components/auth/protected-route';
-import { CollectionsView } from '@/components/collections/collections-view';
+import { ProfileSectionRedirect } from '@/components/profile/profile-section-redirect';
 
 export default function CollectionsPage() {
   return (
     <ProtectedRoute>
-      <CollectionsView />
+      <ProfileSectionRedirect tab="collections" />
     </ProtectedRoute>
   );
 }

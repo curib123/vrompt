@@ -12,7 +12,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { apiRequest } from '@/lib/api';
 import type { ActivityFeedResponse } from '@/lib/api';
 
-export function FollowingFeed() {
+export function FollowingFeed({ embedded = false }: { embedded?: boolean }) {
   const { accessToken, isLoading } = useAuth();
   const [feed, setFeed] = useState<ActivityFeedResponse | null>(null);
   const [page, setPage] = useState(1);
@@ -47,8 +47,14 @@ export function FollowingFeed() {
     );
 
   return (
-    <div className="grid gap-8">
-      <Card className="relative overflow-hidden border-[#0D0D0D] bg-[#0D0D0D] text-white dark:border-white">
+    <div className={embedded ? 'grid gap-6 pt-4' : 'grid gap-8'}>
+      <Card
+        className={
+          embedded
+            ? 'hidden'
+            : 'relative overflow-hidden border-[#0D0D0D] bg-[#0D0D0D] text-white dark:border-white'
+        }
+      >
         <div className="relative space-y-4">
           <Badge className="border-white/30 text-zinc-300">Following</Badge>
           <h1 className="text-4xl font-semibold tracking-[-0.07em] sm:text-7xl">

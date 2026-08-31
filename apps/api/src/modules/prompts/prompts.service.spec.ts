@@ -6,6 +6,26 @@ import { TagsService } from '../tags/tags.service';
 import { PromptsService } from './prompts.service';
 
 describe('PromptsService', () => {
+  it('lists every repository owned by the authenticated user', async () => {
+    const repositories = [
+      { id: 'private-draft', visibility: 'PRIVATE' },
+      { id: 'public-prompt', visibility: 'PUBLIC' },
+    ];
+    const findMany = jest.fn().mockResolvedValue(repositories);
+    const service = await createService(
+      { promptRepository: { findMany } },
+      { createOrGet: jest.fn() },
+    );
+
+    await expect(service.listOwned('owner-id')).resolves.toEqual(repositories);
+    expect(findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { ownerId: 'owner-id' },
+        orderBy: { updatedAt: 'desc' },
+      }),
+    );
+  });
+
   it('creates a repository with Version 1 and normalized tag associations', async () => {
     const transaction = {
       promptRepository: {

@@ -5,20 +5,16 @@ import type { Route } from 'next';
 import { usePathname } from 'next/navigation';
 
 import { BrandLockup } from '@/components/brand/brand-mark';
+import { AccountMenu } from '@/components/layout/account-menu';
 import { MobileNav } from '@/components/layout/mobile-nav';
 import { useAuth } from '@/components/providers/auth-provider';
-import { Avatar } from '@/components/ui/avatar';
-import { Button, getButtonClasses } from '@/components/ui/button';
+import { getButtonClasses } from '@/components/ui/button';
 import { cn } from '@/lib/cn';
-import {
-  primaryRoutes,
-  publicPrimaryRoutes,
-  secondaryRoutes,
-} from '@/lib/routes';
+import { primaryRoutes, publicPrimaryRoutes } from '@/lib/routes';
 
 export function SiteHeader() {
   const pathname = usePathname();
-  const { isLoading, logout, user } = useAuth();
+  const { isLoading, user } = useAuth();
   const visiblePrimaryRoutes = user ? primaryRoutes : publicPrimaryRoutes;
 
   return (
@@ -29,7 +25,7 @@ export function SiteHeader() {
             <Link
               aria-label="Vrompt home"
               className="group inline-flex rounded-lg px-1 py-1 transition hover:bg-[#E6E6E6] dark:hover:bg-[#1A1A1A]"
-              href="/"
+              href={user ? '/search' : '/'}
             >
               <BrandLockup compact />
             </Link>
@@ -54,23 +50,19 @@ export function SiteHeader() {
             </nav>
           </div>
           <div className="flex items-center gap-2">
-            {user
-              ? secondaryRoutes.slice(0, 2).map((route) => (
-                  <Link
-                    className={cn(
-                      'rounded-lg px-4 py-2 text-sm transition',
-                      pathname === route.href
-                        ? 'bg-[#0D0D0D] !text-white dark:bg-white dark:!text-[#0D0D0D]'
-                        : 'text-[#4D4D4D] hover:bg-[#E6E6E6] dark:text-zinc-300 dark:hover:bg-[#1A1A1A]',
-                    )}
-                    href={route.href as Route}
-                    key={route.href}
-                  >
-                    {route.label}
-                  </Link>
-                ))
-              : null}
-            <div className="mx-1 h-6 w-px bg-[#E6E6E6] dark:bg-[#1A1A1A]" />
+            {user ? (
+              <Link
+                className={cn(
+                  'rounded-lg px-4 py-2 text-sm transition',
+                  pathname === '/notifications'
+                    ? 'bg-[#0D0D0D] !text-white dark:bg-white dark:!text-[#0D0D0D]'
+                    : 'text-[#4D4D4D] hover:bg-[#E6E6E6] dark:text-zinc-300 dark:hover:bg-[#1A1A1A]',
+                )}
+                href="/notifications"
+              >
+                Notifications
+              </Link>
+            ) : null}
             {isLoading ? (
               <span
                 aria-label="Checking your account"
@@ -78,21 +70,7 @@ export function SiteHeader() {
                 role="status"
               />
             ) : user ? (
-              <>
-                <Link
-                  className="rounded-lg px-2 text-sm text-[#4D4D4D] hover:text-[#0D0D0D] dark:text-zinc-300 dark:hover:text-white"
-                  href={`/u/${user.username}`}
-                >
-                  @{user.username}
-                </Link>
-                <Button onClick={() => void logout()} variant="ghost">
-                  Log out
-                </Button>
-                <Avatar
-                  className="border-[#0D0D0D] bg-[#E6E6E6]"
-                  name={user.username}
-                />
-              </>
+              <AccountMenu />
             ) : (
               <>
                 <Link className={getButtonClasses('ghost')} href="/login">
@@ -113,7 +91,7 @@ export function SiteHeader() {
           <Link
             aria-label="Vrompt home"
             className="inline-flex min-w-0 rounded-lg px-1 py-1 transition hover:bg-[#E6E6E6] dark:hover:bg-[#1A1A1A]"
-            href="/"
+            href={user ? '/search' : '/'}
           >
             <BrandLockup compact />
           </Link>
@@ -125,16 +103,7 @@ export function SiteHeader() {
                 role="status"
               />
             ) : user ? (
-              <Link
-                aria-label="Open your profile"
-                className="rounded-full focus-visible:outline-offset-2"
-                href={`/u/${user.username}`}
-              >
-                <Avatar
-                  className="size-10 border-[#0D0D0D] bg-[#E6E6E6]"
-                  name={user.username}
-                />
-              </Link>
+              <AccountMenu />
             ) : (
               <Link
                 className={getButtonClasses(
