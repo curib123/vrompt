@@ -5,7 +5,7 @@ import { createPrivatePageMetadata } from '@/lib/seo';
 
 export const metadata: Metadata = createPrivatePageMetadata(
   'Sign in',
-  'Sign in to Vrompt with Google to save, follow, and share prompts.',
+  'Sign in to Vrompt with Google or GitHub to save, follow, and share prompts.',
 );
 
 export default function LoginLayout({ children }: { children: ReactNode }) {

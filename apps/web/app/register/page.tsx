@@ -9,14 +9,14 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 
 export default function RegisterPage() {
-  const { beginGoogleLogin } = useAuth();
+  const { beginGitHubLogin, beginGoogleLogin } = useAuth();
 
   return (
     <div className="grid gap-8 lg:grid-cols-[1fr_0.9fr]">
       <RoutePlaceholder
-        description="Create your Vrompt identity with Google. Your public profile can be refined later, after the account is ready."
+        description="Create your Vrompt identity with Google or GitHub. Your public profile can be refined later, after the account is ready."
         eyebrow="Become a creator"
-        title="Start with your Google account"
+        title="Start with an OAuth account"
       />
       <Card className="flex flex-col justify-between gap-10">
         <BrandLockup />
@@ -25,8 +25,8 @@ export default function RegisterPage() {
             Make ideas reusable.
           </h2>
           <p className="text-sm leading-7 text-zinc-600 dark:text-zinc-400">
-            Google securely confirms who you are. Vrompt only uses the details
-            needed to create your account.
+            Google or GitHub securely confirms who you are. Vrompt only uses the
+            details needed to create your account.
           </p>
         </div>
         <Button onClick={beginGoogleLogin}>
@@ -34,6 +34,12 @@ export default function RegisterPage() {
             G
           </span>
           Continue with Google
+        </Button>
+        <Button onClick={beginGitHubLogin} variant="secondary">
+          <span aria-hidden="true" className="text-lg font-semibold">
+            GH
+          </span>
+          Continue with GitHub
         </Button>
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
           Already have an account?{' '}

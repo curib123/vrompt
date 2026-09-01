@@ -132,7 +132,7 @@ function pngFile(name: string) {
 
 test.use({ viewport: { width: 390, height: 844 } });
 
-test('prioritizes Google sign-in on the mobile login screen', async ({
+test('offers Google and GitHub sign-in on the mobile login screen', async ({
   page,
 }) => {
   await page.route(`${apiOrigin}/**`, async (route) => {
@@ -284,7 +284,9 @@ test('shows the signed-in creator profile and workspace links in the drawer', as
     name: "View Author A's profile",
   });
   await expect(profileCard).toBeVisible();
-  await expect(profileCard.getByRole('img', { name: 'Author A avatar' })).toBeVisible();
+  await expect(
+    profileCard.getByRole('img', { name: 'Author A avatar' }),
+  ).toBeVisible();
   await expect(profileCard.getByText('@author')).toBeVisible();
   await expect(profileCard.getByText('Creator', { exact: true })).toBeVisible();
   await expect(profileCard.getByText('12')).toBeVisible();
@@ -635,6 +637,9 @@ test('completes the two-user prompt and evidence journey on mobile', async ({
   await page.goto('/login');
   await expect(
     page.getByRole('button', { name: 'Continue with Google' }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole('button', { name: 'Continue with GitHub' }),
   ).toBeVisible();
   await expect(
     page.getByRole('link', { name: 'Create an account' }),

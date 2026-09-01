@@ -14,11 +14,15 @@ import { useToast } from '@/components/ui/toast';
 export default function LoginPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { beginGoogleLogin, isLoading, user } = useAuth();
+  const { beginGitHubLogin, beginGoogleLogin, isLoading, user } = useAuth();
   const { pushToast } = useToast();
   const hasGoogleError = searchParams.get('error') === 'google_auth_failed';
   const hasGoogleConfigError =
     searchParams.get('error') === 'google_not_configured';
+  const hasGitHubError = searchParams.get('error') === 'github_auth_failed';
+  const hasGitHubConfigError =
+    searchParams.get('error') === 'github_not_configured';
+  const hasOAuthError = searchParams.get('error') === 'oauth_auth_failed';
 
   useEffect(() => {
     if (!isLoading && user) {
@@ -45,6 +49,23 @@ export default function LoginPage() {
       });
     }
     beginGoogleLogin();
+  }
+
+  function handleGitHubLogin() {
+    if (hasGitHubError) {
+      pushToast({
+        title: 'GitHub sign-in was not completed',
+        description: 'Try again or choose a different GitHub account.',
+      });
+    }
+    if (hasGitHubConfigError) {
+      pushToast({
+        title: 'GitHub sign-in needs setup',
+        description:
+          'Please ask the site owner to finish the GitHub sign-in setup.',
+      });
+    }
+    beginGitHubLogin();
   }
 
   if (isLoading || user) {
@@ -76,8 +97,8 @@ export default function LoginPage() {
             Pick up your best ideas in one tap.
           </h1>
           <p className="max-w-md text-sm leading-6 text-brand-mid sm:text-base sm:leading-7">
-            Continue with Google to save useful prompts, follow creators, and
-            share what works for you.
+            Continue with Google or GitHub to save useful prompts, follow
+            creators, and share what works for you.
           </p>
         </div>
 
@@ -89,12 +110,24 @@ export default function LoginPage() {
             Google sign-in is not ready yet. Please ask the site owner to finish
             the sign-in setup.
           </p>
-        ) : hasGoogleError ? (
+        ) : hasGitHubConfigError ? (
+          <p
+            className="rounded-2xl border border-[#BDBDBD] bg-[#E6E6E6] p-4 text-sm leading-6 text-on-light-muted"
+            role="status"
+          >
+            GitHub sign-in is not ready yet. Please ask the site owner to finish
+            the sign-in setup.
+          </p>
+        ) : hasGoogleError || hasGitHubError || hasOAuthError ? (
           <p
             className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm leading-6 text-red-700 dark:border-red-950 dark:bg-red-950/30 dark:text-red-300"
             role="alert"
           >
-            Google sign-in was not completed. Please try again.
+            {hasOAuthError
+              ? 'OAuth sign-in was not completed. Please try again.'
+              : hasGitHubError
+                ? 'GitHub sign-in was not completed. Please try again.'
+                : 'Google sign-in was not completed. Please try again.'}
           </p>
         ) : null}
 
@@ -109,6 +142,19 @@ export default function LoginPage() {
             G
           </span>
           Continue with Google
+        </Button>
+        <Button
+          className="min-h-14 w-full rounded-2xl"
+          onClick={handleGitHubLogin}
+          variant="secondary"
+        >
+          <span
+            aria-hidden="true"
+            className="grid size-8 place-items-center rounded-full bg-foreground text-base font-bold text-background dark:bg-background dark:text-foreground"
+          >
+            GH
+          </span>
+          Continue with GitHub
         </Button>
 
         <div className="grid gap-3 border-t border-[#E6E6E6] pt-5 text-sm dark:border-[#4D4D4D]">

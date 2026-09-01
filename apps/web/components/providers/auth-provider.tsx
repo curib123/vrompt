@@ -14,6 +14,7 @@ import type { AuthResponse, AuthUser } from '@/lib/api';
 
 interface AuthContextValue {
   accessToken: string | null;
+  beginGitHubLogin: () => void;
   beginGoogleLogin: () => void;
   isLoading: boolean;
   logout: () => Promise<void>;
@@ -57,6 +58,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     window.location.replace(`${getApiBaseUrl()}/auth/google`);
   }
 
+  function beginGitHubLogin() {
+    window.location.replace(`${getApiBaseUrl()}/auth/github`);
+  }
+
   async function logout() {
     try {
       await apiRequest('/auth/logout', { method: 'POST' });
@@ -70,6 +75,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     <AuthContext.Provider
       value={{
         accessToken,
+        beginGitHubLogin,
         beginGoogleLogin,
         isLoading,
         logout,

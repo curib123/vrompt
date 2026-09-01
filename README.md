@@ -59,20 +59,34 @@ npm run prisma:deploy --workspace @vrompt/api
 npm run prisma:seed --workspace @vrompt/api
 ```
 
-### Google authentication
+### OAuth authentication
 
-Phase 6 uses Google sign-in only. In Google Cloud Console, open the **same OAuth
-2.0 Web client** whose client ID is in `.env`, then add this exact authorized
-redirect URI (including the port and path, with no trailing slash):
+Vrompt uses third-party OAuth sign-in only. Local email/password credentials are
+not supported. Google and GitHub are supported providers; each provider identity
+is stored separately so future account linking can be added without merging
+accounts by email.
+
+For Google, open the **same OAuth 2.0 Web client** whose client ID is in `.env`,
+then add this exact authorized redirect URI (including the port and path, with no
+trailing slash):
 
 `http://localhost:4000/api/v1/auth/google/callback`
 
 Set `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` in `.env`, then open Vrompt at
 `http://localhost:3000` rather than `127.0.0.1` or another hostname. The
-frontend page (`/auth/callback`) is not the Google redirect URI; the API
-receives Google's response and sends the user back to the frontend. Basic
+frontend page (`/auth/callback`) is not the provider redirect URI; the API
+receives the provider response and sends the user back to the frontend. Basic
 Google sign-in does not require a paid Google Cloud plan. Additional profile
 details can be added later inside Vrompt.
+
+For GitHub, create an OAuth App and set its authorization callback URL to:
+
+`http://localhost:4000/api/v1/auth/github/callback`
+
+Set `GITHUB_CLIENT_ID` and `GITHUB_CLIENT_SECRET` in `.env`. GitHub requests only
+the `read:user` and `user:email` scopes; if no verified provider email is
+available, Vrompt keeps the provider identity and uses an internal placeholder
+email rather than blocking sign-in or merging by email.
 
 For a deployed site, replace the local values with the public API callback URL,
 for example `https://api.example.com/api/v1/auth/google/callback`, and register

@@ -13,7 +13,7 @@ export default function AuthCallbackPage() {
   const { refreshSession } = useAuth();
   const completeAuth = useEffectEvent(async () => {
     try {
-      // New Google accounts finish their required discovery preferences before entering Vrompt.
+      // New OAuth accounts finish their required discovery preferences before entering Vrompt.
       const nextUser = await refreshSession();
       router.replace(
         (nextUser.onboardingCompleted
@@ -21,7 +21,7 @@ export default function AuthCallbackPage() {
           : '/onboarding/audience') as Route,
       );
     } catch {
-      router.replace('/login?error=google_auth_failed');
+      router.replace('/login?error=oauth_auth_failed');
     }
   });
 
@@ -33,7 +33,7 @@ export default function AuthCallbackPage() {
     <Card className="mx-auto flex max-w-md flex-col items-center gap-6 py-16 text-center">
       <BrandLockup />
       <p className="text-sm text-zinc-600 dark:text-zinc-400">
-        Finishing your secure Google sign-in...
+        Finishing your secure OAuth sign-in...
       </p>
     </Card>
   );
