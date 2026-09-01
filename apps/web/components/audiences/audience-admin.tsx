@@ -143,53 +143,83 @@ export function AudienceAdmin() {
       ) : null}
       <div className="grid gap-4">
         {audiences.map((audience) => (
-          <Card className="grid gap-4" key={audience.id}>
-            <div className="flex flex-wrap items-start justify-between gap-4">
-              <div>
-                <div className="flex flex-wrap gap-2">
-                  <Badge>{audience.isActive ? 'Active' : 'Inactive'}</Badge>
-                  <Badge>{audience._count.promptAudiences} prompts</Badge>
-                  <Badge>{audience._count.userAudiences} interests</Badge>
-                </div>
-                <h2 className="mt-3 text-xl font-semibold">{audience.name}</h2>
-                <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-                  {audience.description || 'No description.'}
-                </p>
-              </div>
-              <Button
-                onClick={() =>
-                  void updateAudience(audience.id, {
-                    isActive: !audience.isActive,
-                  })
-                }
-                variant="secondary"
-              >
-                {audience.isActive ? 'Deactivate' : 'Activate'}
-              </Button>
-            </div>
-            <div className="flex flex-wrap items-center gap-3 text-sm">
-              <label className="flex items-center gap-2">
-                Order{' '}
-                <Input
-                  aria-label={`Sort order for ${audience.name}`}
-                  className="w-24"
-                  min={0}
-                  onChange={(event) =>
-                    void updateAudience(audience.id, {
-                      sortOrder: Number(event.target.value),
-                    })
-                  }
-                  type="number"
-                  value={audience.sortOrder}
-                />
-              </label>
-              <span className="font-mono text-xs text-zinc-600 dark:text-zinc-400">
-                /{audience.slug}
-              </span>
-            </div>
-          </Card>
+          <AudienceAdminRow
+            audience={audience}
+            key={audience.id}
+            onToggle={() =>
+              void updateAudience(audience.id, {
+                isActive: !audience.isActive,
+              })
+            }
+            onUpdate={(body) => void updateAudience(audience.id, body)}
+          />
         ))}
       </div>
     </div>
+  );
+}
+
+function AudienceAdminRow({
+  audience,
+  onToggle,
+  onUpdate,
+}: {
+  audience: AdminAudience;
+  onToggle: () => void;
+  onUpdate: (body: Record<string, unknown>) => void;
+}) {
+  const [name, setName] = useState(audience.name);
+  const [description, setDescription] = useState(audience.description ?? '');
+
+  return (
+    <Card className="grid gap-4">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="flex flex-wrap gap-2">
+          <Badge>{audience.isActive ? 'Active' : 'Inactive'}</Badge>
+          <Badge>{audience._count.promptAudiences} prompts</Badge>
+          <Badge>{audience._count.userAudiences} interests</Badge>
+        </div>
+        <Button onClick={onToggle} variant="secondary">
+          {audience.isActive ? 'Deactivate' : 'Activate'}
+        </Button>
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <Input
+          aria-label={`Audience name for ${audience.name}`}
+          onChange={(event) => setName(event.target.value)}
+          value={name}
+        />
+        <Textarea
+          aria-label={`Audience description for ${audience.name}`}
+          onChange={(event) => setDescription(event.target.value)}
+          value={description}
+        />
+      </div>
+      <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
+        <label className="flex items-center gap-2">
+          Order
+          <Input
+            aria-label={`Sort order for ${audience.name}`}
+            className="w-24"
+            min={0}
+            onChange={(event) =>
+              onUpdate({ sortOrder: Number(event.target.value) })
+            }
+            type="number"
+            value={audience.sortOrder}
+          />
+        </label>
+        <Button
+          disabled={!name.trim()}
+          onClick={() => onUpdate({ description, name })}
+          variant="secondary"
+        >
+          Save changes
+        </Button>
+        <span className="font-mono text-xs text-zinc-600 dark:text-zinc-400">
+          /{audience.slug}
+        </span>
+      </div>
+    </Card>
   );
 }

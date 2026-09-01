@@ -18,6 +18,7 @@ import { apiRequest, getMediaUrl } from '@/lib/api';
 import { trackAnalyticsEvent } from '@/lib/analytics';
 import { copyToClipboard, getCopyClientKey } from '@/lib/clipboard';
 import { ReportRepositoryButton } from '@/components/reports/report-repository-button';
+import { PromptAudienceEditor } from '@/components/audiences/prompt-audience-editor';
 import type {
   PromptEvidenceImage,
   PromptVersionContent,
@@ -408,6 +409,17 @@ export function RepositoryDetail({
             />
           ) : null}
         </Card>
+      ) : null}
+
+      {user?.id === repository.ownerId ? (
+        <PromptAudienceEditor
+          accessToken={accessToken}
+          initialAudienceIds={repository.promptAudiences.map(
+            ({ audience }) => audience.id,
+          )}
+          onSaved={setRepository}
+          repositorySlug={slug}
+        />
       ) : null}
 
       <Tabs
