@@ -7,7 +7,7 @@ import { getButtonClasses } from '@/components/ui/button';
 import { createPageMetadata, siteConfig } from '@/lib/seo';
 
 export const metadata: Metadata = createPageMetadata({
-  title: 'High-Quality AI Prompts from Real Creators',
+  title: siteConfig.tagline,
   description: siteConfig.description,
   path: '/landing',
 });
@@ -29,13 +29,14 @@ export default function LandingPage() {
             </Badge>
             <div className="grid gap-5">
               <h1 className="max-w-3xl text-[clamp(3.4rem,14vw,7.5rem)] font-semibold leading-[0.88] tracking-[-0.085em]">
-                Better prompts
+                Vrompt
                 <br />
-                start here.
+                Find AI Prompts That Work.
+                <br />
+                Save Them. Make Them Better.
               </h1>
               <p className="max-w-xl text-base leading-8 text-zinc-300 sm:text-lg">
-                Find high-quality prompts shaped by real people, real results,
-                and the experience behind the work.
+                {siteConfig.description}
               </p>
             </div>
             <div className="flex flex-col gap-3 sm:flex-row">
@@ -98,7 +99,10 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <section className="grid gap-8 lg:grid-cols-[0.8fr_1.2fr] lg:gap-16">
+      <section
+        className="grid gap-8 lg:grid-cols-[0.8fr_1.2fr] lg:gap-16"
+        id="about"
+      >
         <div className="grid content-start gap-4">
           <p className="font-mono text-xs uppercase tracking-[0.24em] text-zinc-600 dark:text-zinc-400">
             Why Vrompt
@@ -107,8 +111,7 @@ export default function LandingPage() {
             Skip the blank page.
           </h2>
           <p className="max-w-md text-sm leading-7 text-zinc-600 dark:text-zinc-400 sm:text-base">
-            Vrompt is a living repository for prompts that have been tried,
-            refined, and made easier to use.
+            {siteConfig.shortDescription}
           </p>
         </div>
         <div className="grid overflow-hidden rounded-[2rem] border border-[#E6E6E6] bg-white shadow-[0_18px_50px_rgba(13,13,13,0.05)] [&>article+article]:border-t [&>article+article]:border-[#E6E6E6] sm:grid-cols-3 sm:[&>article+article]:border-l sm:[&>article+article]:border-t-0 dark:border-[#1A1A1A] dark:bg-[#1A1A1A] dark:[&>article+article]:border-[#4D4D4D]">

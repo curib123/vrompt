@@ -5,11 +5,13 @@ import type { Route } from 'next';
 
 import { BrandLockup } from '@/components/brand/brand-mark';
 import { useAuth } from '@/components/providers/auth-provider';
+import { siteConfig } from '@/lib/seo';
 
 const footerLinks = [
   { href: '/search', label: 'Home' },
   { href: '/explore', label: 'Explore prompts' },
   { href: '/landing', label: 'Landing' },
+  { href: '/landing#about', label: 'About Vrompt' },
 ] as const;
 
 export function SiteFooter() {
@@ -23,8 +25,9 @@ export function SiteFooter() {
             <BrandLockup compact />
           </Link>
           <p className="max-w-lg text-sm leading-7 text-brand-mid">
-            A community library for prompts shaped by real use, shared
-            experience, and better results.
+            {siteConfig.tagline}
+            <br />
+            {siteConfig.shortDescription}
           </p>
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-mid">
             {isLoading

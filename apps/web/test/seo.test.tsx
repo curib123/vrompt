@@ -1,6 +1,7 @@
 import {
   createPageMetadata,
   createPrivatePageMetadata,
+  siteConfig,
   truncateSeoText,
 } from '@/lib/seo';
 
@@ -47,5 +48,19 @@ describe('SEO metadata helpers', () => {
     expect(metadata.alternates).toEqual({ canonical: '/search' });
     expect(metadata.robots).toMatchObject({ index: false, follow: true });
     expect(metadata.openGraph).toMatchObject({ url: '/search' });
+  });
+
+  it('keeps the primary brand tagline intact in public metadata', () => {
+    const metadata = createPageMetadata({
+      title: siteConfig.tagline,
+      description: siteConfig.description,
+      path: '/landing',
+    });
+
+    expect(metadata.title).toBe(siteConfig.tagline);
+    expect(metadata.openGraph).toMatchObject({
+      title: siteConfig.tagline,
+      description: siteConfig.description,
+    });
   });
 });

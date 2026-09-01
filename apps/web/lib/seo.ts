@@ -1,13 +1,17 @@
 import type { Metadata } from 'next';
 
 const fallbackSiteUrl = 'http://localhost:3000';
+const primaryTagline =
+  'Vrompt — Find AI Prompts That Work. Save Them. Make Them Better.';
 
 export const siteConfig = {
   name: 'Vrompt',
-  defaultTitle: 'Vrompt — High-Quality AI Prompts',
+  tagline: primaryTagline,
+  defaultTitle: primaryTagline,
   description:
-    'Discover, copy, and improve high-quality AI prompts shared by prompt engineers, creators, and experienced AI users.',
-  shortDescription: 'A living library of high-quality AI prompts.',
+    'Discover useful AI prompt repositories, save the ones you need, publish improved versions, and create Variants while preserving attribution and lineage.',
+  shortDescription:
+    'Vrompt is a repository for AI prompts where people can discover prompts that work, save them, version them, and build better Variants.',
 } as const;
 
 export function getSiteUrl() {
@@ -50,7 +54,10 @@ export function createPageMetadata({
   index?: boolean;
   follow?: boolean;
 }): Metadata {
-  const conciseTitle = truncateSeoText(title, 60);
+  const conciseTitle = truncateSeoText(
+    title,
+    title === siteConfig.tagline ? 80 : 60,
+  );
   const conciseDescription = truncateSeoText(description);
 
   return {
@@ -69,7 +76,7 @@ export function createPageMetadata({
           url: '/opengraph-image',
           width: 1200,
           height: 630,
-          alt: 'Vrompt — high-quality AI prompts from real creators',
+          alt: siteConfig.tagline,
         },
       ],
     },

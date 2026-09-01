@@ -7,7 +7,7 @@ import { createPageMetadata } from '@/lib/seo';
 export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = createPageMetadata({
-  title: 'Explore High-Quality AI Prompts',
+  title: 'Explore AI Prompts That Work',
   description:
     'Browse useful AI prompts by goal, category, popularity, and real creator experience. Copy a strong starting point and make it your own.',
   path: '/explore',

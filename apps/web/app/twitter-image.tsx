@@ -1,6 +1,7 @@
 import { createSocialImage } from '@/components/seo/social-image';
+import { siteConfig } from '@/lib/seo';
 
-export const alt = 'Vrompt — Better prompts start here';
+export const alt = siteConfig.tagline;
 export const contentType = 'image/png';
 export const size = { height: 630, width: 1200 };
 

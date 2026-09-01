@@ -2,10 +2,10 @@ import type { MetadataRoute } from 'next';
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: 'Vrompt — High-Quality AI Prompts',
+    name: 'Vrompt — Find AI Prompts That Work',
     short_name: 'Vrompt',
     description:
-      'Discover, copy, save, and improve high-quality AI prompts shared by experienced creators.',
+      'Find AI prompts that work. Save them, make them better, and create Variants while preserving attribution and lineage.',
     start_url: '/search',
     display: 'standalone',
     background_color: '#FFFFFF',

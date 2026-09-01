@@ -19,8 +19,11 @@ apps/api/prisma/
 
 ## Brand Identity
 
-Vrompt uses the angular V mark with the tagline `SHARE. PROMPT. EVOLVE.`. The
-visual system is monochrome and editorial: Inter for interface typography,
+Vrompt — Find AI Prompts That Work. Save Them. Make Them Better.
+
+Vrompt is a repository for AI prompts where people can discover prompts that
+work, save them, version them, and build better Variants. The visual system is
+monochrome and editorial: Inter for interface typography,
 near-black `#0D0D0D` for emphasis, charcoal `#1A1A1A`, mid-gray `#4D4D4D`,
 soft gray `#E6E6E6`, and white `#FFFFFF`.
 ```

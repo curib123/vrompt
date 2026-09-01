@@ -1,5 +1,7 @@
 import type { SVGProps } from 'react';
 
+import { siteConfig } from '@/lib/seo';
+
 export function BrandMark(props: SVGProps<SVGSVGElement>) {
   return (
     <svg
@@ -44,8 +46,8 @@ export function BrandLockup({
             Vrompt
           </span>
           {!compact ? (
-            <span className="mt-2 block text-[0.55rem] font-semibold tracking-[0.34em]">
-              SHARE. PROMPT. EVOLVE.
+            <span className="mt-2 block max-w-72 text-[0.55rem] font-semibold leading-tight">
+              {siteConfig.tagline}
             </span>
           ) : null}
         </span>
