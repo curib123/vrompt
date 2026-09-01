@@ -1,4 +1,12 @@
-import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Patch,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
 
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '../auth/auth.types';
@@ -8,6 +16,7 @@ import { CreatePromptRepositoryDto } from './dto/create-prompt-repository.dto';
 import { CopyPromptDto } from './dto/copy-prompt.dto';
 import { CreatePromptVersionDto } from './dto/create-prompt-version.dto';
 import { CreateVariantDto } from './dto/create-variant.dto';
+import { UpdatePromptRepositoryDto } from './dto/update-prompt-repository.dto';
 import { PromptsService } from './prompts.service';
 
 @Controller('prompt-repositories')
@@ -37,6 +46,16 @@ export class PromptsController {
     @CurrentUser() user?: AuthenticatedUser,
   ) {
     return this.promptsService.copyBySlug(slug, user?.id, input);
+  }
+
+  @Patch(':slug')
+  @UseGuards(AccessTokenGuard)
+  update(
+    @Param('slug') slug: string,
+    @Body() input: UpdatePromptRepositoryDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.promptsService.updateMetadata(slug, user.id, input);
   }
 
   @Get(':slug/versions')

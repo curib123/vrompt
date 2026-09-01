@@ -8,7 +8,9 @@ import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Skeleton } from '@/components/ui/skeleton';
+import { trackAnalyticsEvent } from '@/lib/analytics';
 import { apiRequest } from '@/lib/api';
+import { useAuth } from '@/components/providers/auth-provider';
 import type { ExploreRepository, ExploreResponse } from '@/lib/api';
 
 export function ExploreView({
@@ -20,9 +22,10 @@ export function ExploreView({
     initialExplore,
   );
   const [error, setError] = useState(false);
+  const { accessToken } = useAuth();
 
   useEffect(() => {
-    if (initialExplore) return;
+    if (initialExplore && !accessToken) return;
 
     let active = true;
     void apiRequest<ExploreResponse>('/search/explore')
@@ -35,7 +38,7 @@ export function ExploreView({
     return () => {
       active = false;
     };
-  }, [initialExplore]);
+  }, [accessToken, initialExplore]);
 
   if (!explore) {
     return error ? (
@@ -64,6 +67,13 @@ export function ExploreView({
           practical work.
         </p>
       </header>
+      {explore.recommendedForYou.length > 0 ? (
+        <ExploreSection
+          items={explore.recommendedForYou}
+          onOpen={() => trackAnalyticsEvent('recommended_prompt_opened')}
+          title="Recommended for you"
+        />
+      ) : null}
       <ExploreSection items={explore.featured} title="Featured" />
       <div className="grid gap-10 lg:grid-cols-2">
         <ExploreSection items={explore.popular} title="Popular" />
@@ -131,10 +141,12 @@ export function ExploreView({
 function ExploreSection({
   items,
   metric,
+  onOpen,
   title,
 }: {
   items: ExploreRepository[];
   metric?: 'copies' | 'saves' | 'variants';
+  onOpen?: () => void;
   title: string;
 }) {
   return (
@@ -147,7 +159,12 @@ function ExploreSection({
       ) : (
         <div className="grid auto-cols-[minmax(17rem,85vw)] grid-flow-col gap-4 overflow-x-auto overscroll-x-contain pb-3 pr-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:auto-cols-auto md:grid-flow-row md:grid-cols-2 md:overflow-visible md:pb-0 md:pr-0">
           {items.slice(0, 4).map((item) => (
-            <RepositoryCard item={item} key={item.id} metric={metric} />
+            <RepositoryCard
+              item={item}
+              key={item.id}
+              metric={metric}
+              onOpen={onOpen}
+            />
           ))}
         </div>
       )}
@@ -158,9 +175,11 @@ function ExploreSection({
 function RepositoryCard({
   item,
   metric,
+  onOpen,
 }: {
   item: ExploreRepository;
   metric?: 'copies' | 'saves' | 'variants';
+  onOpen?: () => void;
 }) {
   const value =
     metric === 'copies'
@@ -174,11 +193,15 @@ function RepositoryCard({
     <PromptPreviewCard
       className="h-full min-h-52 snap-start"
       description={item.description}
+      onOpen={onOpen}
       slug={item.slug}
       title={item.title}
     >
       <div className="flex flex-wrap gap-2">
         {item.category ? <Badge>{item.category.name}</Badge> : null}
+        {item.promptAudiences.slice(0, 2).map(({ audience }) => (
+          <Badge key={audience.slug}>{audience.name}</Badge>
+        ))}
         {item.owner.accountType !== 'REAL' ? (
           <Badge>{item.owner.accountType.toLowerCase()}</Badge>
         ) : null}

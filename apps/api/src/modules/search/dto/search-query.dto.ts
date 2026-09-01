@@ -13,6 +13,11 @@ export class SearchQueryDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(100)
+  audience?: string;
+
+  @IsOptional()
+  @IsString()
   @MaxLength(120)
   aiCompatibility?: string;
 

@@ -31,6 +31,50 @@ const officialCategories = [
   'Other',
 ] as const;
 
+const officialAudiences = [
+  {
+    name: 'Developers',
+    description: 'People building software, systems, and technical products.',
+  },
+  {
+    name: 'Designers',
+    description: 'People shaping visual, product, and user experiences.',
+  },
+  {
+    name: 'Students',
+    description: 'People learning, practicing, and building new skills.',
+  },
+  {
+    name: 'Researchers',
+    description: 'People investigating questions and synthesizing evidence.',
+  },
+  {
+    name: 'Marketers',
+    description: 'People planning campaigns, messaging, and growth work.',
+  },
+  {
+    name: 'Content Creators',
+    description:
+      'People producing stories, media, and audience-facing content.',
+  },
+  {
+    name: 'Business Users',
+    description: 'People making decisions and improving business workflows.',
+  },
+  {
+    name: 'Productivity Users',
+    description: 'People organizing work, planning, and everyday tasks.',
+  },
+  {
+    name: 'AI Power Users',
+    description: 'People exploring advanced and repeatable AI workflows.',
+  },
+  {
+    name: 'Prompt Creators',
+    description: 'People designing, testing, and sharing reusable prompts.',
+  },
+] as const;
+
 const seedUsers = [
   {
     email: 'official@vrompt.local',
@@ -251,6 +295,50 @@ async function seedCategories() {
   }
 }
 
+async function seedAudiences() {
+  for (const [sortOrder, audience] of officialAudiences.entries()) {
+    await prisma.audience.upsert({
+      where: { slug: slugify(audience.name) },
+      update: {
+        name: audience.name,
+        description: audience.description,
+        isActive: true,
+        sortOrder,
+      },
+      create: {
+        name: audience.name,
+        slug: slugify(audience.name),
+        description: audience.description,
+        isActive: true,
+        sortOrder,
+      },
+    });
+  }
+}
+
+async function audienceIdsForCategory(category: string) {
+  const names: Record<string, string[]> = {
+    Coding: ['Developers', 'AI Power Users'],
+    Design: ['Designers', 'Content Creators'],
+    Writing: ['Content Creators', 'Prompt Creators'],
+    Business: ['Business Users', 'Marketers'],
+    Marketing: ['Marketers', 'Business Users'],
+    Education: ['Students', 'Researchers'],
+    Research: ['Researchers', 'AI Power Users'],
+    Productivity: ['Productivity Users', 'Business Users'],
+    'Data Analysis': ['Researchers', 'Business Users'],
+    'Image Generation': ['Designers', 'Content Creators'],
+    Career: ['Business Users', 'Students'],
+    Entertainment: ['Content Creators', 'AI Power Users'],
+    Other: ['AI Power Users', 'Prompt Creators'],
+  };
+  const rows = await prisma.audience.findMany({
+    where: { name: { in: names[category] ?? ['AI Power Users'] } },
+    select: { id: true },
+  });
+  return rows.map(({ id }) => id);
+}
+
 async function seedAccounts() {
   const accounts = new Map<string, { id: string }>();
 
@@ -442,6 +530,22 @@ async function seedGeneratedCatalog(
     ),
     skipDuplicates: true,
   });
+  const promptAudiences = (
+    await Promise.all(
+      repositories.map(async (repository) =>
+        (await audienceIdsForCategory(repository.topic.category)).map(
+          (audienceId) => ({
+            promptRepositoryId: repository.repositoryId,
+            audienceId,
+          }),
+        ),
+      ),
+    )
+  ).flat();
+  await prisma.promptAudience.createMany({
+    data: promptAudiences,
+    skipDuplicates: true,
+  });
 
   await prisma.promptVariable.createMany({
     data: repositories.map((repository) => ({
@@ -486,6 +590,19 @@ async function seedGeneratedInteractions(
   accounts: Awaited<ReturnType<typeof seedGeneratedAccounts>>,
   repositories: Awaited<ReturnType<typeof seedGeneratedCatalog>>,
 ) {
+  const audiences = await prisma.audience.findMany({
+    orderBy: { sortOrder: 'asc' },
+    select: { id: true },
+  });
+  await prisma.userAudience.createMany({
+    data: accounts.flatMap((account, index) =>
+      [0, 3].map((offset) => ({
+        userId: account.id,
+        audienceId: audiences[(index + offset) % audiences.length]!.id,
+      })),
+    ),
+    skipDuplicates: true,
+  });
   const repositoryIds = repositories.map(
     (repository) => repository.repositoryId,
   );
@@ -782,6 +899,17 @@ async function seedRepository(
       data: { promptRepositoryId: repository.id, tagId: tag.id },
     });
   }
+  await prisma.promptAudience.deleteMany({
+    where: { promptRepositoryId: repository.id },
+  });
+  const audienceIds = await audienceIdsForCategory(repositoryInput.category);
+  await prisma.promptAudience.createMany({
+    data: audienceIds.map((audienceId) => ({
+      promptRepositoryId: repository.id,
+      audienceId,
+    })),
+    skipDuplicates: true,
+  });
 
   repositories.set(repositoryInput.slug, {
     id: repository.id,
@@ -835,6 +963,7 @@ async function seedCollection(
 async function main() {
   await prisma.$queryRaw`SELECT 1`;
   await seedCategories();
+  await seedAudiences();
   const accounts = await seedAccounts();
   const generatedAccounts = await seedGeneratedAccounts();
   const repositories = new Map<

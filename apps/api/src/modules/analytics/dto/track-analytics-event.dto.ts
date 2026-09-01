@@ -14,6 +14,10 @@ export const ANALYTICS_EVENT_NAMES = [
   'search_performed',
   'variant_created',
   'version_published',
+  'audience_interest_selected',
+  'audience_interest_removed',
+  'audience_filter_used',
+  'recommended_prompt_opened',
 ] as const;
 
 export type AnalyticsEventName = (typeof ANALYTICS_EVENT_NAMES)[number];

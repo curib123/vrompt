@@ -3,20 +3,29 @@
 import Link from 'next/link';
 import { useEffect } from 'react';
 import type { ReactNode } from 'react';
-import { useRouter } from 'next/navigation';
+import type { Route } from 'next';
+import { usePathname, useRouter } from 'next/navigation';
 
 import { useAuth } from '@/components/providers/auth-provider';
 import { Card } from '@/components/ui/card';
 
 export function ProtectedRoute({ children }: { children: ReactNode }) {
   const router = useRouter();
+  const pathname = usePathname();
   const { isLoading, user } = useAuth();
 
   useEffect(() => {
     if (!isLoading && !user) {
       router.replace('/login');
+    } else if (
+      !isLoading &&
+      user &&
+      !user.onboardingCompleted &&
+      pathname !== '/onboarding/audience'
+    ) {
+      router.replace('/onboarding/audience' as Route);
     }
-  }, [isLoading, router, user]);
+  }, [isLoading, pathname, router, user]);
 
   if (isLoading || !user) {
     return (

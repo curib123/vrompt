@@ -229,6 +229,13 @@ export function RepositoryDetail({
                   {repository.category.name}
                 </Badge>
               ) : null}
+              {repository.promptAudiences.length > 0 ? (
+                <Badge className="!border-white/30 !text-zinc-300">
+                  {repository.promptAudiences
+                    .map(({ audience }) => audience.name)
+                    .join(' · ')}
+                </Badge>
+              ) : null}
               {activeVersion ? (
                 <Badge className="!border-white/30 !text-zinc-300">
                   {selectedVersion ? 'Earlier' : 'Current'} update{' '}
@@ -370,6 +377,39 @@ export function RepositoryDetail({
         </Card>
       ) : null}
 
+      {repository.promptAudiences.length > 0 ||
+      repository.promptTags.length > 0 ||
+      repository.aiCompatibility ? (
+        <Card className="grid gap-4">
+          <h2 className="text-lg font-semibold">Prompt metadata</h2>
+          {repository.category ? (
+            <MetadataRow label="Category" value={repository.category.name} />
+          ) : null}
+          {repository.promptAudiences.length > 0 ? (
+            <MetadataRow
+              label="Audience"
+              value={repository.promptAudiences
+                .map(({ audience }) => audience.name)
+                .join(' · ')}
+            />
+          ) : null}
+          {repository.promptTags.length > 0 ? (
+            <MetadataRow
+              label="Topic tags"
+              value={repository.promptTags
+                .map(({ tag }) => tag.name)
+                .join(' · ')}
+            />
+          ) : null}
+          {repository.aiCompatibility ? (
+            <MetadataRow
+              label="AI compatibility"
+              value={repository.aiCompatibility}
+            />
+          ) : null}
+        </Card>
+      ) : null}
+
       <Tabs
         items={[
           {
@@ -469,6 +509,17 @@ function OverviewTab({ repository }: { repository: PromptRepositoryDetail }) {
       />
       <InfoCard label="License" value={repository.license || 'Not specified'} />
       <InfoCard label="Updated" value={formatDate(repository.updatedAt)} />
+    </div>
+  );
+}
+
+function MetadataRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="grid gap-1 border-b border-zinc-200 pb-3 last:border-0 last:pb-0 dark:border-zinc-800 sm:grid-cols-[10rem_1fr] sm:gap-4">
+      <dt className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-600 dark:text-zinc-400">
+        {label}
+      </dt>
+      <dd className="text-sm">{value}</dd>
     </div>
   );
 }

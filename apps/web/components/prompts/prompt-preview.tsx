@@ -31,6 +31,7 @@ type ShareState = 'idle' | 'link-copied' | 'post-copied' | 'shared' | 'failed';
 
 type PromptPreviewSeed = {
   description?: string | null;
+  onOpen?: () => void;
   slug: string;
   title: string;
 };
@@ -235,6 +236,7 @@ export function PromptPreviewCard({
   children,
   className,
   description,
+  onOpen,
   slug,
   title,
 }: PromptPreviewSeed & { children: ReactNode; className?: string }) {
@@ -247,7 +249,10 @@ export function PromptPreviewCard({
         'min-w-0 w-full rounded-[1.5rem] border border-[#E6E6E6] bg-white/95 p-4 text-left shadow-[0_18px_50px_rgba(13,13,13,0.06)] backdrop-blur transition hover:-translate-y-0.5 hover:border-[#0D0D0D] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0D0D0D] sm:p-6 dark:border-[#1A1A1A] dark:bg-[#1A1A1A]/95 dark:hover:border-white dark:focus-visible:outline-white',
         className,
       )}
-      onClick={() => openPrompt({ description, slug, title })}
+      onClick={() => {
+        onOpen?.();
+        openPrompt({ description, onOpen, slug, title });
+      }}
       type="button"
     >
       {children}

@@ -50,6 +50,12 @@ const profileSelect = {
       slug: true,
       description: true,
       updatedAt: true,
+      promptAudiences: {
+        select: {
+          audience: { select: { id: true, name: true, slug: true } },
+        },
+        orderBy: { audience: { sortOrder: 'asc' } },
+      },
     },
   },
   collections: {

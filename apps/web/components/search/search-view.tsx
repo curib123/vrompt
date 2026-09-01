@@ -2,9 +2,10 @@
 
 import type { Route } from 'next';
 import { useRouter } from 'next/navigation';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { PromptPreviewCard } from '@/components/prompts/prompt-preview';
+import { useAuth } from '@/components/providers/auth-provider';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -13,13 +14,20 @@ import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { trackAnalyticsEvent } from '@/lib/analytics';
 import { apiRequest } from '@/lib/api';
-import type { SearchResponse, SearchResult } from '@/lib/api';
+import type { AudienceOption, SearchResponse, SearchResult } from '@/lib/api';
 
 type Sort = 'relevance' | 'newest' | 'updated' | 'copies' | 'saves' | 'likes';
-type Filters = { ai: string; category: string; query: string; sort: Sort };
+type Filters = {
+  ai: string;
+  audience: string;
+  category: string;
+  query: string;
+  sort: Sort;
+};
 
 export function SearchView({
   initialAi,
+  initialAudience,
   initialCategory,
   initialPage = 1,
   initialQuery,
@@ -27,6 +35,7 @@ export function SearchView({
   initialSort,
 }: {
   initialAi?: string;
+  initialAudience?: string;
   initialCategory?: string;
   initialPage?: number;
   initialQuery?: string;
@@ -34,8 +43,10 @@ export function SearchView({
   initialSort?: string;
 }) {
   const router = useRouter();
+  const { accessToken } = useAuth();
   const startingFilters: Filters = {
     ai: initialAi ?? '',
+    audience: initialAudience ?? '',
     category: initialCategory ?? '',
     query: initialQuery ?? '',
     sort: isSort(initialSort) ? initialSort : 'relevance',
@@ -43,6 +54,7 @@ export function SearchView({
   const [query, setQuery] = useState(startingFilters.query);
   const [category, setCategory] = useState(startingFilters.category);
   const [ai, setAi] = useState(startingFilters.ai);
+  const [audience, setAudience] = useState(startingFilters.audience);
   const [sort, setSort] = useState<Sort>(startingFilters.sort);
   const [appliedFilters, setAppliedFilters] = useState(startingFilters);
   const [page, setPage] = useState(initialPage);
@@ -53,7 +65,27 @@ export function SearchView({
     initialResult ? null : 'We could not load prompts. Search to try again.',
   );
   const [isSearching, setIsSearching] = useState(false);
+  const [audienceOptions, setAudienceOptions] = useState<AudienceOption[]>([]);
   const resultsRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    let active = true;
+    void apiRequest<AudienceOption[]>('/audiences')
+      .then((options) => {
+        if (active) setAudienceOptions(options);
+      })
+      .catch(() => undefined);
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!accessToken) return;
+    void runSearch(appliedFilters, page);
+    // Refresh the anonymous server-rendered result with personalized ranking.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [accessToken]);
 
   async function runSearch(filters: Filters, nextPage: number) {
     setIsSearching(true);
@@ -77,10 +109,11 @@ export function SearchView({
 
   function applyFilters(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const nextFilters = { ai, category, query, sort };
+    const nextFilters = { ai, audience, category, query, sort };
     const params = toSearchParams(nextFilters, 1);
     params.delete('page');
     setAppliedFilters(nextFilters);
+    if (audience.trim()) trackAnalyticsEvent('audience_filter_used');
     setPage(1);
     router.replace(`/search?${params.toString()}` as Route, { scroll: false });
     void runSearch(nextFilters, 1);
@@ -102,6 +135,7 @@ export function SearchView({
   const activeFilterCount =
     Number(Boolean(category.trim())) +
     Number(Boolean(ai.trim())) +
+    Number(Boolean(audience.trim())) +
     Number(sort !== 'relevance');
 
   return (
@@ -173,6 +207,19 @@ export function SearchView({
                 placeholder="AI tool or model"
                 value={ai}
               />
+              <select
+                aria-label="Audience filter"
+                className="min-h-11 rounded-2xl border border-zinc-300 bg-white px-4 text-sm text-foreground dark:border-zinc-700 dark:bg-zinc-950"
+                onChange={(event) => setAudience(event.target.value)}
+                value={audience}
+              >
+                <option value="">All audiences</option>
+                {audienceOptions.map((option) => (
+                  <option key={option.id} value={option.slug}>
+                    {option.name}
+                  </option>
+                ))}
+              </select>
               <select
                 aria-label="Sort results"
                 className="min-h-11 rounded-2xl border border-zinc-300 bg-white px-4 text-sm text-foreground dark:border-zinc-700 dark:bg-zinc-950"
@@ -288,6 +335,9 @@ function ResultCard({ item, query }: { item: SearchResult; query: string }) {
       <div className="flex flex-wrap gap-2">
         {item.category ? <Badge>{item.category.name}</Badge> : null}
         {item.aiCompatibility ? <Badge>{item.aiCompatibility}</Badge> : null}
+        {item.promptAudiences.slice(0, 2).map(({ audience: itemAudience }) => (
+          <Badge key={itemAudience.slug}>{itemAudience.name}</Badge>
+        ))}
         {item.owner.accountType !== 'REAL' ? <Badge>Vrompt pick</Badge> : null}
       </div>
       <h3 className="mt-5 text-2xl font-semibold tracking-[-0.04em] group-hover:underline group-hover:decoration-[#BDBDBD] group-hover:underline-offset-4">
@@ -318,6 +368,7 @@ function toSearchParams(filters: Filters, page: number) {
   if (filters.query.trim()) params.set('q', filters.query.trim());
   if (filters.category.trim()) params.set('category', filters.category.trim());
   if (filters.ai.trim()) params.set('aiCompatibility', filters.ai.trim());
+  if (filters.audience.trim()) params.set('audience', filters.audience.trim());
   if (filters.sort !== 'relevance') params.set('sort', filters.sort);
   if (page > 1) params.set('page', String(page));
   return params;

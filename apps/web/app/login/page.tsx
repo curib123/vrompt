@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import type { Route } from 'next';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect } from 'react';
 
@@ -21,7 +22,11 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (!isLoading && user) {
-      router.replace('/search');
+      router.replace(
+        (user.onboardingCompleted
+          ? '/search'
+          : '/onboarding/audience') as Route,
+      );
     }
   }, [isLoading, router, user]);
 

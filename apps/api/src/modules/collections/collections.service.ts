@@ -296,6 +296,12 @@ export class CollectionsService {
             description: true,
             visibility: true,
             owner: { select: { username: true } },
+            promptAudiences: {
+              select: {
+                audience: { select: { id: true, name: true, slug: true } },
+              },
+              orderBy: { audience: { sortOrder: 'asc' } },
+            },
           },
         },
       },

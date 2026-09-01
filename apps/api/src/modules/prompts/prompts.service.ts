@@ -19,8 +19,10 @@ import type { CreatePromptRepositoryDto } from './dto/create-prompt-repository.d
 import type { CopyPromptDto } from './dto/copy-prompt.dto';
 import type { CreatePromptVersionDto } from './dto/create-prompt-version.dto';
 import type { CreateVariantDto } from './dto/create-variant.dto';
+import type { UpdatePromptRepositoryDto } from './dto/update-prompt-repository.dto';
 import { TagsService } from '../tags/tags.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { AudiencesService } from '../audiences/audiences.service';
 
 @Injectable()
 export class PromptsService {
@@ -28,6 +30,7 @@ export class PromptsService {
     private readonly prismaService: PrismaService,
     private readonly tagsService: TagsService,
     private readonly notificationsService: NotificationsService,
+    private readonly audiencesService: AudiencesService,
   ) {}
 
   async create(ownerId: string, input: CreatePromptRepositoryDto) {
@@ -41,6 +44,10 @@ export class PromptsService {
     if (input.categorySlug && !category) {
       throw new BadRequestException('Category not found');
     }
+
+    const audiences = await this.audiencesService.validateActiveIds(
+      input.audienceIds,
+    );
 
     const tagNames = this.uniqueTagNames(input.tags ?? []);
     const tags = await Promise.all(
@@ -69,6 +76,11 @@ export class PromptsService {
             visibility,
             status: PromptRepositoryStatus.ACTIVE,
             license: this.cleanNullable(input.license),
+            promptAudiences: {
+              create: audiences.map((audience) => ({
+                audienceId: audience.id,
+              })),
+            },
             versions: {
               create: {
                 authorId: ownerId,
@@ -172,6 +184,39 @@ export class PromptsService {
         _count: { select: { bookmarks: true, variants: true } },
       },
     });
+  }
+
+  async updateMetadata(
+    slug: string,
+    ownerId: string,
+    input: UpdatePromptRepositoryDto,
+  ) {
+    const repository = await this.prismaService.promptRepository.findUnique({
+      where: { slug: slugify(slug) },
+      select: { id: true, ownerId: true },
+    });
+    if (!repository || repository.ownerId !== ownerId) {
+      throw new NotFoundException('Repository not found');
+    }
+
+    if (input.audienceIds !== undefined) {
+      const audiences = await this.audiencesService.validateActiveIds(
+        input.audienceIds,
+      );
+      await this.prismaService.$transaction(async (transaction) => {
+        await transaction.promptAudience.deleteMany({
+          where: { promptRepositoryId: repository.id },
+        });
+        await transaction.promptAudience.createMany({
+          data: audiences.map((audience) => ({
+            promptRepositoryId: repository.id,
+            audienceId: audience.id,
+          })),
+        });
+      });
+    }
+
+    return this.getBySlug(slug, ownerId);
   }
 
   async getBySlug(slug: string, viewerId?: string) {
@@ -657,6 +702,10 @@ export class PromptsService {
     },
     promptTags: {
       select: { tag: { select: { id: true, name: true, slug: true } } },
+    },
+    promptAudiences: {
+      orderBy: { audience: { sortOrder: 'asc' } },
+      select: { audience: { select: { id: true, name: true, slug: true } } },
     },
     currentVersion: {
       select: {

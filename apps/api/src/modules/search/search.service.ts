@@ -12,10 +12,18 @@ import type { SearchQueryDto } from './dto/search-query.dto';
 export class SearchService {
   constructor(private readonly prismaService: PrismaService) {}
 
-  async search(input: SearchQueryDto) {
+  async search(input: SearchQueryDto, viewerId?: string) {
     const page = Math.max(Number(input.page) || 1, 1);
     const pageSize = Math.min(Math.max(Number(input.pageSize) || 12, 1), 30);
     const query = input.q?.trim();
+    const interestIds = viewerId
+      ? (
+          await this.prismaService.userAudience.findMany({
+            where: { userId: viewerId, audience: { isActive: true } },
+            select: { audienceId: true },
+          })
+        ).map(({ audienceId }) => audienceId)
+      : [];
     const textFilters = query
       ? [
           { title: { contains: query, mode: 'insensitive' as const } },
@@ -61,13 +69,32 @@ export class SearchService {
             },
           }
         : {}),
+      ...(input.audience
+        ? {
+            promptAudiences: {
+              some: {
+                audience: {
+                  slug: input.audience.trim().toLowerCase(),
+                  isActive: true,
+                },
+              },
+            },
+          }
+        : {}),
     };
     const orderBy = this.orderBy(input.sort, Boolean(query));
+    const useAudienceRanking =
+      interestIds.length > 0 &&
+      !input.audience &&
+      (!input.sort || input.sort === 'relevance');
+    const queryTake = useAudienceRanking
+      ? Math.min(Math.max(page * pageSize, 100), 500)
+      : pageSize;
     const [items, total] = await Promise.all([
       this.prismaService.promptRepository.findMany({
         where,
-        skip: (page - 1) * pageSize,
-        take: pageSize,
+        skip: useAudienceRanking ? 0 : (page - 1) * pageSize,
+        take: queryTake,
         orderBy,
         select: {
           id: true,
@@ -86,13 +113,33 @@ export class SearchService {
           promptTags: {
             select: { tag: { select: { name: true, slug: true } } },
           },
+          promptAudiences: {
+            orderBy: { audience: { sortOrder: 'asc' } },
+            select: {
+              audience: { select: { id: true, name: true, slug: true } },
+            },
+          },
         },
       }),
       this.prismaService.promptRepository.count({ where }),
     ]);
 
+    const rankedItems = useAudienceRanking
+      ? [...items].sort((left, right) => {
+          const leftScore = left.promptAudiences.filter(({ audience }) =>
+            interestIds.includes(audience.id),
+          ).length;
+          const rightScore = right.promptAudiences.filter(({ audience }) =>
+            interestIds.includes(audience.id),
+          ).length;
+          return rightScore - leftScore;
+        })
+      : items;
+
     return {
-      items,
+      items: useAudienceRanking
+        ? rankedItems.slice((page - 1) * pageSize, page * pageSize)
+        : rankedItems,
       page,
       pageSize,
       total,
@@ -100,7 +147,7 @@ export class SearchService {
     };
   }
 
-  async explore() {
+  async explore(viewerId?: string) {
     const publicWhere = {
       status: PromptRepositoryStatus.ACTIVE,
       visibility: { in: [PromptVisibility.PUBLIC, PromptVisibility.UNLISTED] },
@@ -121,7 +168,19 @@ export class SearchService {
       updatedAt: true,
       owner: { select: { username: true, accountType: true } },
       category: { select: { name: true, slug: true } },
+      promptAudiences: {
+        orderBy: { audience: { sortOrder: 'asc' as const } },
+        select: { audience: { select: { id: true, name: true, slug: true } } },
+      },
     } as const;
+    const interestIds = viewerId
+      ? (
+          await this.prismaService.userAudience.findMany({
+            where: { userId: viewerId, audience: { isActive: true } },
+            select: { audienceId: true },
+          })
+        ).map(({ audienceId }) => audienceId)
+      : [];
     const [
       featured,
       popular,
@@ -208,8 +267,62 @@ export class SearchService {
       mostVariants,
       categories,
       starterCollections,
+      recommendedForYou: await this.recommend(interestIds, publicWhere, select),
     };
   }
+
+  private async recommend(
+    interestIds: string[],
+    publicWhere: {
+      status: PromptRepositoryStatus;
+      visibility: { in: PromptVisibility[] };
+    },
+    select: typeof this.exploreSelect,
+  ) {
+    const items = await this.prismaService.promptRepository.findMany({
+      where: publicWhere,
+      orderBy: [{ likeCount: 'desc' }, { updatedAt: 'desc' }],
+      take: 30,
+      select,
+    });
+    if (interestIds.length === 0) {
+      return items.slice(0, 6);
+    }
+    return [...items]
+      .sort(
+        (left, right) =>
+          this.audienceScore(right, interestIds) -
+          this.audienceScore(left, interestIds),
+      )
+      .slice(0, 6);
+  }
+
+  private audienceScore(
+    item: { promptAudiences: Array<{ audience: { id: string } }> },
+    interestIds: string[],
+  ) {
+    return item.promptAudiences.filter(({ audience }) =>
+      interestIds.includes(audience.id),
+    ).length;
+  }
+
+  private readonly exploreSelect = {
+    id: true,
+    title: true,
+    slug: true,
+    description: true,
+    copyCount: true,
+    saveCount: true,
+    likeCount: true,
+    variantCount: true,
+    updatedAt: true,
+    owner: { select: { username: true, accountType: true } },
+    category: { select: { name: true, slug: true } },
+    promptAudiences: {
+      orderBy: { audience: { sortOrder: 'asc' as const } },
+      select: { audience: { select: { id: true, name: true, slug: true } } },
+    },
+  } as const;
 
   async sitemap() {
     const [prompts, profiles, collections] = await Promise.all([

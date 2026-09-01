@@ -104,6 +104,11 @@ export function AuditView() {
             <option value="USER_SUSPENDED">User suspended</option>
             <option value="USER_RESTORED">User restored</option>
             <option value="REPORT_RESOLVED">Report resolved</option>
+            <option value="AUDIENCE_CREATED">Audience created</option>
+            <option value="AUDIENCE_UPDATED">Audience updated</option>
+            <option value="AUDIENCE_ACTIVATED">Audience activated</option>
+            <option value="AUDIENCE_DEACTIVATED">Audience deactivated</option>
+            <option value="AUDIENCE_REORDERED">Audience reordered</option>
           </select>
           <select
             aria-label="Filter by target"
@@ -119,6 +124,7 @@ export function AuditView() {
             <option value="COMMENT">Comment</option>
             <option value="USER">User</option>
             <option value="REPORT">Report</option>
+            <option value="AUDIENCE">Audience</option>
           </select>
         </div>
       </Card>

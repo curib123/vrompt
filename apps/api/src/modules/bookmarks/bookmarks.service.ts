@@ -97,6 +97,12 @@ export class BookmarksService {
               updatedAt: true,
               owner: { select: { username: true } },
               category: { select: { name: true, slug: true } },
+              promptAudiences: {
+                select: {
+                  audience: { select: { id: true, name: true, slug: true } },
+                },
+                orderBy: { audience: { sortOrder: 'asc' } },
+              },
             },
           },
         },

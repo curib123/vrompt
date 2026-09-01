@@ -5,6 +5,7 @@ import {
   IsEnum,
   IsOptional,
   IsString,
+  IsUUID,
   MaxLength,
   MinLength,
   ValidateNested,
@@ -79,6 +80,13 @@ export class CreatePromptRepositoryDto {
   @IsString({ each: true })
   @ArrayMaxSize(8)
   tags?: string[];
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  @IsUUID('4', { each: true })
+  @ArrayMaxSize(5)
+  audienceIds?: string[];
 
   @IsOptional()
   @IsString()

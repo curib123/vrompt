@@ -7,6 +7,7 @@ export interface AuthenticatedUser {
   username: string;
   role: UserRole;
   accountType: AccountType;
+  onboardingCompleted: boolean;
 }
 
 export type AuthenticatedRequest = Request & {

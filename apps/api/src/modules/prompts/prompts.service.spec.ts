@@ -2,6 +2,7 @@ import { Test } from '@nestjs/testing';
 
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { AudiencesService } from '../audiences/audiences.service';
 import { TagsService } from '../tags/tags.service';
 import { PromptsService } from './prompts.service';
 
@@ -142,6 +143,10 @@ async function createService(prismaService: object, tagsService: object) {
       PromptsService,
       { provide: PrismaService, useValue: prismaService },
       { provide: TagsService, useValue: tagsService },
+      {
+        provide: AudiencesService,
+        useValue: { validateActiveIds: jest.fn().mockResolvedValue([]) },
+      },
       { provide: NotificationsService, useValue: { create: jest.fn() } },
     ],
   }).compile();

@@ -15,6 +15,26 @@ export interface AuthUser {
   username: string;
   role: 'USER' | 'MODERATOR' | 'ADMIN';
   accountType: 'REAL' | 'STARTER' | 'OFFICIAL';
+  onboardingCompleted: boolean;
+}
+
+export interface AudienceOption {
+  id: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  isActive: boolean;
+  sortOrder: number;
+}
+
+export interface MyAudiencesResponse {
+  onboardingCompleted: boolean;
+  selected: AudienceOption[];
+  options: AudienceOption[];
+}
+
+export interface AdminAudience extends AudienceOption {
+  _count: { promptAudiences: number; userAudiences: number };
 }
 
 export interface AuthResponse {
@@ -28,6 +48,7 @@ export interface ProfileRepository {
   slug: string;
   description: string | null;
   updatedAt: string;
+  promptAudiences: { audience: Pick<AudienceOption, 'id' | 'name' | 'slug'> }[];
 }
 
 export interface ProfileCollection {
@@ -80,6 +101,9 @@ export interface CollectionItem {
     description: string | null;
     visibility: 'PUBLIC' | 'UNLISTED' | 'PRIVATE';
     owner: { username: string };
+    promptAudiences: {
+      audience: Pick<AudienceOption, 'id' | 'name' | 'slug'>;
+    }[];
   };
 }
 
@@ -110,6 +134,7 @@ export interface SearchResult {
   owner: { username: string; accountType: 'REAL' | 'STARTER' | 'OFFICIAL' };
   category: { name: string; slug: string } | null;
   promptTags: { tag: { name: string; slug: string } }[];
+  promptAudiences: { audience: Pick<AudienceOption, 'id' | 'name' | 'slug'> }[];
 }
 
 export interface SearchResponse {
@@ -146,9 +171,11 @@ export interface ExploreRepository {
   updatedAt: string;
   owner: { username: string; accountType: 'REAL' | 'STARTER' | 'OFFICIAL' };
   category: { name: string; slug: string } | null;
+  promptAudiences: { audience: Pick<AudienceOption, 'id' | 'name' | 'slug'> }[];
 }
 
 export interface ExploreResponse {
+  recommendedForYou: ExploreRepository[];
   featured: ExploreRepository[];
   popular: ExploreRepository[];
   recentlyUpdated: ExploreRepository[];
@@ -406,6 +433,7 @@ export interface PromptRepositoryDetail {
     owner: { username: string };
   } | null;
   promptTags: { tag: TagOption }[];
+  promptAudiences: { audience: Pick<AudienceOption, 'id' | 'name' | 'slug'> }[];
   currentVersion: PromptVersionContent | null;
 }
 
@@ -420,6 +448,9 @@ export interface SavedRepositoryItem {
     updatedAt: string;
     owner: { username: string };
     category: { name: string; slug: string } | null;
+    promptAudiences: {
+      audience: Pick<AudienceOption, 'id' | 'name' | 'slug'>;
+    }[];
   };
 }
 

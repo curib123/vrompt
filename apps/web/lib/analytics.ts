@@ -13,7 +13,11 @@ export type AnalyticsEventName =
   | 'repository_viewed'
   | 'search_performed'
   | 'variant_created'
-  | 'version_published';
+  | 'version_published'
+  | 'audience_interest_selected'
+  | 'audience_interest_removed'
+  | 'audience_filter_used'
+  | 'recommended_prompt_opened';
 
 export function trackAnalyticsEvent(
   name: AnalyticsEventName,

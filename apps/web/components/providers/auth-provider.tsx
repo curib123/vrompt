@@ -17,7 +17,7 @@ interface AuthContextValue {
   beginGoogleLogin: () => void;
   isLoading: boolean;
   logout: () => Promise<void>;
-  refreshSession: () => Promise<void>;
+  refreshSession: () => Promise<AuthUser>;
   user: AuthUser | null;
 }
 
@@ -28,12 +28,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [user, setUser] = useState<AuthUser | null>(null);
 
-  async function refreshSession() {
+  async function refreshSession(): Promise<AuthUser> {
     const session = await apiRequest<AuthResponse>('/auth/refresh', {
       method: 'POST',
     });
     setAccessToken(session.accessToken);
     setUser(session.user);
+    return session.user;
   }
 
   const initializeSession = useEffectEvent(async () => {

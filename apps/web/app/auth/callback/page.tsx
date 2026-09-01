@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useEffectEvent } from 'react';
+import type { Route } from 'next';
 import { useRouter } from 'next/navigation';
 
 import { BrandLockup } from '@/components/brand/brand-mark';
@@ -12,8 +13,13 @@ export default function AuthCallbackPage() {
   const { refreshSession } = useAuth();
   const completeAuth = useEffectEvent(async () => {
     try {
-      await refreshSession();
-      router.replace('/search');
+      // New Google accounts finish their required discovery preferences before entering Vrompt.
+      const nextUser = await refreshSession();
+      router.replace(
+        (nextUser.onboardingCompleted
+          ? '/search'
+          : '/onboarding/audience') as Route,
+      );
     } catch {
       router.replace('/login?error=google_auth_failed');
     }

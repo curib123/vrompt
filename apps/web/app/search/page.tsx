@@ -26,6 +26,7 @@ export default async function SearchPage({
   const initialQuery = value('q');
   const initialCategory = value('category');
   const initialAi = value('aiCompatibility') ?? value('ai');
+  const initialAudience = value('audience');
   const initialSort = value('sort');
   const requestedPage = Number(value('page'));
   const initialPage = Number.isFinite(requestedPage)
@@ -35,6 +36,7 @@ export default async function SearchPage({
   if (initialQuery) apiParams.set('q', initialQuery);
   if (initialCategory) apiParams.set('category', initialCategory);
   if (initialAi) apiParams.set('aiCompatibility', initialAi);
+  if (initialAudience) apiParams.set('audience', initialAudience);
   if (initialSort) apiParams.set('sort', initialSort);
   apiParams.set('page', String(initialPage));
   const initialResult = await fetchSearchData(apiParams);
@@ -42,6 +44,7 @@ export default async function SearchPage({
   return (
     <SearchView
       initialAi={initialAi}
+      initialAudience={initialAudience}
       initialCategory={initialCategory}
       initialPage={initialPage}
       initialQuery={initialQuery}

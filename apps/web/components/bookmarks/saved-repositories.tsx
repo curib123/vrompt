@@ -160,6 +160,11 @@ export function SavedRepositories({
                     {repository.category ? (
                       <Badge>{repository.category.name}</Badge>
                     ) : null}
+                    {repository.promptAudiences
+                      .slice(0, 2)
+                      .map(({ audience }) => (
+                        <Badge key={audience.slug}>{audience.name}</Badge>
+                      ))}
                   </div>
                   <Button
                     disabled={removingSlug === repository.slug}

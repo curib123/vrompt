@@ -142,6 +142,7 @@ export class AuthService {
           email,
           googleId: identity.subject,
           username,
+          onboardingCompleted: false,
           profile: {
             create: {
               avatar: identity.avatar,
@@ -304,6 +305,7 @@ export class AuthService {
     username: string;
     role: AuthenticatedUser['role'];
     accountType: AuthenticatedUser['accountType'];
+    onboardingCompleted: boolean;
   }): AuthenticatedUser {
     return {
       id: user.id,
@@ -311,6 +313,7 @@ export class AuthService {
       username: user.username,
       role: user.role,
       accountType: user.accountType,
+      onboardingCompleted: user.onboardingCompleted,
     };
   }
 
@@ -341,5 +344,6 @@ export class AuthService {
     role: true,
     status: true,
     accountType: true,
+    onboardingCompleted: true,
   } as const;
 }

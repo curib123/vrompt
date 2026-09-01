@@ -96,6 +96,15 @@ export function CollectionDetailView({
                 {String(index + 1).padStart(2, '0')} / @
                 {item.promptRepository.owner.username}
               </p>
+              {item.promptRepository.promptAudiences.length > 0 ? (
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {item.promptRepository.promptAudiences
+                    .slice(0, 2)
+                    .map(({ audience }) => (
+                      <Badge key={audience.slug}>{audience.name}</Badge>
+                    ))}
+                </div>
+              ) : null}
               <h2 className="mt-3 text-2xl font-semibold tracking-[-0.04em]">
                 {item.promptRepository.title}
               </h2>

@@ -112,6 +112,7 @@ enum AuditTargetType {
   USER
   REPORT
   ROLE
+  AUDIENCE
 }
 
 enum AuditActionType {
@@ -122,6 +123,11 @@ enum AuditActionType {
   USER_RESTORED
   ROLE_CHANGED
   REPORT_RESOLVED
+  AUDIENCE_CREATED
+  AUDIENCE_UPDATED
+  AUDIENCE_ACTIVATED
+  AUDIENCE_DEACTIVATED
+  AUDIENCE_REORDERED
 }
 
 enum ActivityType {
@@ -132,17 +138,18 @@ enum ActivityType {
 }
 
 model User {
-  id           String      @id @default(uuid()) @db.Uuid
-  email        String      @unique @db.VarChar(320)
-  username     String      @unique @db.VarChar(32)
-  googleId     String?     @unique @db.VarChar(255)
-  passwordHash String?     @db.VarChar(255)
-  role         UserRole    @default(USER)
-  status       UserStatus  @default(ACTIVE)
-  accountType  AccountType @default(REAL)
-  createdAt    DateTime    @default(now())
-  updatedAt    DateTime    @updatedAt
-  deletedAt    DateTime?
+  id                  String      @id @default(uuid()) @db.Uuid
+  email               String      @unique @db.VarChar(320)
+  username            String      @unique @db.VarChar(32)
+  googleId            String?     @unique @db.VarChar(255)
+  passwordHash        String?     @db.VarChar(255)
+  role                UserRole    @default(USER)
+  status              UserStatus  @default(ACTIVE)
+  accountType         AccountType @default(REAL)
+  onboardingCompleted Boolean     @default(true)
+  createdAt           DateTime    @default(now())
+  updatedAt           DateTime    @updatedAt
+  deletedAt           DateTime?
 
   profile               Profile?
   refreshTokens         RefreshToken[]
@@ -162,6 +169,7 @@ model User {
   analyticsEvents       AnalyticsEvent[]
   copyEvents            PromptCopyEvent[]
   activityEvents        ActivityEvent[]
+  audienceInterests     UserAudience[]
 
   @@index([status, createdAt])
 }
@@ -232,12 +240,51 @@ model PromptRepository {
   reports           Report[]
   copyEvents        PromptCopyEvent[]
   activityEvents    ActivityEvent[]
+  promptAudiences   PromptAudience[]
 
   @@index([ownerId, visibility, status])
   @@index([categoryId, visibility, status])
   @@index([visibility, status, updatedAt])
   @@index([sourcePromptId])
   @@index([rootPromptId])
+}
+
+model Audience {
+  id          String   @id @default(uuid()) @db.Uuid
+  name        String   @unique @db.VarChar(80)
+  slug        String   @unique @db.VarChar(100)
+  description String?  @db.Text
+  isActive    Boolean  @default(true)
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  promptAudiences PromptAudience[]
+  userAudiences   UserAudience[]
+
+  @@index([isActive, sortOrder])
+}
+
+model PromptAudience {
+  promptRepositoryId String @db.Uuid
+  audienceId         String @db.Uuid
+
+  promptRepository PromptRepository @relation(fields: [promptRepositoryId], references: [id], onDelete: Cascade)
+  audience         Audience         @relation(fields: [audienceId], references: [id], onDelete: Restrict)
+
+  @@id([promptRepositoryId, audienceId])
+  @@index([audienceId, promptRepositoryId])
+}
+
+model UserAudience {
+  userId     String @db.Uuid
+  audienceId String @db.Uuid
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  audience Audience @relation(fields: [audienceId], references: [id], onDelete: Restrict)
+
+  @@id([userId, audienceId])
+  @@index([audienceId, userId])
 }
 
 model PromptVersion {

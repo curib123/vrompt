@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react';
 import type { ChangeEvent, DragEvent, FormEvent } from 'react';
 
 import { useAuth } from '@/components/providers/auth-provider';
+import { AudienceSelector } from '@/components/audiences/audience-selector';
 import { CategorySelect } from '@/components/organization/category-select';
 import { TagPicker } from '@/components/organization/tag-picker';
 import { Badge } from '@/components/ui/badge';
@@ -18,6 +19,7 @@ import { apiRequest } from '@/lib/api';
 import type {
   PromptCreateResponse,
   PromptRepositoryDetail,
+  AudienceOption,
   TagOption,
 } from '@/lib/api';
 
@@ -69,6 +71,8 @@ export function CreatePromptForm({
   const [content, setContent] = useState('');
   const [categorySlug, setCategorySlug] = useState('');
   const [tags, setTags] = useState<TagOption[]>([]);
+  const [audienceOptions, setAudienceOptions] = useState<AudienceOption[]>([]);
+  const [audienceIds, setAudienceIds] = useState<string[]>([]);
   const [aiCompatibility, setAiCompatibility] = useState('');
   const [license, setLicense] = useState('');
   const [visibility, setVisibility] = useState('PRIVATE');
@@ -80,6 +84,12 @@ export function CreatePromptForm({
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [created, setCreated] = useState<PromptCreateResponse | null>(null);
+
+  useEffect(() => {
+    void apiRequest<AudienceOption[]>('/audiences')
+      .then(setAudienceOptions)
+      .catch(() => setError('Audience options could not be loaded.'));
+  }, []);
 
   useEffect(() => {
     if (!variantFrom || !accessToken) {
@@ -97,6 +107,9 @@ export function CreatePromptForm({
         setContent(sourceVersion?.content ?? '');
         setCategorySlug(source.category?.slug ?? '');
         setTags(source.promptTags.map(({ tag }) => tag));
+        setAudienceIds(
+          source.promptAudiences.map(({ audience }) => audience.id),
+        );
         setAiCompatibility(source.aiCompatibility ?? '');
         setLicense(source.license ?? '');
         setMessage(
@@ -113,6 +126,7 @@ export function CreatePromptForm({
     content ||
     categorySlug ||
     tags.length ||
+    audienceIds.length ||
     variables.length ||
     examples.length ||
     evidence.length,
@@ -241,6 +255,7 @@ export function CreatePromptForm({
             license: license || undefined,
             slug: slug || undefined,
             tags: tags.map((tag) => tag.name),
+            audienceIds,
             title,
             variables: variables.filter((variable) => variable.name),
             visibility,
@@ -404,6 +419,31 @@ export function CreatePromptForm({
             >
               <TagPicker onChange={setTags} value={tags} />
             </FormField>
+          </Card>
+
+          <Card className="grid gap-6">
+            <div className="space-y-2">
+              <Badge>Audience</Badge>
+              <h2 className="text-2xl font-semibold tracking-tight">
+                Who is this prompt designed for?
+              </h2>
+              <p className="text-sm leading-6 text-zinc-600 dark:text-zinc-400">
+                Choose up to 5 audiences. This describes the prompt and helps
+                people discover it.
+              </p>
+            </div>
+            {audienceOptions.length > 0 ? (
+              <AudienceSelector
+                disabled={isSaving}
+                onChange={setAudienceIds}
+                options={audienceOptions}
+                selectedIds={audienceIds}
+              />
+            ) : (
+              <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                Loading audience options...
+              </p>
+            )}
           </Card>
 
           <Card className="grid gap-6">

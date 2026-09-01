@@ -9,6 +9,7 @@ import { FollowingFeed } from '@/components/activity/following-feed';
 import { SavedRepositories } from '@/components/bookmarks/saved-repositories';
 import { CollectionsView } from '@/components/collections/collections-view';
 import { ProfileSettingsForm } from '@/components/profile/profile-settings-form';
+import { AudienceInterestsForm } from '@/components/audiences/audience-interests-form';
 import { PromptPreviewCard } from '@/components/prompts/prompt-preview';
 import { Avatar } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -222,7 +223,12 @@ export function ProfileView({
             {
               id: 'settings',
               label: 'Profile settings',
-              content: <ProfileSettingsForm embedded />,
+              content: (
+                <div className="grid gap-8">
+                  <ProfileSettingsForm embedded />
+                  <AudienceInterestsForm embedded />
+                </div>
+              ),
             },
           ]}
           onChange={(tab) =>
@@ -258,6 +264,15 @@ function ProfileOverview({ profile }: { profile: ProfileResponse }) {
                 <p className="font-mono text-xs uppercase tracking-[0.18em] text-zinc-600 dark:text-zinc-400">
                   Updated {formatDate(repository.updatedAt)}
                 </p>
+                {repository.promptAudiences.length > 0 ? (
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {repository.promptAudiences
+                      .slice(0, 2)
+                      .map(({ audience }) => (
+                        <Badge key={audience.slug}>{audience.name}</Badge>
+                      ))}
+                  </div>
+                ) : null}
                 <h3 className="mt-4 text-xl font-semibold tracking-tight">
                   {repository.title}
                 </h3>
