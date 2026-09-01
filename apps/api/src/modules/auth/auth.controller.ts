@@ -19,6 +19,7 @@ import { AccessTokenGuard } from './guards/access-token.guard';
 
 const REFRESH_COOKIE = 'vrompt_refresh_token';
 const GOOGLE_STATE_COOKIE = 'vrompt_google_oauth_state';
+const GITHUB_STATE_COOKIE = 'vrompt_github_oauth_state';
 
 @Controller('auth')
 export class AuthController {
@@ -28,11 +29,11 @@ export class AuthController {
   ) {}
 
   @Get('google')
-  google(@Req() request: Request, @Res() response: Response) {
+  async google(@Req() request: Request, @Res() response: Response) {
     const state = randomBytes(32).toString('base64url');
 
     try {
-      this.authService.assertAuthRateLimit(
+      await this.authService.assertAuthRateLimit(
         `google-start:${this.clientIp(request)}`,
         20,
         15 * 60,
@@ -58,11 +59,11 @@ export class AuthController {
     const storedState = this.getCookie(request, GOOGLE_STATE_COOKIE);
 
     if (!state || !storedState || !this.matchesState(state, storedState)) {
-      return this.redirectToFailure(response);
+      return this.redirectToFailure(response, GOOGLE_STATE_COOKIE, 'google');
     }
 
     if (!code) {
-      return this.redirectToFailure(response);
+      return this.redirectToFailure(response, GOOGLE_STATE_COOKIE, 'google');
     }
 
     try {
@@ -80,7 +81,64 @@ export class AuthController {
       response.clearCookie(GOOGLE_STATE_COOKIE, this.cookieOptions());
       return response.redirect(`${this.webOrigin}/auth/callback`);
     } catch {
-      return this.redirectToFailure(response);
+      return this.redirectToFailure(response, GOOGLE_STATE_COOKIE, 'google');
+    }
+  }
+
+  @Get('github')
+  async github(@Req() request: Request, @Res() response: Response) {
+    const state = randomBytes(32).toString('base64url');
+
+    try {
+      await this.authService.assertAuthRateLimit(
+        `github-start:${this.clientIp(request)}`,
+        20,
+        15 * 60,
+      );
+      response.cookie(GITHUB_STATE_COOKIE, state, {
+        ...this.cookieOptions(5 * 60 * 1000),
+        maxAge: 5 * 60 * 1000,
+      });
+      response.redirect(this.authService.getGitHubAuthorizationUrl(state));
+    } catch {
+      response.clearCookie(GITHUB_STATE_COOKIE, this.cookieOptions());
+      response.redirect(`${this.webOrigin}/login?error=github_not_configured`);
+    }
+  }
+
+  @Get('github/callback')
+  async githubCallback(
+    @Req() request: Request,
+    @Query('code') code: string | undefined,
+    @Query('state') state: string | undefined,
+    @Res() response: Response,
+  ) {
+    const storedState = this.getCookie(request, GITHUB_STATE_COOKIE);
+
+    if (!state || !storedState || !this.matchesState(state, storedState)) {
+      return this.redirectToFailure(response, GITHUB_STATE_COOKIE, 'github');
+    }
+
+    if (!code) {
+      return this.redirectToFailure(response, GITHUB_STATE_COOKIE, 'github');
+    }
+
+    try {
+      await this.authService.assertAuthRateLimit(
+        `github-callback:${this.clientIp(request)}`,
+        20,
+        15 * 60,
+      );
+      const session = await this.authService.exchangeGitHubCode(code);
+      this.setRefreshCookie(
+        response,
+        session.refreshToken,
+        session.refreshExpiresAt,
+      );
+      response.clearCookie(GITHUB_STATE_COOKIE, this.cookieOptions());
+      return response.redirect(`${this.webOrigin}/auth/callback`);
+    } catch {
+      return this.redirectToFailure(response, GITHUB_STATE_COOKIE, 'github');
     }
   }
 
@@ -164,10 +222,14 @@ export class AuthController {
     );
   }
 
-  private redirectToFailure(response: Response) {
-    response.clearCookie(GOOGLE_STATE_COOKIE, this.cookieOptions());
+  private redirectToFailure(
+    response: Response,
+    stateCookie: string,
+    provider: 'google' | 'github',
+  ) {
+    response.clearCookie(stateCookie, this.cookieOptions());
     return response.redirect(
-      `${this.webOrigin}/login?error=google_auth_failed`,
+      `${this.webOrigin}/login?error=${provider}_auth_failed`,
     );
   }
 

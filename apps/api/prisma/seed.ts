@@ -4,6 +4,7 @@ import {
   CollectionVisibility,
   CommentStatus,
   NotificationType,
+  OAuthProvider,
   PrismaClient,
   PromptRepositoryStatus,
   PromptVersionStatus,
@@ -353,12 +354,31 @@ async function seedAccounts() {
       create: {
         email: seedUser.email,
         username: seedUser.username,
-        googleId: `seed:${seedUser.username}`,
         role: UserRole.USER,
         status: UserStatus.ACTIVE,
         accountType: seedUser.accountType,
       },
       select: { id: true },
+    });
+
+    await prisma.userIdentity.upsert({
+      where: {
+        provider_providerUserId: {
+          provider: OAuthProvider.GOOGLE,
+          providerUserId: `seed:${seedUser.username}`,
+        },
+      },
+      update: {
+        providerEmail: seedUser.email,
+        providerUsername: seedUser.username,
+      },
+      create: {
+        userId: user.id,
+        provider: OAuthProvider.GOOGLE,
+        providerUserId: `seed:${seedUser.username}`,
+        providerEmail: seedUser.email,
+        providerUsername: seedUser.username,
+      },
     });
 
     await prisma.profile.upsert({
@@ -384,7 +404,7 @@ async function seedGeneratedAccounts() {
       id: stableUuid(`user:${username}`),
       email: `${username}@vrompt.local`,
       username,
-      googleId: `seed:${username}`,
+      providerUserId: `seed:${username}`,
       displayName: `Creator ${number}`,
       bio: `A demo creator sharing practical ${generatedTopics[index % generatedTopics.length].category.toLowerCase()} workflows on Vrompt.`,
     };
@@ -395,7 +415,6 @@ async function seedGeneratedAccounts() {
       id: account.id,
       email: account.email,
       username: account.username,
-      googleId: account.googleId,
       role: UserRole.USER,
       status: UserStatus.ACTIVE,
       accountType: AccountType.REAL,
@@ -408,6 +427,16 @@ async function seedGeneratedAccounts() {
       userId: account.id,
       displayName: account.displayName,
       bio: account.bio,
+    })),
+    skipDuplicates: true,
+  });
+  await prisma.userIdentity.createMany({
+    data: accounts.map((account) => ({
+      userId: account.id,
+      provider: OAuthProvider.GOOGLE,
+      providerUserId: account.providerUserId,
+      providerEmail: account.email,
+      providerUsername: account.username,
     })),
     skipDuplicates: true,
   });

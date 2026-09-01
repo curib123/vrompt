@@ -27,6 +27,11 @@ export const envValidationSchema = Joi.object({
   GOOGLE_CALLBACK_URL: Joi.string()
     .uri()
     .default('http://localhost:4000/api/v1/auth/google/callback'),
+  GITHUB_CLIENT_ID: Joi.string().allow('').default(''),
+  GITHUB_CLIENT_SECRET: Joi.string().allow('').default(''),
+  GITHUB_CALLBACK_URL: Joi.string()
+    .uri()
+    .default('http://localhost:4000/api/v1/auth/github/callback'),
   AUTH_COOKIE_SECURE: Joi.boolean().default(false),
   AUTH_COOKIE_SAME_SITE: Joi.string()
     .valid('lax', 'strict', 'none')
