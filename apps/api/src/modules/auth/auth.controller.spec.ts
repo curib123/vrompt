@@ -1,3 +1,5 @@
+import type { Request } from 'express';
+
 import { AuthController } from './auth.controller';
 
 describe('AuthController OAuth routes', () => {
@@ -114,7 +116,7 @@ function createRequest(cookie?: string) {
     headers: cookie ? { cookie } : {},
     ip: '127.0.0.1',
     socket: { remoteAddress: '127.0.0.1' },
-  };
+  } as unknown as Request;
 }
 
 function createResponse() {
