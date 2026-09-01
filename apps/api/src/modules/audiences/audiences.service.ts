@@ -79,6 +79,11 @@ export class AudiencesService {
   }
 
   async updateUserAudiences(userId: string, audienceIds: string[]) {
+    if (new Set(audienceIds).size !== audienceIds.length) {
+      throw new BadRequestException(
+        'Audience interests cannot contain duplicates',
+      );
+    }
     const ids = [...new Set(audienceIds)];
     if (ids.length < 1 || ids.length > 5) {
       throw new BadRequestException(
@@ -111,6 +116,11 @@ export class AudiencesService {
   }
 
   async validateActiveIds(audienceIds: string[] | undefined) {
+    if (audienceIds && new Set(audienceIds).size !== audienceIds.length) {
+      throw new BadRequestException(
+        'Prompt audiences cannot contain duplicates',
+      );
+    }
     const ids = [...new Set(audienceIds ?? [])];
     if (ids.length > 5) {
       throw new BadRequestException('A prompt can target at most 5 audiences');

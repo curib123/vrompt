@@ -38,4 +38,17 @@ describe('AudiencesService', () => {
     ).rejects.toBeInstanceOf(BadRequestException);
     expect(findMany).not.toHaveBeenCalled();
   });
+
+  it('rejects duplicate interests and prompt audiences', async () => {
+    const service = new AudiencesService({
+      audience: { findMany: jest.fn() },
+    } as unknown as PrismaService);
+
+    await expect(
+      service.updateUserAudiences('user-id', ['audience-id', 'audience-id']),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    await expect(
+      service.validateActiveIds(['audience-id', 'audience-id']),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
 });

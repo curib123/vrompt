@@ -1,6 +1,7 @@
 import { Type } from 'class-transformer';
 import {
   IsArray,
+  ArrayUnique,
   ArrayMaxSize,
   IsEnum,
   IsOptional,
@@ -77,6 +78,7 @@ export class CreatePromptRepositoryDto {
 
   @IsOptional()
   @IsArray()
+  @ArrayUnique()
   @IsString({ each: true })
   @ArrayMaxSize(8)
   tags?: string[];
