@@ -1,10 +1,6 @@
-FROM node:20-bookworm-slim AS dependencies
+FROM node:20-bookworm AS dependencies
 
 WORKDIR /workspace
-
-RUN apt-get update \
-  && apt-get install -y --no-install-recommends openssl procps \
-  && rm -rf /var/lib/apt/lists/*
 
 COPY package.json package-lock.json turbo.json ./
 COPY apps/api/package.json apps/api/package.json
@@ -33,16 +29,12 @@ ENV NODE_ENV=production
 
 CMD ["npm", "run", "prisma:deploy", "--workspace", "@vrompt/api"]
 
-FROM node:20-bookworm-slim AS production
+FROM node:20-bookworm AS production
 
 ENV NODE_ENV=production
 ENV PORT=4000
 
 WORKDIR /app
-
-RUN apt-get update \
-  && apt-get install -y --no-install-recommends openssl \
-  && rm -rf /var/lib/apt/lists/*
 
 COPY --from=production-dependencies --chown=node:node /workspace/node_modules ./node_modules
 COPY --from=build --chown=node:node /workspace/apps/api/dist ./apps/api/dist
