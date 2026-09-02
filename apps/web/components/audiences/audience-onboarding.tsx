@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useEffectEvent, useState } from 'react';
+import type { Route } from 'next';
 import { useRouter } from 'next/navigation';
 
 import { AudienceSelector } from './audience-selector';
@@ -11,6 +12,7 @@ import { Card } from '@/components/ui/card';
 import { apiRequest } from '@/lib/api';
 import type { MyAudiencesResponse } from '@/lib/api';
 import { trackAnalyticsEvent } from '@/lib/analytics';
+import { consumeOAuthReturnPath } from '@/lib/auth-return';
 
 export function AudienceOnboarding() {
   const router = useRouter();
@@ -27,7 +29,7 @@ export function AudienceOnboarding() {
         accessToken,
       });
       if (result.onboardingCompleted) {
-        router.replace('/search');
+        router.replace((consumeOAuthReturnPath() || '/search') as Route);
         return;
       }
       setData(result);
@@ -58,6 +60,11 @@ export function AudienceOnboarding() {
         body: JSON.stringify({ audienceIds: selectedIds }),
         method: 'PUT',
       });
+      trackAnalyticsEvent(
+        'onboarding_completed',
+        { source: 'audience_preferences' },
+        accessToken,
+      );
       selectedIds.forEach(() =>
         trackAnalyticsEvent(
           'audience_interest_selected',
@@ -66,7 +73,7 @@ export function AudienceOnboarding() {
         ),
       );
       await refreshSession();
-      router.replace('/search');
+      router.replace((consumeOAuthReturnPath() || '/search') as Route);
     } catch (saveError: unknown) {
       setError(
         saveError instanceof Error

@@ -12,6 +12,9 @@ import type {
 const SAFE_METADATA_KEYS = new Set([
   'deviceClass',
   'hasEvidence',
+  'journeyId',
+  'platform',
+  'promptId',
   'resultCount',
   'source',
 ]);

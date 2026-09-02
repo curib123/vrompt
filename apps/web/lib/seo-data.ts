@@ -28,6 +28,12 @@ export const getPromptSeoData = cache((slug: string) =>
   ),
 );
 
+export const getPromptSeoDataById = cache((id: string) =>
+  fetchPublicData<PromptRepositoryDetail>(
+    `/prompt-repositories/by-id/${encodeURIComponent(id)}`,
+  ),
+);
+
 export const getProfileSeoData = cache((username: string) =>
   fetchPublicData<ProfileResponse>(`/profiles/${encodeURIComponent(username)}`),
 );

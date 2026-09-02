@@ -18,6 +18,18 @@ export const ANALYTICS_EVENT_NAMES = [
   'audience_interest_removed',
   'audience_filter_used',
   'recommended_prompt_opened',
+  'landing_viewed',
+  'signup_started',
+  'onboarding_completed',
+  'returning_user',
+  'prompt_share_clicked',
+  'prompt_link_copied',
+  'prompt_share_native',
+  'prompt_share_x',
+  'prompt_share_facebook',
+  'prompt_share_linkedin',
+  'prompt_share_reddit',
+  'shared_prompt_opened',
 ] as const;
 
 export type AnalyticsEventName = (typeof ANALYTICS_EVENT_NAMES)[number];

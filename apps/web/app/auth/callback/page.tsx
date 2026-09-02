@@ -7,6 +7,8 @@ import { useRouter } from 'next/navigation';
 import { BrandLockup } from '@/components/brand/brand-mark';
 import { useAuth } from '@/components/providers/auth-provider';
 import { Card } from '@/components/ui/card';
+import { trackAnalyticsEvent } from '@/lib/analytics';
+import { consumeOAuthReturnPath } from '@/lib/auth-return';
 
 export default function AuthCallbackPage() {
   const router = useRouter();
@@ -15,9 +17,10 @@ export default function AuthCallbackPage() {
     try {
       // New OAuth accounts finish their required discovery preferences before entering Vrompt.
       const nextUser = await refreshSession();
+      trackAnalyticsEvent('auth_completed', { source: 'oauth' });
       router.replace(
         (nextUser.onboardingCompleted
-          ? '/search'
+          ? consumeOAuthReturnPath() || '/search'
           : '/onboarding/audience') as Route,
       );
     } catch {

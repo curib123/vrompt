@@ -3,6 +3,7 @@ import {
   Controller,
   Get,
   Param,
+  ParseUUIDPipe,
   Patch,
   Post,
   UseGuards,
@@ -36,6 +37,15 @@ export class PromptsController {
   @UseGuards(AccessTokenGuard)
   listOwned(@CurrentUser() user: AuthenticatedUser) {
     return this.promptsService.listOwned(user.id);
+  }
+
+  @Get('by-id/:id')
+  @UseGuards(OptionalAccessTokenGuard)
+  getById(
+    @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+    @CurrentUser() user?: AuthenticatedUser,
+  ) {
+    return this.promptsService.getById(id, user?.id);
   }
 
   @Post(':slug/copy')

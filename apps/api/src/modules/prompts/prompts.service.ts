@@ -266,6 +266,55 @@ export class PromptsService {
     };
   }
 
+  async getById(id: string, viewerId?: string) {
+    const repository = await this.prismaService.promptRepository.findUnique({
+      where: { id },
+      select: this.repositorySelect,
+    });
+
+    if (!repository || repository.status !== PromptRepositoryStatus.ACTIVE) {
+      throw new NotFoundException('Repository not found');
+    }
+
+    if (
+      repository.visibility === PromptVisibility.PRIVATE &&
+      repository.ownerId !== viewerId
+    ) {
+      throw new NotFoundException('Repository not found');
+    }
+
+    if (!viewerId) {
+      return { ...repository, isSaved: false, isLiked: false };
+    }
+
+    const [bookmark, like] = await Promise.all([
+      this.prismaService.bookmark.findUnique({
+        where: {
+          userId_promptRepositoryId: {
+            userId: viewerId,
+            promptRepositoryId: repository.id,
+          },
+        },
+        select: { userId: true },
+      }),
+      this.prismaService.like.findUnique({
+        where: {
+          userId_promptRepositoryId: {
+            userId: viewerId,
+            promptRepositoryId: repository.id,
+          },
+        },
+        select: { userId: true },
+      }),
+    ]);
+
+    return {
+      ...repository,
+      isSaved: Boolean(bookmark),
+      isLiked: Boolean(like),
+    };
+  }
+
   async copyBySlug(
     slug: string,
     viewerId: string | undefined,

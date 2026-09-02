@@ -22,6 +22,7 @@ import type {
   AudienceOption,
   TagOption,
 } from '@/lib/api';
+import { getPublicPromptPath } from '@/lib/prompt-sharing';
 
 interface DraftVariable {
   defaultValue: string;
@@ -297,7 +298,7 @@ export function CreatePromptForm({
       if (onCreated) {
         onCreated(repository);
       } else {
-        router.push(`/p/${repository.slug}`);
+        router.push(getPublicPromptPath(repository.id, repository.slug));
       }
     } catch (submitError: unknown) {
       setError(
@@ -750,7 +751,7 @@ export function CreatePromptForm({
           {created && error ? (
             <Link
               className="text-sm font-semibold underline"
-              href={`/p/${created.slug}`}
+              href={getPublicPromptPath(created.id, created.slug)}
             >
               Open your saved prompt
             </Link>

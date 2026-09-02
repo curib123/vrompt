@@ -19,6 +19,8 @@ import { trackAnalyticsEvent } from '@/lib/analytics';
 import { copyToClipboard, getCopyClientKey } from '@/lib/clipboard';
 import { ReportRepositoryButton } from '@/components/reports/report-repository-button';
 import { PromptAudienceEditor } from '@/components/audiences/prompt-audience-editor';
+import { PromptShare } from '@/components/prompts/prompt-share';
+import { getPublicPromptPath } from '@/lib/prompt-sharing';
 import type {
   PromptEvidenceImage,
   PromptVersionContent,
@@ -35,9 +37,11 @@ import type {
 export function RepositoryDetail({
   slug,
   initialRepository = null,
+  publicPath,
 }: {
   slug: string;
   initialRepository?: PromptRepositoryDetail | null;
+  publicPath?: string;
 }) {
   const { accessToken, isLoading, user } = useAuth();
   const [repository, setRepository] = useState<PromptRepositoryDetail | null>(
@@ -57,7 +61,7 @@ export function RepositoryDetail({
   const [selectedVersion, setSelectedVersion] = useState<PromptVersionDetail>();
 
   useEffect(() => {
-    if (isLoading) {
+    if (isLoading || (initialRepository && !accessToken)) {
       return;
     }
 
@@ -91,7 +95,7 @@ export function RepositoryDetail({
     return () => {
       active = false;
     };
-  }, [accessToken, isLoading, slug]);
+  }, [accessToken, initialRepository, isLoading, slug]);
 
   if (!repository && (isLoading || !error)) {
     return (
@@ -119,6 +123,8 @@ export function RepositoryDetail({
   const displayName =
     repository.owner.profile?.displayName || repository.owner.username;
   const evidenceImages = activeVersion?.evidenceImages ?? [];
+  const promptPath =
+    publicPath ?? getPublicPromptPath(repository.id, repository.slug);
 
   async function copyPrompt() {
     if (!version || copyState === 'copying') {
@@ -268,6 +274,7 @@ export function RepositoryDetail({
             </Link>
           </div>
           <div className="flex flex-wrap gap-2">
+            <PromptShare repository={repository} />
             <Button
               disabled={!version || copyState === 'copying'}
               onClick={() => void copyPrompt()}
@@ -296,7 +303,7 @@ export function RepositoryDetail({
             ) : (
               <Link
                 className={getButtonClasses('secondary')}
-                href={`/login?next=/p/${encodeURIComponent(slug)}`}
+                href={`/login?next=${encodeURIComponent(promptPath)}`}
               >
                 Sign in to Save
               </Link>
@@ -317,7 +324,7 @@ export function RepositoryDetail({
             ) : (
               <Link
                 className={getButtonClasses('secondary')}
-                href={`/login?next=${encodeURIComponent(`/p/${slug}`)}`}
+                href={`/login?next=${encodeURIComponent(promptPath)}`}
               >
                 Sign in to Like
               </Link>
@@ -798,7 +805,7 @@ function CommentsSection({
         <p className="mt-5 text-sm text-zinc-600 dark:text-zinc-400">
           <Link
             className="font-semibold underline"
-            href={`/login?next=/p/${encodeURIComponent(repositorySlug)}`}
+            href={`/login?next=${encodeURIComponent(promptPathForSlug(repositorySlug))}`}
           >
             Sign in
           </Link>{' '}
@@ -1306,7 +1313,7 @@ function LineageItem({
     <div className="grid gap-2">
       <Link
         className="flex items-center justify-between gap-4 rounded-2xl border border-zinc-200 px-4 py-3 transition hover:border-black dark:border-zinc-800 dark:hover:border-white"
-        href={`/p/${node.slug}`}
+        href={getPublicPromptPath(node.id, node.slug)}
         style={{ marginLeft: `${depth * 1.25}rem` }}
       >
         <span>
@@ -1362,4 +1369,8 @@ function formatDate(value: string) {
     month: 'short',
     year: 'numeric',
   }).format(new Date(value));
+}
+
+function promptPathForSlug(slug: string) {
+  return `/p/${encodeURIComponent(slug)}`;
 }

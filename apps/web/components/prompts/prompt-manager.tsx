@@ -13,6 +13,7 @@ import { Modal } from '@/components/ui/modal';
 import { Skeleton } from '@/components/ui/skeleton';
 import { apiRequest } from '@/lib/api';
 import type { OwnedPromptRepository } from '@/lib/api';
+import { getPublicPromptPath } from '@/lib/prompt-sharing';
 
 export function PromptManager({ variantFrom }: { variantFrom?: string }) {
   const { accessToken } = useAuth();
@@ -142,7 +143,7 @@ export function PromptManager({ variantFrom }: { variantFrom?: string }) {
               </div>
               <Link
                 className={getButtonClasses('secondary', 'mt-5 w-full')}
-                href={`/p/${prompt.slug}`}
+                href={getPublicPromptPath(prompt.id, prompt.slug)}
               >
                 Open and manage
               </Link>

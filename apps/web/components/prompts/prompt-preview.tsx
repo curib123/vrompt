@@ -25,6 +25,8 @@ import { copyToClipboard, getCopyClientKey } from '@/lib/clipboard';
 import {
   buildPromptPostTemplate,
   buildPublicPromptUrl,
+  getPublicPromptPath,
+  getSocialShareLinks,
 } from '@/lib/prompt-sharing';
 
 type ShareState = 'idle' | 'link-copied' | 'post-copied' | 'shared' | 'failed';
@@ -138,14 +140,28 @@ export function PromptPreviewProvider({ children }: { children: ReactNode }) {
   async function sharePrompt() {
     if (!repository) return;
 
-    const url = getPromptUrl(repository.slug);
-    const post = getPromptPost(repository, url);
     try {
-      if (navigator.share) {
-        await navigator.share({
+      const url = getPromptUrl(repository);
+      if (!url) throw new Error('Public share URL unavailable');
+      const post = getPromptPost(repository, url);
+      const nativeShare = (
+        navigator as unknown as {
+          share?: (data: ShareData) => Promise<void>;
+        }
+      ).share;
+      trackAnalyticsEvent('prompt_share_clicked', {
+        platform: nativeShare ? 'native' : 'copy',
+        promptId: repository.id,
+      });
+      if (nativeShare) {
+        await nativeShare.call(navigator, {
           title: `${repository.title} | Vrompt`,
           text: post,
           url,
+        });
+        trackAnalyticsEvent('prompt_share_native', {
+          platform: 'native',
+          promptId: repository.id,
         });
         setShareState('shared');
         window.setTimeout(() => setShareState('idle'), 2200);
@@ -164,7 +180,13 @@ export function PromptPreviewProvider({ children }: { children: ReactNode }) {
     if (!repository) return;
 
     try {
-      await copyToClipboard(getPromptUrl(repository.slug));
+      const url = getPromptUrl(repository);
+      if (!url) throw new Error('Public share URL unavailable');
+      await copyToClipboard(url);
+      trackAnalyticsEvent('prompt_link_copied', {
+        platform: 'copy',
+        promptId: repository.id,
+      });
       setShareState('link-copied');
       window.setTimeout(() => setShareState('idle'), 2200);
     } catch {
@@ -176,7 +198,8 @@ export function PromptPreviewProvider({ children }: { children: ReactNode }) {
     if (!repository) return;
 
     try {
-      const url = getPromptUrl(repository.slug);
+      const url = getPromptUrl(repository);
+      if (!url) throw new Error('Public share URL unavailable');
       await copyToClipboard(getPromptPost(repository, url));
       setShareState('post-copied');
       window.setTimeout(() => setShareState('idle'), 2200);
@@ -278,11 +301,15 @@ function PromptPreviewContent({
   shareState: ShareState;
 }) {
   const version = repository.currentVersion;
-  const promptUrl = getPromptUrl(repository.slug);
-  const postTemplate = getPromptPost(repository, promptUrl);
+  const promptUrl = getPromptUrl(repository);
+  const postTemplate = promptUrl ? getPromptPost(repository, promptUrl) : '';
   const isShareable =
-    repository.visibility !== 'PRIVATE' && repository.status === 'ACTIVE';
-  const socialLinks = getSocialShareLinks(promptUrl, postTemplate);
+    repository.visibility === 'PUBLIC' &&
+    repository.status === 'ACTIVE' &&
+    Boolean(promptUrl);
+  const socialLinks = promptUrl
+    ? getSocialShareLinks(getPromptShareMetadata(repository, promptUrl))
+    : [];
 
   return (
     <div className="grid gap-5">
@@ -327,7 +354,7 @@ function PromptPreviewContent({
         </Button>
         <Link
           className={getButtonClasses('secondary', 'w-full whitespace-nowrap')}
-          href={`/p/${repository.slug}`}
+          href={getPublicPromptPath(repository.id, repository.slug)}
         >
           View full details
         </Link>
@@ -384,6 +411,12 @@ function PromptPreviewContent({
                   key={link.label}
                   rel="noreferrer"
                   target="_blank"
+                  onClick={() => {
+                    trackAnalyticsEvent('prompt_share_clicked', {
+                      platform: link.platform,
+                      promptId: repository.id,
+                    });
+                  }}
                 >
                   {link.label}
                 </a>
@@ -416,40 +449,37 @@ function usePromptPreview() {
   return context;
 }
 
-function getPromptUrl(slug: string) {
-  const publicOrigin =
-    process.env.NEXT_PUBLIC_SITE_URL?.trim() || window.location.origin;
-  return buildPublicPromptUrl(slug, publicOrigin);
+function getPromptUrl(repository: PromptRepositoryDetail) {
+  for (const origin of [
+    process.env.NEXT_PUBLIC_SITE_URL?.trim(),
+    typeof window === 'undefined' ? undefined : window.location.origin,
+  ]) {
+    if (!origin) continue;
+    try {
+      return buildPublicPromptUrl(repository.id, repository.slug, origin);
+    } catch {
+      // Localhost is intentionally not a public sharing destination.
+    }
+  }
+  return null;
 }
 
 function getPromptPost(repository: PromptRepositoryDetail, url: string) {
-  return buildPromptPostTemplate({
-    description: repository.description,
-    ownerUsername: repository.owner.username,
-    title: repository.title,
-    url,
-  });
+  return buildPromptPostTemplate(getPromptShareMetadata(repository, url));
 }
 
-function getSocialShareLinks(url: string, postTemplate: string) {
-  return [
-    {
-      label: 'Facebook',
-      href: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`,
-    },
-    {
-      label: 'X',
-      href: `https://twitter.com/intent/tweet?text=${encodeURIComponent(postTemplate)}`,
-    },
-    {
-      label: 'LinkedIn',
-      href: `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(url)}`,
-    },
-    {
-      label: 'WhatsApp',
-      href: `https://wa.me/?text=${encodeURIComponent(postTemplate)}`,
-    },
-  ];
+function getPromptShareMetadata(
+  repository: PromptRepositoryDetail,
+  url: string,
+) {
+  return {
+    aiCompatibility: repository.aiCompatibility,
+    description: repository.description,
+    ownerUsername: repository.owner.username,
+    sourcePromptTitle: repository.sourcePrompt?.title,
+    title: repository.title,
+    url,
+  };
 }
 
 function PreviewSkeleton() {

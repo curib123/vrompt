@@ -1,3 +1,4 @@
+import { NotFoundException } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 
 import { PrismaService } from '../prisma/prisma.service';
@@ -7,6 +8,51 @@ import { TagsService } from '../tags/tags.service';
 import { PromptsService } from './prompts.service';
 
 describe('PromptsService', () => {
+  it('loads a public prompt by its stable id for shared URLs', async () => {
+    const repository = {
+      id: '11111111-1111-4111-8111-111111111111',
+      ownerId: 'owner-id',
+      slug: 'original-slug',
+      status: 'ACTIVE',
+      visibility: 'PUBLIC',
+    };
+    const findUnique = jest.fn().mockResolvedValue(repository);
+    const service = await createService(
+      { promptRepository: { findUnique } },
+      { createOrGet: jest.fn() },
+    );
+
+    await expect(service.getById(repository.id)).resolves.toMatchObject({
+      id: repository.id,
+      isLiked: false,
+      isSaved: false,
+      slug: 'original-slug',
+    });
+    expect(findUnique).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: repository.id } }),
+    );
+  });
+
+  it('does not expose a private prompt through its stable id', async () => {
+    const service = await createService(
+      {
+        promptRepository: {
+          findUnique: jest.fn().mockResolvedValue({
+            id: '11111111-1111-4111-8111-111111111111',
+            ownerId: 'owner-id',
+            status: 'ACTIVE',
+            visibility: 'PRIVATE',
+          }),
+        },
+      },
+      { createOrGet: jest.fn() },
+    );
+
+    await expect(
+      service.getById('11111111-1111-4111-8111-111111111111'),
+    ).rejects.toBeInstanceOf(NotFoundException);
+  });
+
   it('lists every repository owned by the authenticated user', async () => {
     const repositories = [
       { id: 'private-draft', visibility: 'PRIVATE' },
