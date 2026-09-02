@@ -5,7 +5,7 @@ export const publicPrimaryRoutes = [
 ] as const;
 
 export const memberPrimaryRoutes = [
-  { href: '/search', label: 'Home', icon: 'home' },
+  { href: '/search', label: 'Search', icon: 'search' },
   { href: '/explore', label: 'Explore', icon: 'explore' },
   { href: '/create', label: 'Prompts', icon: 'create' },
 ] as const;

@@ -200,6 +200,43 @@ test('keeps the signed-out desktop navigation focused', async ({ page }) => {
   ).toHaveAttribute('href', '/login');
 });
 
+test('redirects an authenticated session away from the public landing page', async ({
+  context,
+  page,
+}) => {
+  await context.addCookies([
+    {
+      name: 'vrompt_refresh_token',
+      value: 'test-session',
+      url: 'http://localhost:3000',
+    },
+  ]);
+  await page.route(`${apiOrigin}/**`, async (route) => {
+    const url = new URL(route.request().url());
+    if (url.pathname === '/api/v1/auth/refresh') {
+      await route.fulfill({
+        json: { accessToken: 'token-author', user: author },
+      });
+      return;
+    }
+    await route.continue();
+  });
+
+  await page.goto('/');
+
+  await expect(page).toHaveURL(/\/search$/);
+  await expect(
+    page.getByRole('heading', {
+      name: /the repository for prompts that work/i,
+    }),
+  ).toHaveCount(0);
+  await expect(
+    page
+      .getByRole('navigation', { name: 'Primary navigation' })
+      .getByRole('link', { name: 'Search' }),
+  ).toHaveAttribute('href', '/search');
+});
+
 test('opens the mobile navigation drawer from the left-side hamburger', async ({
   page,
 }) => {
@@ -291,6 +328,11 @@ test('shows the signed-in creator profile and workspace links in the drawer', as
   const drawer = page.getByRole('dialog', {
     name: 'Mobile navigation drawer',
   });
+  await expect(drawer.getByRole('link', { name: 'Search' })).toHaveAttribute(
+    'href',
+    '/search',
+  );
+  await expect(drawer.getByRole('link', { name: 'Home' })).toHaveCount(0);
   const profileCard = drawer.getByRole('link', {
     name: "View Author A's profile",
   });

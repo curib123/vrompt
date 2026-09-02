@@ -94,6 +94,7 @@ export function MobileNav() {
   const visibleRoutes = user ? primaryRoutes : publicPrimaryRoutes;
   const displayName = profile?.displayName || user?.username || 'Creator';
   const profileHref = user ? (`/u/${user.username}` as Route) : '/login';
+  const homeHref = user ? '/search' : '/';
 
   return (
     <div className="lg:hidden">
@@ -132,7 +133,11 @@ export function MobileNav() {
           >
             <div className="pb-4">
               <div className="flex items-center justify-between gap-4">
-                <Link aria-label="Vrompt home" href="/" onClick={closeDrawer}>
+                <Link
+                  aria-label="Vrompt home"
+                  href={homeHref}
+                  onClick={closeDrawer}
+                >
                   <BrandLockup compact />
                 </Link>
                 <Button

@@ -8,6 +8,7 @@ node_modules/
 apps/web/.next/
 apps/web/.next-dev/
 apps/web/.next-production-check/
+apps/web/.next-*/
 apps/web/out/
 apps/web/test-results/
 
