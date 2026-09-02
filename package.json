@@ -17,8 +17,35 @@
     "format:write": "prettier --write .",
     "clean": "turbo run clean"
   },
+  "overrides": {
+    "@nestjs/config": {
+      "@nestjs/common": "$@nestjs/common"
+    },
+    "@nestjs/jwt": {
+      "@nestjs/common": "$@nestjs/common"
+    },
+    "body-parser": "1.20.6",
+    "esbuild": "0.28.2",
+    "express": "4.22.2",
+    "file-type": "21.3.2",
+    "js-yaml": "4.3.1",
+    "lodash": "4.18.1",
+    "multer": "2.3.0",
+    "node-emoji": {
+      "lodash": "4.18.1"
+    },
+    "qs": "6.16.0",
+    "superagent": {
+      "qs": "6.16.0"
+    },
+    "tsx": {
+      "esbuild": "0.28.2"
+    },
+    "uuid": "14.0.2"
+  },
   "devDependencies": {
     "prettier": "^3.3.3",
+    "tsx": "^4.21.0",
     "turbo": "^2.1.3",
     "typescript": "^5.6.2"
   }

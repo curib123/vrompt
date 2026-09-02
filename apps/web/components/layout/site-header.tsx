@@ -108,15 +108,17 @@ export function SiteHeader() {
             ) : user ? (
               <AccountMenu />
             ) : (
-              <Link
-                className={getButtonClasses(
-                  'primary',
-                  'hidden min-h-10 whitespace-nowrap px-4 py-2 sm:inline-flex',
-                )}
-                href="/login"
-              >
-                Become a creator
-              </Link>
+              <span className="hidden sm:inline-flex">
+                <Link
+                  className={getButtonClasses(
+                    'primary',
+                    'min-h-10 whitespace-nowrap px-4 py-2',
+                  )}
+                  href="/login"
+                >
+                  Become a creator
+                </Link>
+              </span>
             )}
           </div>
         </div>

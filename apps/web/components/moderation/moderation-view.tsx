@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
+import { Input } from '@/components/ui/input';
 import { apiRequest } from '@/lib/api';
 import type { ModerationReport } from '@/lib/api';
 
@@ -14,6 +15,7 @@ export function ModerationView() {
   const { accessToken, isLoading, user } = useAuth();
   const [reports, setReports] = useState<ModerationReport[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [reasons, setReasons] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (
@@ -61,14 +63,23 @@ export function ModerationView() {
 
   async function resolve(reportId: string, action: 'DISMISS' | 'RESOLVE') {
     if (!accessToken) return;
-    await apiRequest(`/admin/moderation/reports/${reportId}`, {
-      accessToken,
-      body: JSON.stringify({ action }),
-      method: 'PATCH',
-    });
-    setReports(
-      (current) => current?.filter((report) => report.id !== reportId) ?? null,
-    );
+    try {
+      await apiRequest(`/admin/moderation/reports/${reportId}`, {
+        accessToken,
+        body: JSON.stringify({ action, reason: reasons[reportId] }),
+        method: 'PATCH',
+      });
+      setReports(
+        (current) =>
+          current?.filter((report) => report.id !== reportId) ?? null,
+      );
+    } catch (caught) {
+      setError(
+        caught instanceof Error
+          ? caught.message
+          : 'Report could not be updated.',
+      );
+    }
   }
 
   async function moderate(
@@ -82,14 +93,20 @@ export function ModerationView() {
         : report.targetType === 'COMMENT'
           ? 'comments'
           : 'users';
-    await apiRequest(`/admin/moderation/${segment}/${report.targetId}`, {
-      accessToken,
-      body: JSON.stringify({ action }),
-      method: 'PATCH',
-    });
-    setReports(
-      (current) => current?.filter((item) => item.id !== report.id) ?? null,
-    );
+    try {
+      await apiRequest(`/admin/moderation/${segment}/${report.targetId}`, {
+        accessToken,
+        body: JSON.stringify({ action, reason: reasons[report.id] }),
+        method: 'PATCH',
+      });
+      setReports(
+        (current) => current?.filter((item) => item.id !== report.id) ?? null,
+      );
+    } catch (caught) {
+      setError(
+        caught instanceof Error ? caught.message : 'Moderation action failed.',
+      );
+    }
   }
 
   return (
@@ -131,14 +148,27 @@ export function ModerationView() {
                     Target {report.targetId}
                   </p>
                 </div>
+                <Input
+                  aria-label={`Moderation reason for report ${report.id}`}
+                  onChange={(event) =>
+                    setReasons((current) => ({
+                      ...current,
+                      [report.id]: event.target.value,
+                    }))
+                  }
+                  placeholder="Required action reason"
+                  value={reasons[report.id] ?? ''}
+                />
                 <div className="flex flex-wrap gap-2">
                   <Button
+                    disabled={!reasons[report.id]?.trim()}
                     onClick={() => void resolve(report.id, 'DISMISS')}
                     variant="ghost"
                   >
                     Dismiss
                   </Button>
                   <Button
+                    disabled={!reasons[report.id]?.trim()}
                     onClick={() => void resolve(report.id, 'RESOLVE')}
                     variant="secondary"
                   >
@@ -146,6 +176,7 @@ export function ModerationView() {
                   </Button>
                   {report.targetType === 'USER' ? (
                     <Button
+                      disabled={!reasons[report.id]?.trim()}
                       onClick={() => void moderate(report, 'SUSPEND')}
                       variant="secondary"
                     >
@@ -153,6 +184,7 @@ export function ModerationView() {
                     </Button>
                   ) : (
                     <Button
+                      disabled={!reasons[report.id]?.trim()}
                       onClick={() => void moderate(report, 'HIDE')}
                       variant="secondary"
                     >

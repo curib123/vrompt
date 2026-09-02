@@ -1,13 +1,27 @@
 import {
   Injectable,
+  Logger,
+  OnModuleInit,
   ServiceUnavailableException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
-import { OAuthProvider, Prisma, UserStatus } from '@prisma/client';
+import {
+  AccountType,
+  OAuthProvider,
+  Prisma,
+  UserRole,
+  UserStatus,
+} from '@prisma/client';
 import { OAuth2Client } from 'google-auth-library';
-import { createHash, randomBytes } from 'node:crypto';
+import {
+  createHash,
+  randomBytes,
+  scrypt as nodeScrypt,
+  timingSafeEqual,
+} from 'node:crypto';
+import { promisify } from 'node:util';
 
 import { PrismaService } from '../prisma/prisma.service';
 import { RedisService } from '../common/redis.service';
@@ -38,14 +52,81 @@ interface VerifiedOAuthIdentity {
   providerUserId: string;
 }
 
+const scrypt = promisify(nodeScrypt);
+
 @Injectable()
-export class AuthService {
+export class AuthService implements OnModuleInit {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     private readonly configService: ConfigService,
     private readonly jwtService: JwtService,
     private readonly prismaService: PrismaService,
     private readonly redisService: RedisService,
   ) {}
+
+  async onModuleInit() {
+    await this.bootstrapStaffAccount('ADMIN');
+    await this.bootstrapStaffAccount('MODERATOR');
+  }
+
+  async authenticateStaff(email: string, password: string) {
+    const normalizedEmail = this.normalizeEmail(email);
+    const credential = await this.prismaService.staffCredential.findFirst({
+      where: {
+        user: {
+          email: normalizedEmail,
+          role: { in: [UserRole.ADMIN, UserRole.MODERATOR] },
+          status: UserStatus.ACTIVE,
+        },
+      },
+      include: { user: { select: this.authUserSelect } },
+    });
+
+    const valid = credential
+      ? await this.verifyPassword(password, credential.passwordHash)
+      : await this.verifyPassword(password, this.dummyPasswordHash);
+    if (!credential || !valid) {
+      throw new UnauthorizedException('Invalid staff credentials');
+    }
+
+    await this.prismaService.staffCredential.update({
+      where: { id: credential.id },
+      data: { lastLoginAt: new Date() },
+    });
+    return this.issueSession(this.toAuthenticatedUser(credential.user));
+  }
+
+  async setStaffPassword(userId: string, password: string) {
+    const passwordHash = await this.hashPassword(password);
+    await this.prismaService.staffCredential.upsert({
+      where: { userId },
+      create: { userId, passwordHash },
+      update: { passwordHash },
+    });
+  }
+
+  async changeStaffPassword(
+    userId: string,
+    currentPassword: string,
+    newPassword: string,
+  ) {
+    const credential = await this.prismaService.staffCredential.findUnique({
+      where: { userId },
+    });
+    if (
+      !credential ||
+      !(await this.verifyPassword(currentPassword, credential.passwordHash))
+    ) {
+      throw new UnauthorizedException('Current password is incorrect');
+    }
+    await this.setStaffPassword(userId, newPassword);
+    await this.prismaService.refreshToken.updateMany({
+      where: { userId, revokedAt: null },
+      data: { revokedAt: new Date() },
+    });
+    return { success: true };
+  }
 
   async assertAuthRateLimit(key: string, limit: number, ttlSeconds: number) {
     try {
@@ -265,6 +346,16 @@ export class AuthService {
         return existingIdentity.user;
       }
 
+      const registrationSetting = await transaction.siteSetting.findUnique({
+        where: { key: 'features.registrationEnabled' },
+        select: { value: true },
+      });
+      if (registrationSetting?.value === false) {
+        throw new ServiceUnavailableException(
+          'New creator registration is temporarily disabled',
+        );
+      }
+
       const email = await this.accountEmail(
         transaction,
         identity.provider,
@@ -473,6 +564,102 @@ export class AuthService {
   private normalizeEmail(email: string) {
     return email.trim().toLowerCase();
   }
+
+  private async bootstrapStaffAccount(role: 'ADMIN' | 'MODERATOR') {
+    const prefix = role === 'ADMIN' ? 'ADMIN' : 'MODERATOR';
+    const email = this.configService
+      .get<string>(`${prefix}_BOOTSTRAP_EMAIL`, '')
+      .trim()
+      .toLowerCase();
+    const username = this.configService
+      .get<string>(`${prefix}_BOOTSTRAP_USERNAME`, '')
+      .trim()
+      .toLowerCase();
+    const password = this.configService.get<string>(
+      `${prefix}_BOOTSTRAP_PASSWORD`,
+      '',
+    );
+    if (!email && !username && !password) return;
+    if (!email || !username || password.length < 12) {
+      this.logger.error(
+        `${prefix} bootstrap account requires email, username, and a password of at least 12 characters`,
+      );
+      return;
+    }
+
+    await this.prismaService.$transaction(async (transaction) => {
+      const existing = await transaction.user.findMany({
+        where: { OR: [{ email }, { username }] },
+        select: {
+          id: true,
+          email: true,
+          username: true,
+          role: true,
+          status: true,
+          accountType: true,
+        },
+      });
+
+      const [account] = existing;
+      if (account) {
+        const isInitializedBootstrapAccount =
+          existing.length === 1 &&
+          account.email === email &&
+          account.username === username &&
+          account.accountType === AccountType.OFFICIAL;
+
+        if (isInitializedBootstrapAccount) {
+          // Never restore role/status/password from environment variables on
+          // restart; administrators may have intentionally changed them.
+          return;
+        }
+
+        throw new Error(
+          `${prefix} bootstrap identity conflicts with an existing account; choose a unique email and username`,
+        );
+      }
+
+      const passwordHash = await this.hashPassword(password);
+      const user = await transaction.user.create({
+        data: {
+          email,
+          username,
+          role: UserRole[role],
+          status: UserStatus.ACTIVE,
+          accountType: AccountType.OFFICIAL,
+          onboardingCompleted: true,
+          profile: {
+            create: {
+              displayName: role === 'ADMIN' ? 'Administrator' : 'Moderator',
+            },
+          },
+        },
+        select: { id: true },
+      });
+      await transaction.staffCredential.create({
+        data: { userId: user.id, passwordHash },
+      });
+    });
+  }
+
+  private async hashPassword(password: string) {
+    const salt = randomBytes(16).toString('hex');
+    const derived = (await scrypt(password, salt, 64)) as Buffer;
+    return `scrypt$${salt}$${derived.toString('hex')}`;
+  }
+
+  private async verifyPassword(password: string, encoded: string) {
+    const [algorithm, salt, expectedHex] = encoded.split('$');
+    if (algorithm !== 'scrypt' || !salt || !expectedHex) return false;
+    const expected = Buffer.from(expectedHex, 'hex');
+    const actual = (await scrypt(password, salt, expected.length)) as Buffer;
+    return (
+      expected.length === actual.length && timingSafeEqual(expected, actual)
+    );
+  }
+
+  private readonly dummyPasswordHash =
+    'scrypt$00000000000000000000000000000000$9d067f8c9ecbe890b45f9d9d81ec47dc7496d856cd2474dfb852d20ebc711635e7c2cd8c2ec9f4cb7ad62d7c203e86f78e9457183082264c28dc6c3876c99c9a';
 
   private hashRefreshToken(token: string) {
     return createHash('sha256').update(token).digest('hex');

@@ -169,6 +169,12 @@ export default function LoginPage() {
           >
             Browse prompts without signing in
           </Link>
+          <Link
+            className="w-fit text-xs font-medium text-brand-mid underline underline-offset-4"
+            href="/staff/login"
+          >
+            Administrator or moderator sign in
+          </Link>
         </div>
       </Card>
 

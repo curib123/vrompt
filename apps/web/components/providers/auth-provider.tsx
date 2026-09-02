@@ -20,6 +20,7 @@ interface AuthContextValue {
   isLoading: boolean;
   logout: () => Promise<void>;
   refreshSession: () => Promise<AuthUser>;
+  staffLogin: (email: string, password: string) => Promise<AuthUser>;
   user: AuthUser | null;
 }
 
@@ -79,6 +80,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  async function staffLogin(email: string, password: string) {
+    const session = await apiRequest<AuthResponse>('/auth/staff/login', {
+      body: JSON.stringify({ email, password }),
+      method: 'POST',
+    });
+    setAccessToken(session.accessToken);
+    setUser(session.user);
+    return session.user;
+  }
+
   return (
     <AuthContext.Provider
       value={{
@@ -88,6 +99,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isLoading,
         logout,
         refreshSession,
+        staffLogin,
         user,
       }}
     >

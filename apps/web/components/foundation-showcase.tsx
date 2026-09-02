@@ -32,12 +32,19 @@ export function FoundationShowcase() {
             </h2>
             <p className="max-w-2xl text-sm leading-7 text-zinc-600 dark:text-zinc-400">
               A focused set of primitives for a fast, collaborative, and trusted
-              prompt space. Every interaction keeps the brand quiet and the
-              work in front.
+              prompt space. Every interaction keeps the brand quiet and the work
+              in front.
             </p>
           </div>
           <div className="flex flex-wrap gap-3">
-            <Button onClick={() => pushToast({ title: 'Message ready', description: 'Helpful updates will appear here.' })}>
+            <Button
+              onClick={() =>
+                pushToast({
+                  title: 'Message ready',
+                  description: 'Helpful updates will appear here.',
+                })
+              }
+            >
               Show a message
             </Button>
             <Button onClick={() => setModalOpen(true)} variant="secondary">

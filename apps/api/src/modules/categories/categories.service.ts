@@ -87,6 +87,16 @@ export class CategoriesService {
     }
   }
 
+  async remove(slug: string) {
+    const existing = await this.prismaService.category.findUnique({
+      where: { slug: slugify(slug) },
+      select: { id: true },
+    });
+    if (!existing) throw new NotFoundException('Category not found');
+    await this.prismaService.category.delete({ where: { id: existing.id } });
+    return { success: true };
+  }
+
   private normalizeName(name: string) {
     return name.trim().replace(/\s+/g, ' ');
   }

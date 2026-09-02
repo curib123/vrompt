@@ -92,6 +92,24 @@ For a deployed site, replace the local values with the public API callback URL,
 for example `https://api.example.com/api/v1/auth/google/callback`, and register
 that exact URL in the same Google OAuth client.
 
+### Staff control panel
+
+Administrators and moderators can sign in at `/staff/login` with separate
+credential-based staff accounts. Configure the bootstrap accounts with
+`ADMIN_BOOTSTRAP_EMAIL`, `ADMIN_BOOTSTRAP_USERNAME`,
+`ADMIN_BOOTSTRAP_PASSWORD`, `MODERATOR_BOOTSTRAP_EMAIL`,
+`MODERATOR_BOOTSTRAP_USERNAME`, and `MODERATOR_BOOTSTRAP_PASSWORD`. Passwords
+must contain at least 12 characters and are stored as salted scrypt hashes.
+Bootstrap credentials create the account and initial password; later password
+changes, suspension, and role changes are not overwritten when the API restarts.
+If either bootstrap identifier belongs to another account, startup fails instead
+of promoting that account. Use unique high-entropy passwords and HTTPS in every
+online environment.
+
+The role-aware control panel at `/admin` includes the moderation queue,
+audience management, analytics, and audit history. Administrators additionally
+receive user/staff and category/tag management.
+
 ### User profiles
 
 Phase 7 adds public profiles at `/u/[username]` and signed-in profile editing at

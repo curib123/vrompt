@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { PageContainer } from '@/components/layout/page-container';
 import { SiteFooter } from '@/components/layout/site-footer';
 import { SiteHeader } from '@/components/layout/site-header';
+import { SiteAnnouncement } from '@/components/providers/public-settings-provider';
 
 export function AppShell({ children }: { children: ReactNode }) {
   return (
@@ -15,6 +16,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         Skip to main content
       </a>
       <SiteHeader />
+      <SiteAnnouncement />
       <main className="page-reveal py-6 sm:py-12" id="main-content">
         <PageContainer>{children}</PageContainer>
       </main>

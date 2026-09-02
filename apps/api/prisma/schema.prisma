@@ -118,6 +118,7 @@ enum AuditTargetType {
   REPORT
   ROLE
   AUDIENCE
+  SETTING
 }
 
 enum AuditActionType {
@@ -133,6 +134,8 @@ enum AuditActionType {
   AUDIENCE_ACTIVATED
   AUDIENCE_DEACTIVATED
   AUDIENCE_REORDERED
+  SETTING_UPDATED
+  SETTING_RESET
 }
 
 enum ActivityType {
@@ -156,6 +159,7 @@ model User {
 
   profile               Profile?
   identities            UserIdentity[]
+  staffCredential       StaffCredential?
   refreshTokens         RefreshToken[]
   ownedRepositories     PromptRepository[] @relation("RepositoryOwner")
   authoredVersions      PromptVersion[]    @relation("VersionAuthor")
@@ -174,8 +178,35 @@ model User {
   copyEvents            PromptCopyEvent[]
   activityEvents        ActivityEvent[]
   audienceInterests     UserAudience[]
+  settingUpdates        SiteSetting[]
 
   @@index([status, createdAt])
+}
+
+model SiteSetting {
+  id          String   @id @default(uuid()) @db.Uuid
+  key         String   @unique @db.VarChar(100)
+  value       Json
+  group       String   @db.VarChar(40)
+  isPublic    Boolean  @default(false)
+  updatedById String?  @db.Uuid
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  updatedBy User? @relation(fields: [updatedById], references: [id], onDelete: SetNull)
+
+  @@index([group, key])
+}
+
+model StaffCredential {
+  id           String    @id @default(uuid()) @db.Uuid
+  userId       String    @unique @db.Uuid
+  passwordHash String    @db.VarChar(255)
+  lastLoginAt  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model UserIdentity {

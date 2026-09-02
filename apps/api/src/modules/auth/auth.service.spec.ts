@@ -1,7 +1,12 @@
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { Test } from '@nestjs/testing';
-import { OAuthProvider, UserRole, UserStatus } from '@prisma/client';
+import {
+  AccountType,
+  OAuthProvider,
+  UserRole,
+  UserStatus,
+} from '@prisma/client';
 
 import { PrismaService } from '../prisma/prisma.service';
 import { RedisService } from '../common/redis.service';
@@ -37,6 +42,7 @@ describe('AuthService', () => {
 
   it('creates a Vrompt user from a verified Google identity', async () => {
     const transaction = {
+      siteSetting: { findUnique: jest.fn().mockResolvedValue(null) },
       userIdentity: {
         findUnique: jest.fn().mockResolvedValue(null),
         create: jest.fn().mockResolvedValue(undefined),
@@ -181,6 +187,7 @@ describe('AuthService', () => {
 
   it('creates a GitHub identity without requiring a public email', async () => {
     const transaction = {
+      siteSetting: { findUnique: jest.fn().mockResolvedValue(null) },
       userIdentity: {
         findUnique: jest.fn().mockResolvedValue(null),
         create: jest.fn().mockResolvedValue(undefined),
@@ -234,6 +241,7 @@ describe('AuthService', () => {
 
   it('does not merge a new provider identity into an existing email account', async () => {
     const transaction = {
+      siteSetting: { findUnique: jest.fn().mockResolvedValue(null) },
       userIdentity: {
         findUnique: jest.fn().mockResolvedValue(null),
         create: jest.fn().mockResolvedValue(undefined),
@@ -296,6 +304,89 @@ describe('AuthService', () => {
     expect(url.searchParams.get('scope')).toBe('read:user user:email');
     expect(url.searchParams.get('state')).toBe('state-value');
     expect(url.searchParams.get('scope')).not.toMatch(/repo|org/);
+  });
+
+  it('refuses to promote an existing creator through bootstrap configuration', async () => {
+    const bootstrapConfig = {
+      get: jest.fn((key: string, fallback?: unknown) => {
+        const values: Record<string, unknown> = {
+          ADMIN_BOOTSTRAP_EMAIL: 'owner@example.com',
+          ADMIN_BOOTSTRAP_USERNAME: 'owner',
+          ADMIN_BOOTSTRAP_PASSWORD: 'a-secure-bootstrap-password',
+        };
+        return values[key] ?? fallback;
+      }),
+    };
+    const transaction = {
+      user: {
+        findMany: jest
+          .fn()
+          .mockResolvedValue([{ ...user, accountType: AccountType.REAL }]),
+        create: jest.fn(),
+      },
+      staffCredential: { create: jest.fn() },
+    };
+    const prismaService = {
+      $transaction: jest.fn((callback: (tx: typeof transaction) => unknown) =>
+        callback(transaction),
+      ),
+    };
+    const service = await createService(
+      prismaService,
+      bootstrapConfig,
+      jwtService,
+      { increment: jest.fn() },
+    );
+
+    await expect(service.onModuleInit()).rejects.toThrow(
+      'bootstrap identity conflicts with an existing account',
+    );
+    expect(transaction.user.create).not.toHaveBeenCalled();
+  });
+
+  it('does not reactivate or re-promote an initialized bootstrap account', async () => {
+    const bootstrapConfig = {
+      get: jest.fn((key: string, fallback?: unknown) => {
+        const values: Record<string, unknown> = {
+          ADMIN_BOOTSTRAP_EMAIL: 'admin@example.com',
+          ADMIN_BOOTSTRAP_USERNAME: 'admin',
+          ADMIN_BOOTSTRAP_PASSWORD: 'a-secure-bootstrap-password',
+        };
+        return values[key] ?? fallback;
+      }),
+    };
+    const transaction = {
+      user: {
+        findMany: jest.fn().mockResolvedValue([
+          {
+            ...user,
+            email: 'admin@example.com',
+            username: 'admin',
+            role: UserRole.USER,
+            status: UserStatus.SUSPENDED,
+            accountType: AccountType.OFFICIAL,
+          },
+        ]),
+        create: jest.fn(),
+      },
+      staffCredential: { create: jest.fn() },
+    };
+    const prismaService = {
+      $transaction: jest.fn((callback: (tx: typeof transaction) => unknown) =>
+        callback(transaction),
+      ),
+    };
+    const service = await createService(
+      prismaService,
+      bootstrapConfig,
+      jwtService,
+      { increment: jest.fn() },
+    );
+
+    await service.onModuleInit();
+
+    expect(transaction.user.create).not.toHaveBeenCalled();
+    expect(transaction.staffCredential.create).not.toHaveBeenCalled();
   });
 });
 

@@ -109,6 +109,18 @@ export class TagsService {
     }
   }
 
+  async remove(slug: string) {
+    const existing = await this.prismaService.tag.findUnique({
+      where: { slug: slugify(slug) },
+      select: { id: true, isOfficial: true },
+    });
+    if (!existing) throw new NotFoundException('Tag not found');
+    if (existing.isOfficial)
+      throw new BadRequestException('Official tags cannot be deleted');
+    await this.prismaService.tag.delete({ where: { id: existing.id } });
+    return { success: true };
+  }
+
   private normalizeName(value: string, allowEmpty = false) {
     const normalized = value.trim().replace(/\s+/g, ' ').toLowerCase();
 

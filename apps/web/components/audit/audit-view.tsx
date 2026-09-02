@@ -109,6 +109,8 @@ export function AuditView() {
             <option value="AUDIENCE_ACTIVATED">Audience activated</option>
             <option value="AUDIENCE_DEACTIVATED">Audience deactivated</option>
             <option value="AUDIENCE_REORDERED">Audience reordered</option>
+            <option value="SETTING_UPDATED">Setting updated</option>
+            <option value="SETTING_RESET">Setting reset</option>
           </select>
           <select
             aria-label="Filter by target"
@@ -125,6 +127,7 @@ export function AuditView() {
             <option value="USER">User</option>
             <option value="REPORT">Report</option>
             <option value="AUDIENCE">Audience</option>
+            <option value="SETTING">Setting</option>
           </select>
         </div>
       </Card>

@@ -6,15 +6,18 @@ import { PromptPreviewProvider } from '@/components/prompts/prompt-preview';
 import { ThemeProvider } from '@/components/theme/theme-provider';
 import { ToastProvider } from '@/components/ui/toast';
 import { AuthProvider } from './auth-provider';
+import { PublicSettingsProvider } from './public-settings-provider';
 
 export function AppProviders({ children }: { children: ReactNode }) {
   return (
     <ThemeProvider>
-      <AuthProvider>
-        <ToastProvider>
-          <PromptPreviewProvider>{children}</PromptPreviewProvider>
-        </ToastProvider>
-      </AuthProvider>
+      <PublicSettingsProvider>
+        <AuthProvider>
+          <ToastProvider>
+            <PromptPreviewProvider>{children}</PromptPreviewProvider>
+          </ToastProvider>
+        </AuthProvider>
+      </PublicSettingsProvider>
     </ThemeProvider>
   );
 }

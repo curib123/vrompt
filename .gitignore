@@ -32,6 +32,12 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
+.vrompt-dev.*.log
+
+# local tooling artifacts
+.npm-cache/
+.tmp-*.png
+package-lock.security.bak
 
 # misc
 .DS_Store

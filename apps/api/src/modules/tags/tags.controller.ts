@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   DefaultValuePipe,
+  Delete,
   Get,
   Param,
   ParseIntPipe,
@@ -42,5 +43,12 @@ export class TagsController {
   @Roles(UserRole.ADMIN)
   update(@Param('slug') slug: string, @Body() input: UpdateTagDto) {
     return this.tagsService.update(slug, input);
+  }
+
+  @Delete(':slug')
+  @UseGuards(AccessTokenGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  remove(@Param('slug') slug: string) {
+    return this.tagsService.remove(slug);
   }
 }

@@ -1,4 +1,5 @@
 import {
+  Body,
   Controller,
   Get,
   Post,
@@ -16,6 +17,8 @@ import { AuthService } from './auth.service';
 import { CurrentUser } from './decorators/current-user.decorator';
 import type { AuthenticatedRequest } from './auth.types';
 import { AccessTokenGuard } from './guards/access-token.guard';
+import { StaffLoginDto } from './dto/staff-login.dto';
+import { ChangeStaffPasswordDto } from './dto/change-staff-password.dto';
 
 const REFRESH_COOKIE = 'vrompt_refresh_token';
 const GOOGLE_STATE_COOKIE = 'vrompt_google_oauth_state';
@@ -27,6 +30,45 @@ export class AuthController {
     private readonly authService: AuthService,
     private readonly configService: ConfigService,
   ) {}
+
+  @Post('staff/login')
+  async staffLogin(
+    @Body() input: StaffLoginDto,
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    await this.authService.assertAuthRateLimit(
+      `staff-login:${this.clientIp(request)}`,
+      8,
+      15 * 60,
+    );
+    const session = await this.authService.authenticateStaff(
+      input.email,
+      input.password,
+    );
+    this.setRefreshCookie(
+      response,
+      session.refreshToken,
+      session.refreshExpiresAt,
+    );
+    return { accessToken: session.accessToken, user: session.user };
+  }
+
+  @Post('staff/password')
+  @UseGuards(AccessTokenGuard)
+  async changeStaffPassword(
+    @Body() input: ChangeStaffPasswordDto,
+    @CurrentUser() user: AuthenticatedRequest['user'],
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    await this.authService.changeStaffPassword(
+      user.id,
+      input.currentPassword,
+      input.newPassword,
+    );
+    response.clearCookie(REFRESH_COOKIE, this.cookieOptions());
+    return { success: true };
+  }
 
   @Get('google')
   async google(@Req() request: Request, @Res() response: Response) {

@@ -228,7 +228,7 @@ export function MobileNav() {
                   key={route.href}
                   onClick={closeDrawer}
                 >
-                  <DrawerIcon name={route.href} />
+                  <DrawerIcon name={route.icon} />
                   {route.label}
                 </Link>
               ))}
@@ -352,7 +352,7 @@ function DrawerIcon({ name }: { name: string }) {
     viewBox: '0 0 24 24',
   };
 
-  if (name === '/' || name === '/search') {
+  if (name === 'home') {
     return (
       <svg aria-hidden="true" {...common}>
         <path d="m3 11 9-7 9 7" />
@@ -360,7 +360,15 @@ function DrawerIcon({ name }: { name: string }) {
       </svg>
     );
   }
-  if (name === '/explore') {
+  if (name === 'search') {
+    return (
+      <svg aria-hidden="true" {...common}>
+        <circle cx="11" cy="11" r="7" />
+        <path d="m16.5 16.5 4 4" />
+      </svg>
+    );
+  }
+  if (name === 'explore') {
     return (
       <svg aria-hidden="true" {...common}>
         <circle cx="12" cy="12" r="9" />
@@ -368,7 +376,7 @@ function DrawerIcon({ name }: { name: string }) {
       </svg>
     );
   }
-  if (name === '/create') {
+  if (name === 'create') {
     return (
       <svg aria-hidden="true" {...common}>
         <path d="M12 3v18M3 12h18" />

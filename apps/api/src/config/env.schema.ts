@@ -6,7 +6,13 @@ export const envValidationSchema = Joi.object({
     .default('development'),
   PORT: Joi.number().default(4000),
   API_PREFIX: Joi.string().default('api/v1'),
-  SWAGGER_ENABLED: Joi.string().valid('true', 'false').default('true'),
+  SWAGGER_ENABLED: Joi.string()
+    .valid('true', 'false')
+    .when('NODE_ENV', {
+      is: 'production',
+      then: Joi.string().default('false'),
+      otherwise: Joi.string().default('true'),
+    }),
   DATABASE_URL: Joi.string()
     .uri({ scheme: ['postgres', 'postgresql'] })
     .default('postgresql://postgres:postgres@localhost:5432/vrompt'),
@@ -16,7 +22,15 @@ export const envValidationSchema = Joi.object({
   WEB_ORIGIN: Joi.string().uri().default('http://localhost:3000'),
   JWT_ACCESS_SECRET: Joi.string()
     .min(32)
-    .default('local-development-access-secret-change-me'),
+    .when('NODE_ENV', {
+      is: 'production',
+      then: Joi.string()
+        .required()
+        .invalid('local-development-access-secret-change-me'),
+      otherwise: Joi.string().default(
+        'local-development-access-secret-change-me',
+      ),
+    }),
   JWT_ACCESS_TTL_SECONDS: Joi.number().integer().min(60).default(900),
   JWT_REFRESH_TTL_SECONDS: Joi.number()
     .integer()
@@ -32,7 +46,21 @@ export const envValidationSchema = Joi.object({
   GITHUB_CALLBACK_URL: Joi.string()
     .uri()
     .default('http://localhost:4000/api/v1/auth/github/callback'),
-  AUTH_COOKIE_SECURE: Joi.boolean().default(false),
+  ADMIN_BOOTSTRAP_EMAIL: Joi.string().email().allow('').default(''),
+  ADMIN_BOOTSTRAP_USERNAME: Joi.string().min(3).max(32).allow('').default(''),
+  ADMIN_BOOTSTRAP_PASSWORD: Joi.string().min(12).allow('').default(''),
+  MODERATOR_BOOTSTRAP_EMAIL: Joi.string().email().allow('').default(''),
+  MODERATOR_BOOTSTRAP_USERNAME: Joi.string()
+    .min(3)
+    .max(32)
+    .allow('')
+    .default(''),
+  MODERATOR_BOOTSTRAP_PASSWORD: Joi.string().min(12).allow('').default(''),
+  AUTH_COOKIE_SECURE: Joi.boolean().when('NODE_ENV', {
+    is: 'production',
+    then: Joi.boolean().valid(true).default(true),
+    otherwise: Joi.boolean().default(false),
+  }),
   AUTH_COOKIE_SAME_SITE: Joi.string()
     .valid('lax', 'strict', 'none')
     .default('lax'),

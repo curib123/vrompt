@@ -11,6 +11,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { trackAnalyticsEvent } from '@/lib/analytics';
 import { apiRequest } from '@/lib/api';
 import { useAuth } from '@/components/providers/auth-provider';
+import { usePublicSettings } from '@/components/providers/public-settings-provider';
 import type { ExploreRepository, ExploreResponse } from '@/lib/api';
 
 export function ExploreView({
@@ -23,6 +24,7 @@ export function ExploreView({
   );
   const [error, setError] = useState(false);
   const { accessToken } = useAuth();
+  const publicSettings = usePublicSettings();
 
   useEffect(() => {
     if (initialExplore && !accessToken) return;
@@ -67,7 +69,8 @@ export function ExploreView({
           practical work.
         </p>
       </header>
-      {explore.recommendedForYou.length > 0 ? (
+      {publicSettings['features.showRecommendations'] &&
+      explore.recommendedForYou.length > 0 ? (
         <ExploreSection
           items={explore.recommendedForYou}
           onOpen={() => trackAnalyticsEvent('recommended_prompt_opened')}
@@ -150,7 +153,7 @@ function ExploreSection({
   title: string;
 }) {
   return (
-    <section className="grid gap-5">
+    <section className="grid min-w-0 gap-5">
       <SectionHeading title={title} />
       {items.length === 0 ? (
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
@@ -237,8 +240,8 @@ function SectionHeading({
   title: string;
 }) {
   return (
-    <div className="flex items-end justify-between gap-4">
-      <div>
+    <div className="flex min-w-0 flex-col items-start gap-2 min-[360px]:flex-row min-[360px]:items-end min-[360px]:justify-between min-[360px]:gap-4">
+      <div className="min-w-0">
         <p className="font-mono text-xs uppercase tracking-[0.24em] text-zinc-600 dark:text-zinc-400">
           Prompt library
         </p>
@@ -247,7 +250,7 @@ function SectionHeading({
         </h2>
       </div>
       {showSwipe ? (
-        <p className="pb-1 text-xs font-medium text-zinc-600 md:hidden dark:text-zinc-400">
+        <p className="text-xs font-medium text-zinc-600 min-[360px]:pb-1 md:hidden dark:text-zinc-400">
           Swipe to browse
         </p>
       ) : null}

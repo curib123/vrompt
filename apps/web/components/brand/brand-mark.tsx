@@ -26,13 +26,7 @@ export function BrandLockup({
   inverted?: boolean;
 }) {
   return (
-    <span
-      className={
-        inverted
-          ? 'text-white'
-          : 'text-[var(--brand-ink)] dark:text-[var(--brand-paper)]'
-      }
-    >
+    <span className={inverted ? 'text-white' : 'text-[var(--brand-ink)]'}>
       <span className="flex items-center gap-3.5">
         <BrandMark className={compact ? 'size-8' : 'size-12'} />
         <span className="leading-none">

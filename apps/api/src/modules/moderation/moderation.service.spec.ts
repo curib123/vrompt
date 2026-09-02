@@ -5,6 +5,7 @@ describe('ModerationService', () => {
   it('hides a repository and records an audit event', async () => {
     const auditLog = { create: jest.fn().mockResolvedValue(undefined) };
     const prisma = {
+      siteSetting: { findUnique: jest.fn().mockResolvedValue(null) },
       promptRepository: {
         update: jest
           .fn()
@@ -15,7 +16,10 @@ describe('ModerationService', () => {
     const service = new ModerationService(prisma as unknown as PrismaService);
 
     await expect(
-      service.repository('moderator-id', 'repo-id', { action: 'HIDE' }),
+      service.repository('moderator-id', 'repo-id', {
+        action: 'HIDE',
+        reason: 'Confirmed policy violation',
+      }),
     ).resolves.toEqual({ id: 'repo-id', status: 'HIDDEN' });
     expect(auditLog.create).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -32,13 +36,17 @@ describe('ModerationService', () => {
       .fn()
       .mockResolvedValue({ id: 'image-id', isHidden: true });
     const prisma = {
+      siteSetting: { findUnique: jest.fn().mockResolvedValue(null) },
       promptEvidenceImage: { update },
       auditLog: { create: jest.fn().mockResolvedValue(undefined) },
     };
     const service = new ModerationService(prisma as unknown as PrismaService);
 
     await expect(
-      service.evidence('moderator-id', 'image-id', { action: 'HIDE' }),
+      service.evidence('moderator-id', 'image-id', {
+        action: 'HIDE',
+        reason: 'Misleading evidence',
+      }),
     ).resolves.toEqual({ id: 'image-id', isHidden: true });
     expect(update).toHaveBeenCalledWith(
       expect.objectContaining({ data: { isHidden: true } }),

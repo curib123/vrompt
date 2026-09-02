@@ -27,7 +27,9 @@ export function ToastProvider({ children }: { children: ReactNode }) {
         setMessages((current) => [...current, { id, title, description }]);
 
         window.setTimeout(() => {
-          setMessages((current) => current.filter((message) => message.id !== id));
+          setMessages((current) =>
+            current.filter((message) => message.id !== id),
+          );
         }, 2400);
       },
     }),

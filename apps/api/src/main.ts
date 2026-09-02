@@ -17,7 +17,10 @@ async function bootstrap() {
 
   app.enableShutdownHooks();
   app.enableCors({
-    origin: (origin, callback) => {
+    origin: (
+      origin: string | undefined,
+      callback: (error: Error | null, allow?: boolean) => void,
+    ) => {
       if (!origin) {
         callback(null, true);
         return;
@@ -26,7 +29,7 @@ async function bootstrap() {
       const allowedOrigins = configService
         .get<string>('WEB_ORIGIN', 'http://localhost:3000')
         .split(',')
-        .map((value) => value.trim().replace(/\/$/, ''))
+        .map((value: string) => value.trim().replace(/\/$/, ''))
         .filter(Boolean);
 
       callback(null, allowedOrigins.includes(origin));
@@ -34,6 +37,11 @@ async function bootstrap() {
     credentials: true,
   });
   const httpServer = app.getHttpAdapter().getInstance();
+  if (configService.get<string>('NODE_ENV') === 'production') {
+    // The production API is reachable only through the single Nginx proxy.
+    // Trusting exactly one hop makes per-client authentication limits effective.
+    httpServer.set('trust proxy', 1);
+  }
   httpServer.use(
     (
       _request: express.Request,

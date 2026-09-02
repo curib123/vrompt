@@ -42,6 +42,101 @@ export interface AuthResponse {
   user: AuthUser;
 }
 
+export interface AdminDashboardResponse {
+  users: number;
+  prompts: number;
+  openReports: number;
+  comments: number;
+  collections: number;
+  staff: number;
+}
+
+export interface AdminUser {
+  id: string;
+  email: string;
+  username: string;
+  role: 'USER' | 'MODERATOR' | 'ADMIN';
+  status: 'ACTIVE' | 'SUSPENDED' | 'DELETED';
+  accountType: 'REAL' | 'STARTER' | 'OFFICIAL';
+  createdAt: string;
+  staffCredential: { lastLoginAt: string | null } | null;
+}
+
+export interface AdminUsersResponse {
+  items: AdminUser[];
+  page: number;
+  pageSize: number;
+  total: number;
+  hasNextPage: boolean;
+}
+
+export interface AnalyticsSummaryResponse {
+  generatedAt: string;
+  accountTypesIncluded: string[];
+  period: { preset: string; from: string; to: string; granularity: string };
+  overview: {
+    totalEvents: number;
+    sessions: number;
+    landingViews: number;
+    organicVisits: number;
+    returningUsers: number;
+    signupStarts: number;
+    completedSignups: number;
+    signupConversionRate: number;
+  };
+  events: Array<{ name: string; count: number }>;
+  evidenceFunnel: Array<{ name: string; count: number }>;
+  acquisition: Array<{ source: string; count: number }>;
+  trends: Array<{ bucket: string; name: string; count: number }>;
+}
+
+export interface AdminSetting {
+  key: string;
+  value: string | number | boolean;
+  defaultValue: string | number | boolean;
+  group: string;
+  isPublic: boolean;
+  label: string;
+  description: string;
+  type: 'string' | 'boolean' | 'number';
+  maxLength?: number;
+  updatedAt: string | null;
+}
+
+export interface AdminSystemResponse {
+  checkedAt: string;
+  environment: string;
+  runtime: string;
+  uptimeSeconds: number;
+  dependencies: {
+    database: { status: 'up' | 'down'; latencyMs: number };
+    redis: { status: 'up' | 'down' };
+  };
+  integrations: {
+    googleOAuth: boolean;
+    githubOAuth: boolean;
+    cloudStorage: boolean;
+  };
+  metrics: {
+    requests: {
+      total: number;
+      responses2xx: number;
+      responses4xx: number;
+      responses5xx: number;
+      averageLatencyMs: number;
+      failedLogins: number;
+    };
+    evidence: {
+      uploads: number;
+      uploadFailures: number;
+      averageUploadLatencyMs: number;
+      rejectedOversizedFiles: number;
+      rejectedFileTypes: number;
+      storageErrors: number;
+    };
+  };
+}
+
 export interface ProfileRepository {
   id: string;
   title: string;

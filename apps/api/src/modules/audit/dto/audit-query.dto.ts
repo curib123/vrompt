@@ -10,11 +10,26 @@ export class AuditQueryDto {
     'USER_RESTORED',
     'ROLE_CHANGED',
     'REPORT_RESOLVED',
+    'AUDIENCE_CREATED',
+    'AUDIENCE_UPDATED',
+    'AUDIENCE_ACTIVATED',
+    'AUDIENCE_DEACTIVATED',
+    'AUDIENCE_REORDERED',
+    'SETTING_UPDATED',
+    'SETTING_RESET',
   ])
   action?: string;
 
   @IsOptional()
-  @IsIn(['REPOSITORY', 'COMMENT', 'USER', 'REPORT', 'ROLE'])
+  @IsIn([
+    'REPOSITORY',
+    'COMMENT',
+    'USER',
+    'REPORT',
+    'ROLE',
+    'AUDIENCE',
+    'SETTING',
+  ])
   targetType?: string;
 
   @IsOptional()

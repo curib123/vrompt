@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 
+import { AdminShell } from '@/components/admin/admin-shell';
 import { createPrivatePageMetadata } from '@/lib/seo';
 
 export const metadata: Metadata = createPrivatePageMetadata(
@@ -9,5 +10,5 @@ export const metadata: Metadata = createPrivatePageMetadata(
 );
 
 export default function AdminLayout({ children }: { children: ReactNode }) {
-  return children;
+  return <AdminShell>{children}</AdminShell>;
 }

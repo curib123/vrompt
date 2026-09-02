@@ -24,6 +24,7 @@ import { PromptVersionsModule } from './modules/prompt-versions/prompt-versions.
 import { PromptsModule } from './modules/prompts/prompts.module';
 import { ReportsModule } from './modules/reports/reports.module';
 import { SearchModule } from './modules/search/search.module';
+import { SettingsModule } from './modules/settings/settings.module';
 import { TagsModule } from './modules/tags/tags.module';
 import { UsersModule } from './modules/users/users.module';
 
@@ -33,7 +34,14 @@ import { UsersModule } from './modules/users/users.module';
       isGlobal: true,
       cache: true,
       expandVariables: true,
-      validationSchema: envValidationSchema,
+      validate: (configuration: Record<string, unknown>) => {
+        const { error, value } = envValidationSchema.validate(configuration, {
+          abortEarly: false,
+          allowUnknown: true,
+        });
+        if (error) throw error;
+        return value as Record<string, unknown>;
+      },
     }),
     CommonModule,
     PrismaModule,
@@ -52,6 +60,7 @@ import { UsersModule } from './modules/users/users.module';
     FollowsModule,
     CollectionsModule,
     SearchModule,
+    SettingsModule,
     NotificationsModule,
     ReportsModule,
     ModerationModule,

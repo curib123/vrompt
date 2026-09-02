@@ -1,13 +1,13 @@
 export const publicPrimaryRoutes = [
-  { href: '/', label: 'Home' },
-  { href: '/search', label: 'Search' },
-  { href: '/explore', label: 'Explore' },
+  { href: '/', label: 'Home', icon: 'home' },
+  { href: '/search', label: 'Search', icon: 'search' },
+  { href: '/explore', label: 'Explore', icon: 'explore' },
 ] as const;
 
 export const memberPrimaryRoutes = [
-  { href: '/search', label: 'Home' },
-  { href: '/explore', label: 'Explore' },
-  { href: '/create', label: 'Prompts' },
+  { href: '/search', label: 'Home', icon: 'home' },
+  { href: '/explore', label: 'Explore', icon: 'explore' },
+  { href: '/create', label: 'Prompts', icon: 'create' },
 ] as const;
 
 export const primaryRoutes = memberPrimaryRoutes;

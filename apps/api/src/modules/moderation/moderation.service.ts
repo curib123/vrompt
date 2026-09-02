@@ -41,6 +41,7 @@ export class ModerationService {
     reportId: string,
     input: ModerationActionDto,
   ) {
+    await this.assertReason(input.reason);
     const report = await this.prismaService.report.findUnique({
       where: { id: reportId },
       select: { id: true },
@@ -74,6 +75,7 @@ export class ModerationService {
     repositoryId: string,
     input: ModerationActionDto,
   ) {
+    await this.assertReason(input.reason);
     const action =
       input.action === 'HIDE'
         ? ModerationActionType.HIDE_REPOSITORY
@@ -108,6 +110,7 @@ export class ModerationService {
     commentId: string,
     input: ModerationActionDto,
   ) {
+    await this.assertReason(input.reason);
     const status =
       input.action === 'HIDE' ? CommentStatus.HIDDEN : CommentStatus.VISIBLE;
     const updated = await this.prismaService.comment
@@ -130,6 +133,7 @@ export class ModerationService {
   }
 
   async user(actorId: string, userId: string, input: ModerationActionDto) {
+    await this.assertReason(input.reason);
     const status =
       input.action === 'SUSPEND' ? UserStatus.SUSPENDED : UserStatus.ACTIVE;
     const updated = await this.prismaService.user
@@ -156,6 +160,7 @@ export class ModerationService {
     evidenceId: string,
     input: ModerationActionDto,
   ) {
+    await this.assertReason(input.reason);
     const updated = await this.prismaService.promptEvidenceImage
       .update({
         where: { id: evidenceId },
@@ -197,5 +202,15 @@ export class ModerationService {
         metadata: reason ? { reason } : undefined,
       },
     });
+  }
+
+  private async assertReason(reason?: string) {
+    const setting = await this.prismaService.siteSetting.findUnique({
+      where: { key: 'moderation.requireReasons' },
+      select: { value: true },
+    });
+    if (setting?.value !== false && !reason?.trim()) {
+      throw new ForbiddenException('A moderation reason is required');
+    }
   }
 }

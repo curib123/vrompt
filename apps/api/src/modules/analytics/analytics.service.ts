@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { AccountType } from '@prisma/client';
+import { AccountType, Prisma } from '@prisma/client';
 
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { PrismaService } from '../prisma/prisma.service';
@@ -24,6 +24,11 @@ export class AnalyticsService {
   constructor(private readonly prismaService: PrismaService) {}
 
   async track(input: TrackAnalyticsEventDto, actor?: AuthenticatedUser) {
+    const setting = await this.prismaService.siteSetting.findUnique({
+      where: { key: 'privacy.analyticsEnabled' },
+      select: { value: true },
+    });
+    if (setting?.value === false) return { accepted: false };
     return this.prismaService.analyticsEvent.create({
       data: {
         name: input.name,
@@ -36,21 +41,19 @@ export class AnalyticsService {
   }
 
   async summary(input: AnalyticsSummaryQueryDto) {
-    const from = input.from ? new Date(input.from) : undefined;
-    const to = input.to ? new Date(input.to) : undefined;
+    let to = input.to ? new Date(input.to) : new Date();
+    const preset = input.preset ?? (input.from ? 'custom' : 'month');
+    const days = preset === 'week' ? 7 : preset === 'year' ? 365 : 30;
+    let from = input.from
+      ? new Date(input.from)
+      : new Date(to.getTime() - days * 24 * 60 * 60 * 1000);
+    if (from > to) [from, to] = [to, from];
     const where = {
       OR: [
         { accountType: { notIn: [AccountType.STARTER, AccountType.OFFICIAL] } },
         { accountType: null },
       ],
-      ...(from || to
-        ? {
-            createdAt: {
-              ...(from ? { gte: from } : {}),
-              ...(to ? { lte: to } : {}),
-            },
-          }
-        : {}),
+      createdAt: { gte: from, lte: to },
     };
     const grouped = await this.prismaService.analyticsEvent.groupBy({
       by: ['name'],
@@ -66,10 +69,70 @@ export class AnalyticsService {
       },
       _count: { _all: true },
     });
+    const rangeDays = Math.max(
+      1,
+      Math.ceil((to.getTime() - from.getTime()) / 86_400_000),
+    );
+    const granularity =
+      rangeDays > 120 ? 'month' : rangeDays > 31 ? 'week' : 'day';
+    const trends = await this.prismaService.$queryRaw<
+      Array<{ bucket: Date; name: string; count: bigint }>
+    >(Prisma.sql`
+      SELECT date_trunc(${granularity}, "createdAt") AS bucket, name, COUNT(*)::bigint AS count
+      FROM "AnalyticsEvent"
+      WHERE "createdAt" >= ${from} AND "createdAt" <= ${to}
+        AND ("accountType" IS NULL OR "accountType"::text NOT IN ('STARTER', 'OFFICIAL'))
+      GROUP BY bucket, name ORDER BY bucket ASC
+    `);
+    const acquisition = await this.prismaService.$queryRaw<
+      Array<{ source: string | null; count: bigint }>
+    >(Prisma.sql`
+      SELECT COALESCE(metadata->>'source', 'unknown') AS source, COUNT(*)::bigint AS count
+      FROM "AnalyticsEvent"
+      WHERE name = 'landing_viewed' AND "createdAt" >= ${from} AND "createdAt" <= ${to}
+        AND ("accountType" IS NULL OR "accountType"::text NOT IN ('STARTER', 'OFFICIAL'))
+      GROUP BY source ORDER BY count DESC
+    `);
+    const sessions = await this.prismaService.$queryRaw<
+      Array<{ count: bigint }>
+    >(Prisma.sql`
+      SELECT COUNT(DISTINCT metadata->>'journeyId')::bigint AS count
+      FROM "AnalyticsEvent"
+      WHERE "createdAt" >= ${from} AND "createdAt" <= ${to}
+        AND metadata ? 'journeyId'
+        AND ("accountType" IS NULL OR "accountType"::text NOT IN ('STARTER', 'OFFICIAL'))
+    `);
+
+    const counts = Object.fromEntries(
+      grouped.map((item) => [item.name, item._count._all]),
+    );
+    const landingViews = counts.landing_viewed ?? 0;
+    const signupStarts = counts.signup_started ?? 0;
+    const completed = counts.auth_completed ?? 0;
 
     return {
       generatedAt: new Date().toISOString(),
+      period: {
+        preset,
+        from: from.toISOString(),
+        to: to.toISOString(),
+        granularity,
+      },
       accountTypesIncluded: ['REAL', 'ANONYMOUS'],
+      overview: {
+        totalEvents: grouped.reduce((sum, item) => sum + item._count._all, 0),
+        sessions: Number(sessions[0]?.count ?? 0),
+        landingViews,
+        organicVisits: Number(
+          acquisition.find((item) => item.source === 'organic')?.count ?? 0,
+        ),
+        returningUsers: counts.returning_user ?? 0,
+        signupStarts,
+        completedSignups: completed,
+        signupConversionRate: signupStarts
+          ? Math.round((completed / signupStarts) * 1000) / 10
+          : 0,
+      },
       events: grouped.map((event) => ({
         name: event.name as AnalyticsEventName,
         count: event._count._all,
@@ -77,6 +140,15 @@ export class AnalyticsService {
       evidenceFunnel: evidence.map((event) => ({
         name: event.name as AnalyticsEventName,
         count: event._count._all,
+      })),
+      acquisition: acquisition.map((item) => ({
+        source: item.source ?? 'unknown',
+        count: Number(item.count),
+      })),
+      trends: trends.map((item) => ({
+        bucket: item.bucket.toISOString(),
+        name: item.name,
+        count: Number(item.count),
       })),
     };
   }

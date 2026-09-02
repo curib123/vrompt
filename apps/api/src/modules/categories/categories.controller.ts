@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   Patch,
@@ -42,5 +43,12 @@ export class CategoriesController {
   @Roles(UserRole.ADMIN)
   update(@Param('slug') slug: string, @Body() input: UpdateCategoryDto) {
     return this.categoriesService.update(slug, input);
+  }
+
+  @Delete(':slug')
+  @UseGuards(AccessTokenGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  remove(@Param('slug') slug: string) {
+    return this.categoriesService.remove(slug);
   }
 }

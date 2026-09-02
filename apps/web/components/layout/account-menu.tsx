@@ -126,11 +126,18 @@ export function AccountMenu() {
               onSelect={() => setOpen(false)}
             />
             {['ADMIN', 'MODERATOR'].includes(user.role) ? (
-              <MenuLink
-                href={'/admin/audiences' as Route}
-                label="Manage audiences"
-                onSelect={() => setOpen(false)}
-              />
+              <>
+                <MenuLink
+                  href={'/admin' as Route}
+                  label="Control panel"
+                  onSelect={() => setOpen(false)}
+                />
+                <MenuLink
+                  href={'/admin/audiences' as Route}
+                  label="Manage audiences"
+                  onSelect={() => setOpen(false)}
+                />
+              </>
             ) : null}
             <button
               className="mt-1 block min-h-11 w-full rounded-2xl px-4 text-left text-sm font-medium text-red-600 transition hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/30"
