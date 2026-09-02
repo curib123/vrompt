@@ -86,7 +86,12 @@ export default function RootLayout({
   children: ReactNode;
 }>) {
   return (
-    <html className={displayFont.variable} lang="en" suppressHydrationWarning>
+    <html
+      className={displayFont.variable}
+      data-scroll-behavior="smooth"
+      lang="en"
+      suppressHydrationWarning
+    >
       <body className="min-h-screen bg-white text-foreground antialiased dark:bg-[#0D0D0D]">
         <script
           dangerouslySetInnerHTML={{

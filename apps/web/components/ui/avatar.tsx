@@ -31,6 +31,7 @@ export function Avatar({
         <img
           alt=""
           className="size-full rounded-full object-cover"
+          decoding="async"
           src={avatar}
         />
       ) : (

@@ -37,10 +37,12 @@ import type {
 export function RepositoryDetail({
   slug,
   initialRepository = null,
+  initialTab,
   publicPath,
 }: {
   slug: string;
   initialRepository?: PromptRepositoryDetail | null;
+  initialTab?: string;
   publicPath?: string;
 }) {
   const { accessToken, isLoading, user } = useAuth();
@@ -430,6 +432,7 @@ export function RepositoryDetail({
       ) : null}
 
       <Tabs
+        initialId={initialTab}
         items={[
           {
             content: <OverviewTab repository={repository} />,
@@ -509,6 +512,7 @@ export function RepositoryDetail({
           <img
             alt={selectedImage.altText || selectedImage.originalFilename}
             className="max-h-[70vh] w-full rounded-2xl object-contain"
+            decoding="async"
             src={
               getMediaUrl(selectedImage.secureUrl) ?? selectedImage.secureUrl
             }
@@ -1211,6 +1215,7 @@ function ExamplesTab({
                 <img
                   alt={image.altText || image.originalFilename}
                   className="aspect-square w-full object-cover transition group-hover:scale-105"
+                  decoding="async"
                   loading="lazy"
                   src={getMediaUrl(image.secureUrl) ?? image.secureUrl}
                 />

@@ -98,6 +98,7 @@ export default async function PublicPromptPage({
       ) : null}
       <RepositoryDetail
         initialRepository={repository}
+        initialTab="prompt"
         publicPath={publicPath}
         slug={repository.slug}
       />

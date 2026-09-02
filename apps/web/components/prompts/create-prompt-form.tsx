@@ -674,6 +674,7 @@ export function CreatePromptForm({
                 <img
                   alt={image.altText || `Result image ${index + 1}`}
                   className="aspect-square w-32 rounded-2xl object-cover"
+                  decoding="async"
                   src={image.preview}
                 />
                 <div className="grid gap-3">
