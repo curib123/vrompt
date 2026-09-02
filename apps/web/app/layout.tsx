@@ -31,7 +31,7 @@ export const metadata: Metadata = {
     'AI workflows',
     'community prompts',
   ],
-  authors: [{ name: 'Vrompt', url: '/landing' }],
+  authors: [{ name: 'Vrompt', url: '/' }],
   creator: 'Vrompt',
   publisher: 'Vrompt',
   category: 'technology',
@@ -43,7 +43,7 @@ export const metadata: Metadata = {
     siteName: siteConfig.name,
     title: siteConfig.defaultTitle,
     description: siteConfig.description,
-    url: '/landing',
+    url: '/',
     images: [
       {
         url: '/opengraph-image',
@@ -98,7 +98,7 @@ export default function RootLayout({
               name: siteConfig.name,
               url: absoluteUrl('/'),
               description: siteConfig.description,
-              publisher: { '@id': absoluteUrl('/landing#organization') },
+              publisher: { '@id': absoluteUrl('/#organization') },
               potentialAction: {
                 '@type': 'SearchAction',
                 target: `${absoluteUrl('/search')}?q={search_term_string}`,
