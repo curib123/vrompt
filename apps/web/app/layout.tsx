@@ -85,18 +85,18 @@ export default function RootLayout({
             {
               '@context': 'https://schema.org',
               '@type': 'Organization',
-              '@id': absoluteUrl('/landing#organization'),
+              '@id': absoluteUrl('/#organization'),
               name: siteConfig.name,
-              url: absoluteUrl('/landing'),
+              url: absoluteUrl('/'),
               logo: absoluteUrl('/vrompt-mark.svg'),
               description: siteConfig.shortDescription,
             },
             {
               '@context': 'https://schema.org',
               '@type': 'WebSite',
-              '@id': absoluteUrl('/landing#website'),
+              '@id': absoluteUrl('/#website'),
               name: siteConfig.name,
-              url: absoluteUrl('/landing'),
+              url: absoluteUrl('/'),
               description: siteConfig.description,
               publisher: { '@id': absoluteUrl('/landing#organization') },
               potentialAction: {

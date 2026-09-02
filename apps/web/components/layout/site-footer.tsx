@@ -8,10 +8,9 @@ import { useAuth } from '@/components/providers/auth-provider';
 import { siteConfig } from '@/lib/seo';
 
 const footerLinks = [
-  { href: '/search', label: 'Home' },
+  { href: '/', label: 'Home' },
   { href: '/explore', label: 'Explore prompts' },
-  { href: '/landing', label: 'Landing' },
-  { href: '/landing#about', label: 'About Vrompt' },
+  { href: '/#about', label: 'About Vrompt' },
 ] as const;
 
 export function SiteFooter() {
@@ -21,7 +20,7 @@ export function SiteFooter() {
     <footer className="mt-16 border-t border-[#E6E6E6] bg-[#F7F7F7] dark:border-[#1A1A1A] dark:bg-[#111111] sm:mt-24">
       <div className="mx-auto grid max-w-7xl gap-10 px-4 py-10 sm:px-6 sm:py-14 lg:grid-cols-[1fr_auto] lg:items-end lg:px-8">
         <div className="grid gap-5">
-          <Link aria-label="Vrompt home" className="w-fit" href="/search">
+          <Link aria-label="Vrompt home" className="w-fit" href="/">
             <BrandLockup compact />
           </Link>
           <p className="max-w-lg text-sm leading-7 text-brand-mid">

@@ -54,7 +54,7 @@ describe('SEO metadata helpers', () => {
     const metadata = createPageMetadata({
       title: siteConfig.tagline,
       description: siteConfig.description,
-      path: '/landing',
+      path: '/',
     });
 
     expect(metadata.title).toBe(siteConfig.tagline);

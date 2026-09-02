@@ -9,7 +9,7 @@ import { createPageMetadata, siteConfig } from '@/lib/seo';
 export const metadata: Metadata = createPageMetadata({
   title: siteConfig.tagline,
   description: siteConfig.description,
-  path: '/landing',
+  path: '/',
 });
 
 export default function LandingPage() {
@@ -28,7 +28,7 @@ export default function LandingPage() {
               The prompt community
             </Badge>
             <div className="grid gap-5">
-              <h1 className="max-w-3xl text-[clamp(3.4rem,14vw,7.5rem)] font-semibold leading-[0.88] tracking-[-0.085em]">
+              <h1 className="max-w-4xl text-[clamp(3.5rem,11vw,8rem)] font-semibold leading-[0.86] tracking-[-0.09em]">
                 Vrompt
                 <br />
                 Find AI Prompts That Work.

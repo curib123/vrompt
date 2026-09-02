@@ -5,7 +5,7 @@ test('keeps primary, muted, panel, and placeholder text in sync with the theme',
 }) => {
   for (const theme of ['light', 'dark'] as const) {
     await page.emulateMedia({ colorScheme: theme });
-    await page.goto('/landing');
+    await page.goto('/');
 
     await expect(page.getByRole('heading', { level: 1 })).toHaveCSS(
       'color',
