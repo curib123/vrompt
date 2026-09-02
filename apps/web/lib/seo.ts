@@ -1,17 +1,16 @@
 import type { Metadata } from 'next';
 
 const fallbackSiteUrl = 'http://localhost:3000';
-const primaryTagline =
-  'Vrompt — Find AI Prompts That Work. Save Them. Make Them Better.';
+const primaryTagline = 'Vrompt — The Repository for AI Prompts That Work';
 
 export const siteConfig = {
   name: 'Vrompt',
   tagline: primaryTagline,
   defaultTitle: primaryTagline,
   description:
-    'Discover useful AI prompt repositories, save the ones you need, publish improved versions, and create Variants while preserving attribution and lineage.',
+    'Explore a public repository of useful AI prompts. Save prompts, publish improved versions, create attributed variants, and share what works.',
   shortDescription:
-    'Vrompt is a repository for AI prompts where people can discover prompts that work, save them, version them, and build better Variants.',
+    'Vrompt is a public repository where people discover, save, version, improve, and share useful AI prompts.',
 } as const;
 
 export function getSiteUrl() {

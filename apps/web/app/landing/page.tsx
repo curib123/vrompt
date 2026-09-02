@@ -8,7 +8,7 @@ import { createPageMetadata, siteConfig } from '@/lib/seo';
 export const metadata: Metadata = createPageMetadata({
   title: siteConfig.tagline,
   description:
-    'Discover, save, version, improve, and share useful AI prompts with Vrompt.',
+    'Explore a public repository of useful AI prompts. Save prompts, publish versions, create attributed variants, and share what works.',
   path: '/',
 });
 
@@ -153,8 +153,8 @@ export default function LandingPage() {
         >
           <SectionIntro
             eyebrow="The prompt problem"
-            title="The prompts you need are usually somewhere else."
-            text="Good AI prompts are scattered across old chats, notes, screenshots, documents, Reddit, Discord, and bookmarks. Vrompt gives them a place to grow."
+            title="Prompts are everywhere. Your prompt library should not be."
+            text="Good AI prompts are scattered across old chats, notes, screenshots, documents, Reddit, Discord, and bookmarks. Vrompt brings them into one searchable repository."
             id="problem-title"
           />
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -184,8 +184,8 @@ export default function LandingPage() {
         >
           <SectionIntro
             eyebrow="How Vrompt works"
-            title="A simple path from discovery to better work."
-            text="Browse freely, keep what helps, and build on it when you have something to add."
+            title="One repository for the full prompt lifecycle."
+            text="Discover a useful prompt, save it for later, use it, improve it through Versions, or create an attributed Variant of your own."
             id="workflow-title"
           />
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -221,9 +221,9 @@ export default function LandingPage() {
           id="features"
         >
           <SectionIntro
-            eyebrow="What you can build on"
-            title="More than a prompt list."
-            text="Vrompt keeps the useful context around a prompt, so people can learn from it, improve it, and give credit where it is due."
+            eyebrow="Built like a repository"
+            title="Every prompt has a home, history, and source."
+            text="Vrompt keeps the prompt and its useful context together, so people can understand it, reuse it, improve it, and preserve credit."
             id="features-title"
           />
           <div className="grid gap-x-8 gap-y-0 border-y border-[#E6E6E6] dark:border-[#292929] sm:grid-cols-2 lg:grid-cols-3">
@@ -252,9 +252,9 @@ export default function LandingPage() {
           id="audiences"
         >
           <SectionIntro
-            eyebrow="Made for real work"
-            title="A better prompt home for every kind of AI user."
-            text="Whether you are shipping software, studying, planning campaigns, or exploring what AI can do, your workflow can start with a prompt that works."
+            eyebrow="A repository for everyone"
+            title="Useful prompts for every kind of work."
+            text="Browse across audiences without being placed in a box. Whether you build, study, research, design, market, or create, the whole repository remains open to you."
             id="audience-title"
           />
           <div className="flex flex-wrap gap-3">
@@ -329,10 +329,10 @@ export default function LandingPage() {
                 className="max-w-3xl text-[clamp(2.5rem,6vw,5.5rem)] font-semibold leading-[0.92] tracking-[-0.07em]"
                 id="final-cta-title"
               >
-                Find a Prompt That Works.
+                Find your next useful prompt.
               </h2>
               <p className="max-w-xl text-sm leading-7 text-brand-mid sm:text-base">
-                Explore useful prompts, save what matters, and make them better.
+                Search the repository, save what matters, and make it better.
               </p>
             </div>
             <div className="flex flex-col gap-3 sm:flex-row lg:flex-col">
@@ -382,22 +382,22 @@ function Hero() {
         <div className="grid gap-12 lg:grid-cols-[minmax(0,1fr)_minmax(19rem,0.72fr)] lg:items-center lg:gap-16">
           <div className="grid gap-7">
             <p className="font-mono text-xs font-semibold uppercase tracking-[0.24em] text-brand-mid">
-              Vrompt
+              Vrompt · The AI prompt repository
             </p>
             <div className="grid gap-5">
               <h1
                 className="max-w-4xl text-[clamp(3.25rem,8vw,7.5rem)] font-semibold leading-[0.86] tracking-[-0.08em]"
                 id="hero-title"
               >
-                Find AI Prompts That Work.
+                The repository for prompts that work.
                 <span className="block text-zinc-500 dark:text-zinc-400">
-                  Save Them. Make Them Better.
+                  Find them. Save them. Improve them.
                 </span>
               </h1>
               <p className="max-w-2xl text-base leading-8 text-brand-mid sm:text-lg">
-                Discover useful AI prompt repositories, save the ones you need,
-                improve them over time, and create Variants while preserving
-                attribution and history.
+                Vrompt is a public repository for discovering, organizing, and
+                sharing useful AI prompts. Each prompt can keep its Versions,
+                examples, Variants, attribution, and history in one place.
               </p>
             </div>
             <div className="flex flex-col gap-3 sm:flex-row">
@@ -427,8 +427,8 @@ function Hero() {
               </Link>
             </div>
             <p className="text-xs font-medium text-brand-mid">
-              Browse and copy public prompts without signing in. Sign in with
-              Google or GitHub when you are ready to save, comment, or create.
+              Browse and copy the public repository without signing in. Use
+              Google or GitHub when you are ready to save, comment, or publish.
             </p>
           </div>
           <HeroCard />

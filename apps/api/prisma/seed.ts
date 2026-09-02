@@ -13,6 +13,13 @@ import {
   UserStatus,
 } from '@prisma/client';
 import { createHash } from 'node:crypto';
+import {
+  buildPromptContent,
+  creatorFirstNames,
+  creatorLastNames,
+  scenarioAngles,
+  seedScenarios,
+} from './seed-catalog';
 
 const prisma = new PrismaClient();
 
@@ -187,89 +194,9 @@ const seedRepositories: readonly SeedRepository[] = [
   },
 ] as const;
 
-const TARGET_REPOSITORY_COUNT = 1_000;
-const GENERATED_USER_COUNT = 100;
-
-const generatedTopics = [
-  {
-    category: 'Coding',
-    noun: 'API integration plan',
-    verb: 'design a reliable API integration',
-    tags: ['api', 'engineering', 'documentation'],
-  },
-  {
-    category: 'Design',
-    noun: 'product critique',
-    verb: 'critique a product interface',
-    tags: ['ux', 'ui', 'feedback'],
-  },
-  {
-    category: 'Writing',
-    noun: 'editorial outline',
-    verb: 'shape an editorial outline',
-    tags: ['writing', 'editing', 'content'],
-  },
-  {
-    category: 'Business',
-    noun: 'decision brief',
-    verb: 'turn business context into a decision brief',
-    tags: ['strategy', 'decisions', 'planning'],
-  },
-  {
-    category: 'Marketing',
-    noun: 'campaign concept',
-    verb: 'develop a measurable campaign concept',
-    tags: ['campaigns', 'copywriting', 'growth'],
-  },
-  {
-    category: 'Education',
-    noun: 'lesson plan',
-    verb: 'build an accessible lesson plan',
-    tags: ['teaching', 'learning', 'curriculum'],
-  },
-  {
-    category: 'Research',
-    noun: 'research synthesis',
-    verb: 'synthesize research notes with uncertainty',
-    tags: ['research', 'synthesis', 'sources'],
-  },
-  {
-    category: 'Productivity',
-    noun: 'weekly planning system',
-    verb: 'organize a practical weekly planning system',
-    tags: ['planning', 'workflow', 'focus'],
-  },
-  {
-    category: 'Data Analysis',
-    noun: 'metrics review',
-    verb: 'analyze a metrics snapshot',
-    tags: ['analytics', 'metrics', 'data'],
-  },
-  {
-    category: 'Image Generation',
-    noun: 'visual direction brief',
-    verb: 'write a clear visual direction brief',
-    tags: ['image-generation', 'art-direction', 'visuals'],
-  },
-  {
-    category: 'Career',
-    noun: 'career narrative',
-    verb: 'improve a career narrative',
-    tags: ['career', 'interviews', 'professional'],
-  },
-  {
-    category: 'Entertainment',
-    noun: 'story development pass',
-    verb: 'develop a story concept',
-    tags: ['storytelling', 'creative', 'characters'],
-  },
-  {
-    category: 'Other',
-    noun: 'structured thinking guide',
-    verb: 'turn an open question into a structured thinking guide',
-    tags: ['thinking', 'frameworks', 'clarity'],
-  },
-] as const;
+const TARGET_REPOSITORY_COUNT = 2_450;
+const GENERATED_USER_COUNT = 240;
+const BATCH_SIZE = 500;
 
 function stableUuid(key: string) {
   const hex = createHash('sha256')
@@ -284,6 +211,52 @@ function slugify(value: string) {
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-|-$/g, '');
+}
+
+async function createInBatches<T>(
+  data: T[],
+  create: (batch: T[]) => Promise<unknown>,
+) {
+  for (let index = 0; index < data.length; index += BATCH_SIZE) {
+    await create(data.slice(index, index + BATCH_SIZE));
+  }
+}
+
+async function clearGeneratedSeedData() {
+  await prisma.analyticsEvent.deleteMany({
+    where: {
+      id: {
+        in: Array.from({ length: 2_000 }, (_, index) =>
+          stableUuid(`analytics:demo:${index + 1}`),
+        ),
+      },
+    },
+  });
+  const generatedRepositories = await prisma.promptRepository.findMany({
+    where: { slug: { startsWith: 'vrompt-demo-' } },
+    select: { id: true },
+  });
+  const repositoryIds = generatedRepositories.map(({ id }) => id);
+  if (repositoryIds.length > 0) {
+    await prisma.promptRepository.updateMany({
+      where: { id: { in: repositoryIds } },
+      data: { currentVersionId: null },
+    });
+    await prisma.promptRepository.deleteMany({
+      where: { id: { in: repositoryIds } },
+    });
+  }
+  await prisma.user.deleteMany({
+    where: {
+      OR: [
+        {
+          username: { startsWith: 'demo-creator-' },
+          email: { endsWith: '@vrompt.local' },
+        },
+        { email: { endsWith: '@seed.vrompt.local' } },
+      ],
+    },
+  });
 }
 
 async function seedCategories() {
@@ -399,14 +372,25 @@ async function seedAccounts() {
 async function seedGeneratedAccounts() {
   const accounts = Array.from({ length: GENERATED_USER_COUNT }, (_, index) => {
     const number = String(index + 1).padStart(3, '0');
-    const username = `demo-creator-${number}`;
+    const firstName = creatorFirstNames[index % creatorFirstNames.length];
+    const lastName =
+      creatorLastNames[
+        (index * 17 + Math.floor(index / creatorFirstNames.length)) %
+          creatorLastNames.length
+      ];
+    const nameHandle = slugify(`${firstName}-${lastName}`);
+    const username =
+      index < creatorFirstNames.length
+        ? nameHandle
+        : `${nameHandle}-${String(Math.floor(index / creatorFirstNames.length) + 1)}`;
+    const category = seedScenarios[index % seedScenarios.length].category;
     return {
       id: stableUuid(`user:${username}`),
-      email: `${username}@vrompt.local`,
+      email: `${username}@seed.vrompt.local`,
       username,
       providerUserId: `seed:${username}`,
-      displayName: `Creator ${number}`,
-      bio: `A demo creator sharing practical ${generatedTopics[index % generatedTopics.length].category.toLowerCase()} workflows on Vrompt.`,
+      displayName: `${firstName} ${lastName}`,
+      bio: `Sharing practical ${category.toLowerCase()} workflows, reusable templates, and lessons from building with AI.`,
     };
   });
 
@@ -457,81 +441,124 @@ async function seedGeneratedCatalog(
     TARGET_REPOSITORY_COUNT - seedRepositories.length,
     0,
   );
-  const repositories = Array.from({ length: generatedCount }, (_, index) => {
+  const repositories: Array<{
+    number: number;
+    slug: string;
+    repositoryId: string;
+    versionId: string;
+    versionCount: number;
+    ownerId: string;
+    categoryId: string | undefined;
+    sourcePromptId: string | null;
+    rootPromptId: string | null;
+    scenario: (typeof seedScenarios)[number];
+    angle: (typeof scenarioAngles)[number];
+    title: string;
+  }> = [];
+  for (let index = 0; index < generatedCount; index += 1) {
     const number = index + 1;
-    const topic = generatedTopics[index % generatedTopics.length];
-    const owner = accounts[index % accounts.length];
-    const slug = `vrompt-demo-${String(number).padStart(4, '0')}-${slugify(topic.noun)}`;
+    const scenario = seedScenarios[index % seedScenarios.length];
+    const cycle = Math.floor(index / seedScenarios.length);
+    const angle = scenarioAngles[cycle % scenarioAngles.length];
+    const edition = ['Field Guide', 'Team Template', 'Practical Playbook'][
+      Math.floor(cycle / scenarioAngles.length) % 3
+    ];
+    const title = `${scenario.title} — ${angle.name}${cycle >= scenarioAngles.length ? ` ${edition}` : ''}`;
+    const owner = accounts[(index * 37 + cycle) % accounts.length];
+    const slug = `vrompt-demo-${String(number).padStart(4, '0')}-${slugify(scenario.title)}-${slugify(angle.name)}`;
     const repositoryId = stableUuid(`repository:${slug}`);
-    const versionId = stableUuid(`version:${slug}:1`);
+    const versionCount =
+      number % 11 === 0 ? 4 : number % 5 === 0 ? 3 : number % 2 === 0 ? 2 : 1;
     const source =
-      number > 1 && number % 17 === 0
-        ? stableUuid(
-            `repository:vrompt-demo-${String(number - 1).padStart(4, '0')}-${slugify(generatedTopics[(index - 1) % generatedTopics.length].noun)}`,
-          )
-        : null;
-    return {
+      index >= seedScenarios.length && number % 6 === 0
+        ? repositories[index - seedScenarios.length]
+        : undefined;
+    repositories.push({
       number,
       slug,
       repositoryId,
-      versionId,
+      versionId: stableUuid(`version:${slug}:${versionCount}`),
+      versionCount,
       ownerId: owner.id,
-      categoryId: categories.get(slugify(topic.category)),
-      sourcePromptId: source,
-      rootPromptId: source,
-      topic,
-    };
-  });
+      categoryId: categories.get(slugify(scenario.category)),
+      sourcePromptId: source?.repositoryId ?? null,
+      rootPromptId: source?.rootPromptId ?? source?.repositoryId ?? null,
+      scenario,
+      angle,
+      title,
+    });
+  }
 
   if (repositories.some((repository) => !repository.categoryId)) {
     throw new Error('Generated catalog contains an unknown category');
   }
 
-  await prisma.promptRepository.createMany({
-    data: repositories.map((repository) => ({
+  await createInBatches(
+    repositories.map((repository) => ({
       id: repository.repositoryId,
       ownerId: repository.ownerId,
       categoryId: repository.categoryId as string,
       sourcePromptId: repository.sourcePromptId,
       rootPromptId: repository.rootPromptId,
-      title: `${repository.topic.noun} ${repository.number}`,
+      title: repository.title,
       slug: repository.slug,
-      description: `A practical workflow to ${repository.topic.verb} for a modern team. It favors clear assumptions, useful constraints, and an output that can be reviewed.`,
-      aiCompatibility: ['GPT-4.1', 'Claude', 'Gemini'][repository.number % 3],
+      description: `A reusable ${repository.angle.name.toLowerCase()} workflow to ${repository.scenario.action}. Includes structured variables, realistic examples, verification steps, and ${repository.versionCount} published version${repository.versionCount === 1 ? '' : 's'}.`,
+      aiCompatibility: 'OpenAI GPT, Claude, Gemini',
       visibility: PromptVisibility.PUBLIC,
       status: PromptRepositoryStatus.ACTIVE,
       license: 'CC BY 4.0',
     })),
-    skipDuplicates: true,
-  });
-  await prisma.promptVersion.createMany({
-    data: repositories.map((repository) => ({
-      id: repository.versionId,
-      repositoryId: repository.repositoryId,
-      authorId: repository.ownerId,
-      versionNumber: 1,
-      content: `You are a thoughtful ${repository.topic.category.toLowerCase()} collaborator. Help me ${repository.topic.verb}.\n\nContext:\n{{context}}\n\nRequirements:\n- State important assumptions before making recommendations.\n- Separate facts, interpretation, and open questions.\n- Produce a concise, structured result that a teammate can review.\n- Do not invent missing details; ask for them when they materially change the result.`,
-      changelog: 'Initial seeded version for the development catalog.',
-      status: PromptVersionStatus.PUBLISHED,
-      publishedAt: new Date(
-        Date.UTC(2025, repository.number % 12, (repository.number % 27) + 1),
-      ),
-    })),
-    skipDuplicates: true,
-  });
+    (data) => prisma.promptRepository.createMany({ data }),
+  );
+  const versions = repositories.flatMap((repository) =>
+    Array.from({ length: repository.versionCount }, (_, versionIndex) => {
+      const versionNumber = versionIndex + 1;
+      return {
+        id: stableUuid(`version:${repository.slug}:${versionNumber}`),
+        repositoryId: repository.repositoryId,
+        authorId: repository.ownerId,
+        versionNumber,
+        content: buildPromptContent(
+          repository.scenario,
+          repository.angle,
+          versionNumber,
+        ),
+        changelog: [
+          'Initial scenario-specific prompt with explicit inputs and output contract.',
+          'Added a reusable result-quality checklist.',
+          'Added confidence labels and lightweight validation guidance.',
+          'Added an alternative approach for important tradeoffs.',
+        ][versionIndex],
+        status: PromptVersionStatus.PUBLISHED,
+        publishedAt: new Date(
+          Date.UTC(
+            2025 + Math.floor((repository.number + versionIndex) / 365),
+            (repository.number + versionIndex * 2) % 12,
+            ((repository.number * 7 + versionIndex) % 27) + 1,
+          ),
+        ),
+      };
+    }),
+  );
+  await createInBatches(versions, (data) =>
+    prisma.promptVersion.createMany({ data }),
+  );
   await prisma.$executeRaw`
     UPDATE "PromptRepository" AS repository
-    SET "currentVersionId" = version.id
-    FROM "PromptVersion" AS version
-    WHERE version."repositoryId" = repository.id
-      AND version."versionNumber" = 1
+    SET "currentVersionId" = latest.id
+    FROM (
+      SELECT DISTINCT ON ("repositoryId") id, "repositoryId"
+      FROM "PromptVersion"
+      ORDER BY "repositoryId", "versionNumber" DESC
+    ) AS latest
+    WHERE latest."repositoryId" = repository.id
       AND repository.slug LIKE 'vrompt-demo-%'
   `;
 
   const tags = Array.from(
     new Map(
       repositories.flatMap((repository) =>
-        repository.topic.tags.map((name) => [name, name] as const),
+        repository.scenario.tags.map((name) => [name, name] as const),
       ),
     ).values(),
   );
@@ -552,53 +579,68 @@ async function seedGeneratedCatalog(
   const tagIds = new Map(tagRows.map((tag) => [tag.normalizedName, tag.id]));
   await prisma.promptTag.createMany({
     data: repositories.flatMap((repository) =>
-      repository.topic.tags.map((name) => ({
+      repository.scenario.tags.map((name) => ({
         promptRepositoryId: repository.repositoryId,
         tagId: tagIds.get(name) as string,
       })),
     ),
     skipDuplicates: true,
   });
-  const promptAudiences = (
-    await Promise.all(
-      repositories.map(async (repository) =>
-        (await audienceIdsForCategory(repository.topic.category)).map(
-          (audienceId) => ({
-            promptRepositoryId: repository.repositoryId,
-            audienceId,
-          }),
-        ),
-      ),
-    )
-  ).flat();
-  await prisma.promptAudience.createMany({
-    data: promptAudiences,
-    skipDuplicates: true,
+  const audienceRows = await prisma.audience.findMany({
+    select: { id: true, name: true },
   });
-
-  await prisma.promptVariable.createMany({
-    data: repositories.map((repository) => ({
-      id: stableUuid(`variable:${repository.slug}:context`),
-      promptVersionId: repository.versionId,
-      name: 'context',
-      description: 'The relevant context, notes, or source material.',
-      required: true,
-      sortOrder: 0,
+  const audienceIds = new Map(audienceRows.map(({ id, name }) => [name, id]));
+  const promptAudiences = repositories.flatMap((repository) =>
+    repository.scenario.audiences.map((name) => ({
+      promptRepositoryId: repository.repositoryId,
+      audienceId: audienceIds.get(name) as string,
     })),
-    skipDuplicates: true,
-  });
-  await prisma.promptExample.createMany({
-    data: repositories.map((repository) => ({
+  );
+  if (promptAudiences.some(({ audienceId }) => !audienceId)) {
+    throw new Error('Generated catalog contains an unknown audience');
+  }
+  await createInBatches(promptAudiences, (data) =>
+    prisma.promptAudience.createMany({ data }),
+  );
+
+  const variableDefinitions = [
+    ['goal', 'The concrete outcome this prompt should help achieve.'],
+    [
+      'context',
+      'Relevant facts, notes, data, source material, or existing work.',
+    ],
+    ['audience', 'Who will use or read the result and their knowledge level.'],
+    [
+      'constraints',
+      'Hard limits such as scope, time, budget, policy, format, or tools.',
+    ],
+  ] as const;
+  const variables = versions.flatMap((version) =>
+    variableDefinitions.map(([name, description], sortOrder) => ({
+      id: stableUuid(`variable:${version.id}:${name}`),
+      promptVersionId: version.id,
+      name,
+      description,
+      required: name !== 'constraints',
+      sortOrder,
+    })),
+  );
+  await createInBatches(variables, (data) =>
+    prisma.promptVariable.createMany({ data }),
+  );
+  await createInBatches(
+    repositories.map((repository) => ({
       id: stableUuid(`example:${repository.slug}:1`),
       promptVersionId: repository.versionId,
-      title: 'Seeded workflow example',
-      input: 'A team needs a clear first draft from messy notes.',
-      output:
-        'Return a structured draft, list assumptions, and identify open questions.',
+      title: repository.scenario.image
+        ? 'Sample image direction and expected result'
+        : 'Realistic workflow example',
+      input: `Goal: ${repository.scenario.exampleInput}\nAudience: ${repository.scenario.audiences.join(' and ')}\nConstraints: Use only the provided facts; keep the result reviewable.`,
+      output: repository.scenario.exampleOutput,
       sortOrder: 0,
     })),
-    skipDuplicates: true,
-  });
+    (data) => prisma.promptExample.createMany({ data }),
+  );
 
   await prisma.$executeRaw`
     UPDATE "PromptRepository" AS repository
@@ -731,7 +773,7 @@ async function seedGeneratedInteractions(
   const collections = accounts.map((account, index) => ({
     id: stableUuid(`collection:demo:${index + 1}`),
     ownerId: account.id,
-    name: `${generatedTopics[index % generatedTopics.length].category} Workflows`,
+    name: `${seedScenarios[index % seedScenarios.length].category} Workflows ${String(index + 1).padStart(3, '0')}`,
     slug: `demo-${String(index + 1).padStart(3, '0')}-workflows`,
     description:
       'A public set of practical prompt workflows from the development catalog.',
@@ -768,7 +810,7 @@ async function seedGeneratedInteractions(
         actorId: account.id,
         promptRepositoryId: repository.repositoryId,
         type: ActivityType.VERSION_PUBLISHED,
-        metadata: { version: 1 },
+        metadata: { version: repository.versionCount },
       },
     ];
   });
@@ -993,6 +1035,7 @@ async function main() {
   await prisma.$queryRaw`SELECT 1`;
   await seedCategories();
   await seedAudiences();
+  await clearGeneratedSeedData();
   const accounts = await seedAccounts();
   const generatedAccounts = await seedGeneratedAccounts();
   const repositories = new Map<
@@ -1056,7 +1099,7 @@ async function main() {
   );
 
   console.log(
-    `Seeded ${officialCategories.length} categories, ${seedUsers.length + generatedAccounts.length} demo accounts, ${seedRepositories.length + generatedRepositories.length} repositories, and connected demo interactions.`,
+    `Seeded ${officialCategories.length} categories, ${seedUsers.length + generatedAccounts.length} sample accounts, ${seedRepositories.length + generatedRepositories.length} repositories, and connected sample interactions.`,
   );
 }
 

@@ -1,4 +1,7 @@
+'use client';
+
 import { cn } from '@/lib/cn';
+import { useState } from 'react';
 
 export function Avatar({
   avatar,
@@ -9,12 +12,18 @@ export function Avatar({
   name: string;
   className?: string;
 }) {
-  const initials = name
-    .split(' ')
-    .map((part) => part[0])
-    .slice(0, 2)
-    .join('')
-    .toUpperCase();
+  const [failedAvatar, setFailedAvatar] = useState<string | null>(null);
+  const initials =
+    name
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean)
+      .map((part) => part[0])
+      .slice(0, 2)
+      .join('')
+      .toUpperCase() || '?';
+
+  const showImage = Boolean(avatar && failedAvatar !== avatar);
 
   return (
     <div
@@ -25,14 +34,15 @@ export function Avatar({
       )}
       role="img"
     >
-      {avatar ? (
+      {showImage ? (
         // The API validates avatar uploads and Google supplies trusted HTTPS URLs.
         // eslint-disable-next-line @next/next/no-img-element
         <img
           alt=""
           className="size-full rounded-full object-cover"
           decoding="async"
-          src={avatar}
+          onError={() => setFailedAvatar(avatar ?? null)}
+          src={avatar ?? undefined}
         />
       ) : (
         initials
