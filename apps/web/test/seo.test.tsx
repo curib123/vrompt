@@ -1,4 +1,5 @@
 import {
+  createBreadcrumbList,
   createPageMetadata,
   createPrivatePageMetadata,
   siteConfig,
@@ -22,6 +23,9 @@ describe('SEO metadata helpers', () => {
     expect(metadata.openGraph).toMatchObject({
       title: 'Explore prompts',
       url: '/explore',
+    });
+    expect(metadata.twitter).toMatchObject({
+      images: ['/opengraph-image'],
     });
   });
 
@@ -62,5 +66,41 @@ describe('SEO metadata helpers', () => {
       title: siteConfig.tagline,
       description: siteConfig.description,
     });
+  });
+
+  it('creates absolute breadcrumb schema for public content', () => {
+    const breadcrumbs = createBreadcrumbList([
+      { name: 'Home', path: '/' },
+      { name: 'Explore prompts', path: '/explore' },
+      { name: 'Writing prompt' },
+    ]);
+
+    expect(breadcrumbs).toMatchObject({
+      '@type': 'BreadcrumbList',
+      itemListElement: [
+        { position: 1, item: expect.stringContaining('/') },
+        { position: 2, item: expect.stringContaining('/explore') },
+        { position: 3, name: 'Writing prompt' },
+      ],
+    });
+    expect(breadcrumbs.itemListElement[2]).not.toHaveProperty('item');
+  });
+
+  it('normalizes the configured public origin for proxy deployments', () => {
+    const previous = process.env.NEXT_PUBLIC_SITE_URL;
+    process.env.NEXT_PUBLIC_SITE_URL = 'https://example.com/vrompt/?preview=1';
+
+    expect(
+      createPageMetadata({
+        title: 'Explore prompts',
+        description: 'Find useful AI prompts.',
+        path: '/explore',
+      }).openGraph,
+    ).toMatchObject({
+      url: '/explore',
+    });
+
+    if (previous === undefined) delete process.env.NEXT_PUBLIC_SITE_URL;
+    else process.env.NEXT_PUBLIC_SITE_URL = previous;
   });
 });

@@ -16,8 +16,8 @@ export const siteConfig = {
 
 export function getSiteUrl() {
   const configuredUrl =
-    process.env.NEXT_PUBLIC_SITE_URL ??
-    process.env.WEB_ORIGIN ??
+    process.env.NEXT_PUBLIC_SITE_URL?.trim() ||
+    process.env.WEB_ORIGIN?.trim() ||
     fallbackSiteUrl;
 
   try {
@@ -41,15 +41,37 @@ export function truncateSeoText(value: string, maximum = 160) {
   return `${normalized.slice(0, maximum - 1).trimEnd()}…`;
 }
 
+export type BreadcrumbItem = {
+  name: string;
+  path?: string;
+};
+
+export function createBreadcrumbList(items: BreadcrumbItem[]) {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: items.map((item, index) => ({
+      '@type': 'ListItem',
+      position: index + 1,
+      name: item.name,
+      ...(item.path ? { item: absoluteUrl(item.path) } : {}),
+    })),
+  };
+}
+
 export function createPageMetadata({
+  absoluteTitle = false,
   title,
   description,
+  imagePath = '/opengraph-image',
   path,
   index = true,
   follow = index,
 }: {
+  absoluteTitle?: boolean;
   title: string;
   description: string;
+  imagePath?: string;
   path: string;
   index?: boolean;
   follow?: boolean;
@@ -61,7 +83,7 @@ export function createPageMetadata({
   const conciseDescription = truncateSeoText(description);
 
   return {
-    title: conciseTitle,
+    title: absoluteTitle ? { absolute: conciseTitle } : conciseTitle,
     description: conciseDescription,
     alternates: { canonical: path },
     openGraph: {
@@ -73,7 +95,7 @@ export function createPageMetadata({
       url: path,
       images: [
         {
-          url: '/opengraph-image',
+          url: imagePath,
           width: 1200,
           height: 630,
           alt: siteConfig.tagline,
@@ -84,7 +106,7 @@ export function createPageMetadata({
       card: 'summary_large_image',
       title: conciseTitle,
       description: conciseDescription,
-      images: ['/opengraph-image'],
+      images: [imagePath],
     },
     robots: index
       ? {

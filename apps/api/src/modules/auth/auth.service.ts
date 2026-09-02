@@ -402,7 +402,7 @@ export class AuthService {
     const base =
       source
         .toLowerCase()
-        .replace(/[^a-z0-9_]/g, '')
+        .replace(/[^a-z0-9_-]/g, '')
         .slice(0, 25) || 'creator';
     const suffix = createHash('sha256')
       .update(subject)

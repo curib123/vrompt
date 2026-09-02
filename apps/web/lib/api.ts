@@ -147,6 +147,7 @@ export interface SearchResponse {
 
 export interface SitemapResponse {
   prompts: Array<{
+    id: string;
     slug: string;
     updatedAt: string;
     owner: { username: string };
@@ -566,7 +567,13 @@ export async function fetchApiHealth(): Promise<ApiHealthResponse | null> {
 
 export async function fetchExploreData(): Promise<ExploreResponse | null> {
   try {
-    return await apiRequest<ExploreResponse>('/search/explore');
+    const response = await fetch(`${getApiBaseUrl()}/search/explore`, {
+      headers: { accept: 'application/json' },
+      next: { revalidate: 300 },
+    });
+
+    if (!response.ok) return null;
+    return (await response.json()) as ExploreResponse;
   } catch {
     return null;
   }
@@ -576,7 +583,13 @@ export async function fetchSearchData(
   params: URLSearchParams,
 ): Promise<SearchResponse | null> {
   try {
-    return await apiRequest<SearchResponse>(`/search?${params.toString()}`);
+    const response = await fetch(
+      `${getApiBaseUrl()}/search?${params.toString()}`,
+      { cache: 'no-store', headers: { accept: 'application/json' } },
+    );
+
+    if (!response.ok) return null;
+    return (await response.json()) as SearchResponse;
   } catch {
     return null;
   }

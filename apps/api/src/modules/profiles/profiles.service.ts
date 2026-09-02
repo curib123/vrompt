@@ -10,7 +10,7 @@ import { MediaStorageService } from '../common/media-storage/media-storage.servi
 import { PrismaService } from '../prisma/prisma.service';
 import type { UpdateProfileDto } from './dto/update-profile.dto';
 
-const usernamePattern = /^[a-z0-9](?:[a-z0-9_]{1,30}[a-z0-9])?$/;
+const usernamePattern = /^[a-z0-9](?:[a-z0-9_-]{1,30}[a-z0-9])?$/;
 
 const profileSelect = {
   id: true,

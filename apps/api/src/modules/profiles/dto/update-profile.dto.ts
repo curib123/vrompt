@@ -9,9 +9,9 @@ import {
 export class UpdateProfileDto {
   @IsOptional()
   @IsString()
-  @Matches(/^[a-z0-9](?:[a-z0-9_]{1,30}[a-z0-9])?$/, {
+  @Matches(/^[a-z0-9](?:[a-z0-9_-]{1,30}[a-z0-9])?$/, {
     message:
-      'Username must be 3-32 characters and use lowercase letters, numbers, or underscores',
+      'Username must be 3-32 characters and use lowercase letters, numbers, underscores, or hyphens',
   })
   username?: string;
 

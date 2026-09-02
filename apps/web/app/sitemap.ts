@@ -2,6 +2,7 @@ import type { MetadataRoute } from 'next';
 
 import { getSitemapData } from '@/lib/seo-data';
 import { absoluteUrl } from '@/lib/seo';
+import { getPublicPromptPath } from '@/lib/prompt-sharing';
 
 export const revalidate = 3600;
 
@@ -25,7 +26,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   return [
     ...staticEntries,
     ...data.prompts.map((prompt) => ({
-      url: absoluteUrl(`/p/${encodeURIComponent(prompt.slug)}`),
+      url: absoluteUrl(getPublicPromptPath(prompt.id, prompt.slug)),
       lastModified: prompt.updatedAt,
       changeFrequency: 'weekly' as const,
       priority: 0.8,

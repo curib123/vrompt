@@ -9,6 +9,7 @@ import { siteConfig } from '@/lib/seo';
 
 const footerLinks = [
   { href: '/', label: 'Home' },
+  { href: '/search', label: 'Search prompts' },
   { href: '/explore', label: 'Explore prompts' },
   { href: '/#about', label: 'About Vrompt' },
 ] as const;

@@ -27,7 +27,7 @@ export function CollectionDetailView({
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (isLoading) return;
+    if (isLoading || (initialCollection && !accessToken)) return;
     let active = true;
     void apiRequest<CollectionDetail>(
       `/collections/${encodeURIComponent(username)}/${encodeURIComponent(slug)}`,
@@ -45,7 +45,7 @@ export function CollectionDetailView({
     return () => {
       active = false;
     };
-  }, [accessToken, isLoading, slug, username]);
+  }, [accessToken, initialCollection, isLoading, slug, username]);
 
   if (!collection && !error)
     return <Skeleton className="h-96 rounded-[1.5rem]" />;

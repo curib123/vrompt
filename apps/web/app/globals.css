@@ -1,5 +1,7 @@
 @import 'tailwindcss';
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme inline {
   --font-sans: var(--font-display);
   --font-mono: var(--font-display);
@@ -17,7 +19,7 @@
 }
 
 :root {
-  color-scheme: light dark;
+  color-scheme: light;
   --brand-ink: #0d0d0d;
   --brand-charcoal: #1a1a1a;
   --brand-mid: #4d4d4d;
@@ -27,7 +29,8 @@
 }
 
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not(.light):not(.dark) {
+    color-scheme: dark;
     --brand-ink: #ffffff;
     --brand-charcoal: #e6e6e6;
     --brand-mid: #bdbdbd;
@@ -35,6 +38,16 @@
     --brand-paper: #0d0d0d;
     --brand-grid: rgba(255, 255, 255, 0.055);
   }
+}
+
+:root.dark {
+  color-scheme: dark;
+  --brand-ink: #ffffff;
+  --brand-charcoal: #e6e6e6;
+  --brand-mid: #bdbdbd;
+  --brand-soft: #1a1a1a;
+  --brand-paper: #0d0d0d;
+  --brand-grid: rgba(255, 255, 255, 0.055);
 }
 
 * {
@@ -66,12 +79,6 @@ textarea {
 :focus-visible {
   outline: 2px solid var(--brand-ink);
   outline-offset: 3px;
-}
-
-@media (prefers-color-scheme: dark) {
-  :focus-visible {
-    outline-color: var(--brand-paper);
-  }
 }
 
 ::selection {
@@ -134,12 +141,5 @@ textarea {
   .drawer-backdrop,
   .drawer-panel {
     animation: none;
-  }
-}
-
-@media (prefers-color-scheme: dark) {
-  ::selection {
-    background: #ffffff;
-    color: #0a0a0a;
   }
 }

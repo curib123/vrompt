@@ -132,11 +132,7 @@ export function MobileNav() {
           >
             <div className="pb-4">
               <div className="flex items-center justify-between gap-4">
-                <Link
-                  aria-label="Vrompt home"
-                  href="/search"
-                  onClick={closeDrawer}
-                >
+                <Link aria-label="Vrompt home" href="/" onClick={closeDrawer}>
                   <BrandLockup compact />
                 </Link>
                 <Button
@@ -188,7 +184,9 @@ export function MobileNav() {
                       @{user.username}
                     </span>
                     <span className="mt-2 inline-flex rounded-full border border-white/15 bg-white/10 px-2.5 py-1 text-[0.65rem] font-semibold uppercase tracking-[0.14em] !text-on-dark-muted">
-                      {formatCreatorTier(profile?.accountType || user.accountType)}
+                      {formatCreatorTier(
+                        profile?.accountType || user.accountType,
+                      )}
                     </span>
                   </span>
                   <span
@@ -199,9 +197,18 @@ export function MobileNav() {
                   </span>
                 </span>
                 <span className="relative mt-4 grid grid-cols-3 divide-x divide-white/10 border-t border-white/10 pt-3">
-                  <ProfileStat label="Prompts" value={profile?.stats.repositories} />
-                  <ProfileStat label="Followers" value={profile?.stats.followers} />
-                  <ProfileStat label="Following" value={profile?.stats.following} />
+                  <ProfileStat
+                    label="Prompts"
+                    value={profile?.stats.repositories}
+                  />
+                  <ProfileStat
+                    label="Followers"
+                    value={profile?.stats.followers}
+                  />
+                  <ProfileStat
+                    label="Following"
+                    value={profile?.stats.following}
+                  />
                 </span>
               </Link>
             ) : null}
@@ -257,8 +264,7 @@ export function MobileNav() {
             <div
               className={cn(
                 'grid shrink-0 gap-3',
-                !user &&
-                  'border-t border-[#E6E6E6] pt-4 dark:border-[#1A1A1A]',
+                !user && 'border-t border-[#E6E6E6] pt-4 dark:border-[#1A1A1A]',
               )}
             >
               {isLoading ? (
@@ -276,7 +282,7 @@ export function MobileNav() {
                   </Link>
                   <Link
                     className="inline-flex min-h-11 items-center justify-center whitespace-nowrap rounded-full bg-[#0D0D0D] px-3 py-2 text-sm font-medium !text-background transition hover:bg-[#1A1A1A] dark:bg-white dark:hover:bg-[#E6E6E6]"
-                    href="/register"
+                    href="/login"
                     onClick={closeDrawer}
                   >
                     Become a creator
@@ -346,7 +352,7 @@ function DrawerIcon({ name }: { name: string }) {
     viewBox: '0 0 24 24',
   };
 
-  if (name === '/search') {
+  if (name === '/' || name === '/search') {
     return (
       <svg aria-hidden="true" {...common}>
         <path d="m3 11 9-7 9 7" />

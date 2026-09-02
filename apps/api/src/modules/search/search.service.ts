@@ -333,13 +333,35 @@ export class SearchService {
         },
         orderBy: { updatedAt: 'desc' },
         select: {
+          id: true,
           slug: true,
           updatedAt: true,
           owner: { select: { username: true } },
         },
       }),
       this.prismaService.user.findMany({
-        where: { status: 'ACTIVE' },
+        where: {
+          status: 'ACTIVE',
+          OR: [
+            {
+              ownedRepositories: {
+                some: {
+                  status: PromptRepositoryStatus.ACTIVE,
+                  visibility: PromptVisibility.PUBLIC,
+                },
+              },
+            },
+            {
+              collections: {
+                some: {
+                  archivedAt: null,
+                  visibility: 'PUBLIC',
+                  items: { some: {} },
+                },
+              },
+            },
+          ],
+        },
         orderBy: { updatedAt: 'desc' },
         select: { username: true, updatedAt: true },
       }),
@@ -350,11 +372,18 @@ export class SearchService {
           slug: true,
           updatedAt: true,
           owner: { select: { username: true } },
+          _count: { select: { items: true } },
         },
       }),
     ]);
 
-    return { prompts, profiles, collections };
+    return {
+      prompts,
+      profiles,
+      collections: collections
+        .filter((collection) => collection._count.items > 0)
+        .map(({ _count: _collectionCount, ...collection }) => collection),
+    };
   }
 
   private orderBy(sort: SearchQueryDto['sort'], hasQuery: boolean) {

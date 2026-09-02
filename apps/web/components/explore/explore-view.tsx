@@ -54,7 +54,7 @@ export function ExploreView({
   }
 
   return (
-    <div className="grid gap-14">
+    <div className="grid min-w-0 gap-10 sm:gap-14">
       <header className="max-w-3xl border-b border-[#E6E6E6] pb-8 dark:border-[#1A1A1A]">
         <p className="font-mono text-xs uppercase tracking-[0.24em] text-zinc-600 dark:text-zinc-400">
           Prompt library
@@ -122,7 +122,7 @@ export function ExploreView({
               >
                 <Card className="h-full transition hover:-translate-y-0.5 hover:border-black dark:hover:border-white">
                   <Badge>{collection._count.items} prompts</Badge>
-                  <h2 className="mt-4 text-2xl font-semibold">
+                  <h2 className="mt-4 break-words text-2xl font-semibold">
                     {collection.name}
                   </h2>
                   <p className="mt-2 text-sm leading-7 text-zinc-600 dark:text-zinc-400">
@@ -157,7 +157,7 @@ function ExploreSection({
           No prompts in this view yet.
         </p>
       ) : (
-        <div className="grid auto-cols-[minmax(17rem,85vw)] grid-flow-col gap-4 overflow-x-auto overscroll-x-contain pb-3 pr-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:auto-cols-auto md:grid-flow-row md:grid-cols-2 md:overflow-visible md:pb-0 md:pr-0">
+        <div className="grid min-w-0 max-w-full auto-cols-[minmax(17rem,85vw)] grid-flow-col gap-4 overflow-x-auto overscroll-x-contain pb-3 pr-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:auto-cols-auto md:grid-flow-row md:grid-cols-2 md:overflow-visible md:pb-0 md:pr-0">
           {items.slice(0, 4).map((item) => (
             <RepositoryCard
               item={item}
@@ -216,7 +216,7 @@ function RepositoryCard({
                 : 'likes'}
         </Badge>
       </div>
-      <h3 className="mt-4 text-xl font-semibold tracking-tight">
+      <h3 className="mt-4 break-words text-xl font-semibold tracking-tight">
         {item.title}
       </h3>
       <p className="mt-2 line-clamp-2 text-sm leading-6 text-zinc-600 dark:text-zinc-400">
@@ -242,7 +242,7 @@ function SectionHeading({
         <p className="font-mono text-xs uppercase tracking-[0.24em] text-zinc-600 dark:text-zinc-400">
           Prompt library
         </p>
-        <h2 className="mt-2 text-3xl font-semibold tracking-[-0.05em]">
+        <h2 className="mt-2 break-words text-2xl font-semibold tracking-[-0.05em] sm:text-3xl">
           {title}
         </h2>
       </div>

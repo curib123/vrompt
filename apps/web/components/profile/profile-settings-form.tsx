@@ -208,7 +208,7 @@ export function ProfileSettingsForm({
         >
           <FieldGroup className="sm:grid-cols-2">
             <FormField
-              description="3-32 lowercase letters, numbers, or underscores."
+              description="3-32 lowercase letters, numbers, underscores, or hyphens."
               label="Username"
             >
               <Input
@@ -220,7 +220,7 @@ export function ProfileSettingsForm({
                     username: event.target.value.toLowerCase(),
                   })
                 }
-                pattern="[a-z0-9_]+"
+                pattern="[a-z0-9_-]+"
                 required
                 value={form.username}
               />

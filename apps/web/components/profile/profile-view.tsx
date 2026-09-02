@@ -42,6 +42,10 @@ export function ProfileView({
   );
 
   useEffect(() => {
+    if (isLoading || (initialProfile && !accessToken)) {
+      return;
+    }
+
     let active = true;
 
     void apiRequest<ProfileResponse>(
@@ -66,7 +70,7 @@ export function ProfileView({
     return () => {
       active = false;
     };
-  }, [accessToken, isLoading, username]);
+  }, [accessToken, initialProfile, isLoading, username]);
 
   if (error) {
     return (

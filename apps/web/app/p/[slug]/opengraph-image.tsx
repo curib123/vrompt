@@ -13,9 +13,13 @@ export default async function PromptOpenGraphImage({
 }) {
   const { slug } = await params;
   const repository = await getPromptSeoData(slug);
-  const title = repository?.title || 'Discover a better prompt';
-  const creator = repository?.owner.username;
-  const category = repository?.category?.name || 'AI Prompt';
+  const publicRepository =
+    repository?.visibility === 'PUBLIC' && repository.status === 'ACTIVE'
+      ? repository
+      : null;
+  const title = publicRepository?.title || 'Discover a better prompt';
+  const creator = publicRepository?.owner.username;
+  const category = publicRepository?.category?.name || 'AI Prompt';
 
   return new ImageResponse(
     <div

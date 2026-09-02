@@ -15,7 +15,7 @@ export default function robots(): MetadataRoute.Robots {
         '/following',
         '/login',
         '/notifications',
-        '/register',
+        '/onboarding/',
         '/saved',
         '/search?*',
         '/settings',

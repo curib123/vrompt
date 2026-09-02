@@ -110,7 +110,8 @@ category and tag edits are reserved for admins for future moderation tooling.
 
 Phase 9 adds repository creation with Version 1, metadata, variables, examples,
 visibility, safe slugs, and up to three evidence images. Phase 10 adds the
-repository detail screen at `/p/[slug]`, including prompt, examples, version,
+repository detail screen at `/prompts/[id]/[slug]` (with permanent redirects
+from the legacy `/p/[slug]` route), including prompt, examples, version,
 activity, and Variant Lineage placeholders plus an accessible evidence viewer.
 Phase 11 records deduplicated copy events, and Phase 12 adds immutable versions,
 version history, basic comparison, and owner-only version publishing.
@@ -209,6 +210,12 @@ The development seed now creates exactly 1,000 public prompt repositories plus
 100 connected demo creators, versions, tags, variants, collections, follows,
 saves, likes, comments, notifications, activity, and analytics. Run it with
 `docker compose -f docker-compose.yml -f docker-compose.dev.yml --profile seed run --rm vrompt-seed`.
+
+## Search engine setup
+
+Production SEO operations, Search Console/Bing submission steps, proxy checks,
+and the `NEXT_PUBLIC_SITE_URL` requirement are documented in
+[`docs/seo-webmaster.md`](docs/seo-webmaster.md).
 
 ## Docker development
 

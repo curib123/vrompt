@@ -8,6 +8,7 @@ import { BrandLockup } from '@/components/brand/brand-mark';
 import { AccountMenu } from '@/components/layout/account-menu';
 import { MobileNav } from '@/components/layout/mobile-nav';
 import { useAuth } from '@/components/providers/auth-provider';
+import { ThemeToggle } from '@/components/theme/theme-toggle';
 import { getButtonClasses } from '@/components/ui/button';
 import { cn } from '@/lib/cn';
 import { primaryRoutes, publicPrimaryRoutes } from '@/lib/routes';
@@ -50,6 +51,7 @@ export function SiteHeader() {
             </nav>
           </div>
           <div className="flex items-center gap-2">
+            <ThemeToggle />
             {user ? (
               <Link
                 className={cn(
@@ -78,7 +80,7 @@ export function SiteHeader() {
                 </Link>
                 <Link
                   className={getButtonClasses('primary', 'whitespace-nowrap')}
-                  href="/register"
+                  href="/login"
                 >
                   Become a creator
                 </Link>
@@ -96,6 +98,7 @@ export function SiteHeader() {
             <BrandLockup compact />
           </Link>
           <div className="ml-auto flex min-w-0 items-center">
+            <ThemeToggle />
             {isLoading ? (
               <span
                 aria-label="Checking your account"
@@ -108,9 +111,9 @@ export function SiteHeader() {
               <Link
                 className={getButtonClasses(
                   'primary',
-                  'min-h-10 whitespace-nowrap px-4 py-2',
+                  'hidden min-h-10 whitespace-nowrap px-4 py-2 sm:inline-flex',
                 )}
-                href="/register"
+                href="/login"
               >
                 Become a creator
               </Link>

@@ -45,12 +45,24 @@ describe('SearchService', () => {
     ).resolves.toEqual({ prompts: [], profiles: [], collections: [] });
     expect(promptFindMany).toHaveBeenCalledWith(
       expect.objectContaining({
+        select: expect.objectContaining({ id: true, slug: true }),
         where: { status: 'ACTIVE', visibility: 'PUBLIC' },
       }),
     );
     expect(collectionFindMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { visibility: 'PUBLIC', archivedAt: null },
+        select: expect.objectContaining({
+          _count: { select: { items: true } },
+        }),
+      }),
+    );
+    expect(userFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          status: 'ACTIVE',
+          OR: expect.any(Array),
+        }),
       }),
     );
   });

@@ -10,6 +10,12 @@ import { useAuth } from '@/components/providers/auth-provider';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { useToast } from '@/components/ui/toast';
+import { trackAnalyticsEvent } from '@/lib/analytics';
+import {
+  consumeOAuthReturnPath,
+  rememberOAuthReturnPath,
+  sanitizeReturnPath,
+} from '@/lib/auth-return';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -23,18 +29,21 @@ export default function LoginPage() {
   const hasGitHubConfigError =
     searchParams.get('error') === 'github_not_configured';
   const hasOAuthError = searchParams.get('error') === 'oauth_auth_failed';
+  const requestedReturnPath = sanitizeReturnPath(searchParams.get('next'));
 
   useEffect(() => {
     if (!isLoading && user) {
       router.replace(
         (user.onboardingCompleted
-          ? '/search'
+          ? requestedReturnPath || consumeOAuthReturnPath() || '/search'
           : '/onboarding/audience') as Route,
       );
     }
-  }, [isLoading, router, user]);
+  }, [isLoading, requestedReturnPath, router, user]);
 
   function handleGoogleLogin() {
+    rememberOAuthReturnPath(requestedReturnPath);
+    trackAnalyticsEvent('signup_started', { source: 'google' });
     if (hasGoogleError) {
       pushToast({
         title: 'Google sign-in was not completed',
@@ -52,6 +61,8 @@ export default function LoginPage() {
   }
 
   function handleGitHubLogin() {
+    rememberOAuthReturnPath(requestedReturnPath);
+    trackAnalyticsEvent('signup_started', { source: 'github' });
     if (hasGitHubError) {
       pushToast({
         title: 'GitHub sign-in was not completed',
@@ -85,20 +96,20 @@ export default function LoginPage() {
         <div className="flex items-center justify-between gap-4">
           <BrandLockup compact />
           <span className="rounded-full border border-[#E6E6E6] px-3 py-1.5 text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-brand-mid dark:border-[#4D4D4D]">
-            Welcome
+            Become a creator
           </span>
         </div>
 
         <div className="space-y-3">
           <p className="font-mono text-xs font-semibold uppercase tracking-[0.22em] text-brand-mid">
-            Your prompts, ready when you are
+            Create your Vrompt identity
           </p>
           <h1 className="max-w-lg text-3xl font-semibold leading-[1.05] tracking-[-0.06em] sm:text-4xl">
-            Pick up your best ideas in one tap.
+            Make ideas reusable.
           </h1>
           <p className="max-w-md text-sm leading-6 text-brand-mid sm:text-base sm:leading-7">
-            Continue with Google or GitHub to save useful prompts, follow
-            creators, and share what works for you.
+            Create your Vrompt identity with Google or GitHub. Your public
+            profile can be refined later, after the account is ready.
           </p>
         </div>
 
@@ -135,12 +146,7 @@ export default function LoginPage() {
           className="min-h-14 w-full rounded-2xl bg-[#0D0D0D] px-4 text-base !text-background shadow-[0_12px_30px_rgba(13,13,13,0.18)] hover:bg-[#1A1A1A] dark:bg-white dark:hover:bg-[#E6E6E6]"
           onClick={handleGoogleLogin}
         >
-          <span
-            aria-hidden="true"
-            className="grid size-8 place-items-center rounded-full bg-white text-base font-bold text-on-light shadow-sm dark:bg-[#0D0D0D] dark:text-on-dark"
-          >
-            G
-          </span>
+          <GoogleIcon />
           Continue with Google
         </Button>
         <Button
@@ -148,24 +154,14 @@ export default function LoginPage() {
           onClick={handleGitHubLogin}
           variant="secondary"
         >
-          <span
-            aria-hidden="true"
-            className="grid size-8 place-items-center rounded-full bg-foreground text-base font-bold text-background dark:bg-background dark:text-foreground"
-          >
-            GH
-          </span>
+          <GitHubIcon />
           Continue with GitHub
         </Button>
 
         <div className="grid gap-3 border-t border-[#E6E6E6] pt-5 text-sm dark:border-[#4D4D4D]">
           <p className="text-brand-mid">
-            New here?{' '}
-            <Link
-              className="font-semibold text-foreground underline decoration-[#BDBDBD] underline-offset-4"
-              href="/register"
-            >
-              Create an account
-            </Link>
+            Already have an account? Use the same Google or GitHub button to
+            sign in.
           </p>
           <Link
             className="w-fit font-semibold text-foreground underline decoration-[#BDBDBD] underline-offset-4"
@@ -237,5 +233,41 @@ function Benefit({ number, text }: { number: string; text: string }) {
         {text}
       </p>
     </div>
+  );
+}
+
+function GoogleIcon() {
+  return (
+    <svg aria-hidden="true" className="size-5" viewBox="0 0 24 24">
+      <path
+        d="M21.35 12.23c0-.72-.06-1.42-.18-2.09H12v3.96h5.24a4.48 4.48 0 0 1-1.94 2.94v2.45h3.14c1.84-1.7 2.91-4.2 2.91-7.26Z"
+        fill="#4285F4"
+      />
+      <path
+        d="M12 21.6c2.63 0 4.84-.87 6.45-2.36l-3.14-2.45c-.87.58-1.98.93-3.31.93-2.54 0-4.7-1.72-5.47-4.03H3.28v2.53A9.74 9.74 0 0 0 12 21.6Z"
+        fill="#34A853"
+      />
+      <path
+        d="M6.53 13.69a5.86 5.86 0 0 1 0-3.38V7.78H3.28a9.61 9.61 0 0 0 0 8.44l3.25-2.53Z"
+        fill="#FBBC05"
+      />
+      <path
+        d="M12 6.28c1.43 0 2.71.49 3.72 1.45l2.79-2.79C16.84 3.35 14.63 2.4 12 2.4a9.74 9.74 0 0 0-8.72 5.38l3.25 2.53C7.3 8 9.46 6.28 12 6.28Z"
+        fill="#EA4335"
+      />
+    </svg>
+  );
+}
+
+function GitHubIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      className="size-5"
+      fill="currentColor"
+      viewBox="0 0 24 24"
+    >
+      <path d="M12 .3a12 12 0 0 0-3.79 23.39c.6.11.82-.26.82-.58v-2.26c-3.34.73-4.04-1.61-4.04-1.61-.55-1.39-1.33-1.76-1.33-1.76-1.09-.75.08-.73.08-.73 1.2.08 1.84 1.23 1.84 1.23 1.07 1.83 2.8 1.3 3.48.99.11-.77.42-1.3.76-1.6-2.67-.3-5.47-1.34-5.47-5.93 0-1.31.47-2.38 1.23-3.22-.12-.3-.53-1.52.12-3.18 0 0 1-.32 3.3 1.23a11.5 11.5 0 0 1 6 0c2.3-1.55 3.3-1.23 3.3-1.23.65 1.66.24 2.88.12 3.18.77.84 1.23 1.91 1.23 3.22 0 4.6-2.8 5.62-5.48 5.92.43.37.81 1.1.81 2.22v3.29c0 .32.22.69.83.57A12 12 0 0 0 12 .3Z" />
+    </svg>
   );
 }

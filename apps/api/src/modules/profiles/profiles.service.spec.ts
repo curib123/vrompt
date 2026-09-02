@@ -50,6 +50,17 @@ describe('ProfilesService', () => {
     );
   });
 
+  it('resolves public profiles with hyphenated usernames', async () => {
+    const prismaService = {
+      user: { findFirst: jest.fn().mockResolvedValue(publicProfile) },
+    };
+    const service = await createService(prismaService);
+
+    await expect(service.getPublicProfile('demo-creator-100')).resolves.toEqual(
+      expect.objectContaining({ username: 'creator' }),
+    );
+  });
+
   it('only updates the authenticated user id', async () => {
     const transaction = {
       user: {

@@ -4,10 +4,14 @@ import type { ReactNode } from 'react';
 import { createPrivatePageMetadata } from '@/lib/seo';
 
 export const metadata: Metadata = createPrivatePageMetadata(
-  'Become a creator',
-  'Become a Vrompt creator with Google or GitHub and start building your prompt collection.',
+  'Choose your interests',
+  'Set up your private Vrompt discovery preferences.',
 );
 
-export default function RegisterLayout({ children }: { children: ReactNode }) {
+export default function OnboardingLayout({
+  children,
+}: {
+  children: ReactNode;
+}) {
   return children;
 }

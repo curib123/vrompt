@@ -180,8 +180,14 @@ test('keeps the signed-out desktop navigation focused', async ({ page }) => {
     name: 'Primary navigation',
   });
   await expect(navigation.getByRole('link', { name: 'Home' })).toBeVisible();
+  await expect(
+    navigation.getByRole('link', { name: 'Search' }),
+  ).toHaveAttribute('href', '/search');
   await expect(navigation.getByRole('link', { name: 'Explore' })).toBeVisible();
-  await expect(navigation.getByRole('link', { name: 'Landing' })).toBeVisible();
+  await expect(navigation.getByRole('link', { name: 'Home' })).toBeVisible();
+  await expect(navigation.getByRole('link', { name: 'Landing' })).toHaveCount(
+    0,
+  );
   await expect(navigation.getByRole('link', { name: 'Create' })).toHaveCount(0);
   await expect(navigation.getByRole('link', { name: 'Saved' })).toHaveCount(0);
   await expect(navigation.getByRole('link', { name: 'Following' })).toHaveCount(
@@ -191,7 +197,7 @@ test('keeps the signed-out desktop navigation focused', async ({ page }) => {
   await expect(header.getByRole('link', { name: 'Sign in' })).toBeVisible();
   await expect(
     header.getByRole('link', { name: 'Become a creator' }),
-  ).toBeVisible();
+  ).toHaveAttribute('href', '/login');
 });
 
 test('opens the mobile navigation drawer from the left-side hamburger', async ({
@@ -234,9 +240,14 @@ test('opens the mobile navigation drawer from the left-side hamburger', async ({
   });
   await expect(closeButton).toBeFocused();
   await expect(drawer.getByRole('link', { name: 'Explore' })).toBeVisible();
-  await expect(drawer.getByRole('link', { name: 'Landing' })).toBeVisible();
+  await expect(drawer.getByRole('link', { name: 'Home' })).toBeVisible();
+  await expect(drawer.getByRole('link', { name: 'Search' })).toHaveAttribute(
+    'href',
+    '/search',
+  );
+  await expect(drawer.getByRole('link', { name: 'Landing' })).toHaveCount(0);
   const joinLink = drawer.getByRole('link', { name: 'Become a creator' });
-  await expect(joinLink).toBeVisible();
+  await expect(joinLink).toHaveAttribute('href', '/login');
   await expect(joinLink).toHaveCSS('color', 'rgb(255, 255, 255)');
   await expect(drawer.getByRole('link', { name: 'Create' })).toHaveCount(0);
   await expect(drawer.getByRole('link', { name: 'Saved' })).toHaveCount(0);
@@ -642,7 +653,9 @@ test('completes the two-user prompt and evidence journey on mobile', async ({
     page.getByRole('button', { name: 'Continue with GitHub' }),
   ).toBeVisible();
   await expect(
-    page.getByRole('link', { name: 'Create an account' }),
+    page.getByText(
+      'Already have an account? Use the same Google or GitHub button to sign in.',
+    ),
   ).toBeVisible();
 
   await page.goto('/u/author?tab=settings');

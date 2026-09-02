@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Inter } from 'next/font/google';
 import type { ReactNode } from 'react';
 
@@ -72,6 +72,14 @@ export const metadata: Metadata = {
   },
 };
 
+export const viewport: Viewport = {
+  colorScheme: 'light dark',
+  themeColor: [
+    { color: '#FFFFFF', media: '(prefers-color-scheme: light)' },
+    { color: '#0D0D0D', media: '(prefers-color-scheme: dark)' },
+  ],
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -80,6 +88,20 @@ export default function RootLayout({
   return (
     <html className={displayFont.variable} lang="en" suppressHydrationWarning>
       <body className="min-h-screen bg-white text-foreground antialiased dark:bg-[#0D0D0D]">
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(() => {
+  try {
+    const stored = window.localStorage.getItem('vrompt-theme');
+    const dark = stored === 'dark' || (stored !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    const root = document.documentElement;
+    root.classList.toggle('dark', dark);
+    root.classList.toggle('light', !dark);
+    root.style.colorScheme = dark ? 'dark' : 'light';
+  } catch {}
+})()`,
+          }}
+        />
         <JsonLd
           data={[
             {

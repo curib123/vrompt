@@ -10,6 +10,7 @@ import {
 import type { ReactNode } from 'react';
 
 import { apiRequest, getApiBaseUrl } from '@/lib/api';
+import { trackAnalyticsEvent } from '@/lib/analytics';
 import type { AuthResponse, AuthUser } from '@/lib/api';
 
 interface AuthContextValue {
@@ -40,7 +41,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const initializeSession = useEffectEvent(async () => {
     try {
-      await refreshSession();
+      const session = await refreshSession();
+      if (
+        session.onboardingCompleted &&
+        !window.sessionStorage.getItem('vrompt-returning-user')
+      ) {
+        window.sessionStorage.setItem('vrompt-returning-user', '1');
+        trackAnalyticsEvent('returning_user', { source: 'session_refresh' });
+      }
     } catch {
       // A missing or expired refresh cookie simply means the user is signed out.
     } finally {
