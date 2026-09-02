@@ -18,12 +18,6 @@
     "clean": "turbo run clean"
   },
   "overrides": {
-    "@nestjs/config": {
-      "@nestjs/common": "$@nestjs/common"
-    },
-    "@nestjs/jwt": {
-      "@nestjs/common": "$@nestjs/common"
-    },
     "body-parser": "1.20.6",
     "esbuild": "0.28.2",
     "express": "4.22.2",

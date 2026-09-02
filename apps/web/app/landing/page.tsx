@@ -2,160 +2,337 @@ import Link from 'next/link';
 import type { Metadata } from 'next';
 
 import { OrganicFunnelTracker } from '@/components/analytics/organic-funnel-tracker';
-import { FeatureGate } from '@/components/providers/public-settings-provider';
-import { BrandMark } from '@/components/brand/brand-mark';
 import { getButtonClasses } from '@/components/ui/button';
 import { createPageMetadata, siteConfig } from '@/lib/seo';
 
 export const metadata: Metadata = createPageMetadata({
   title: siteConfig.tagline,
-  description: siteConfig.description,
+  description:
+    'Discover, save, version, improve, and share useful AI prompts with Vrompt.',
   path: '/',
 });
 
-const communityStats = [
-  { value: '1,000+', label: 'prompts to explore' },
-  { value: '100+', label: 'active creators' },
-  { value: '∞', label: 'ways to improve' },
-];
+const problems = [
+  [
+    'Find them again',
+    'Good prompts disappear into old chats, screenshots, notes, and bookmarks.',
+  ],
+  [
+    'Know what works',
+    'Without examples or history, it is hard to tell which version to trust.',
+  ],
+  [
+    'Keep them organized',
+    'Useful prompts deserve a home you can return to when the work calls for them.',
+  ],
+  [
+    'Improve without losing context',
+    'A better draft should not erase the original or its creator.',
+  ],
+  [
+    'Share them properly',
+    'A useful prompt should arrive with its source, history, and attribution intact.',
+  ],
+  [
+    'See where they came from',
+    'Lineage makes it easier to learn from related prompts and Variants.',
+  ],
+] as const;
 
-const steps = [
-  {
-    number: '01',
-    title: 'Find your starting point',
-    text: 'Search by outcome, workflow, category, or tool—not vague prompt titles.',
-    icon: 'search',
-  },
-  {
-    number: '02',
-    title: 'See what actually works',
-    text: 'Review the prompt, examples, creator notes, and version history before you copy.',
-    icon: 'spark',
-  },
-  {
-    number: '03',
-    title: 'Make it better',
-    text: 'Save your favorites, publish a Variant, and keep attribution connected.',
-    icon: 'branch',
-  },
+const workflow = [
+  ['Find', 'Discover useful prompts by outcome, category, audience, or tool.'],
+  ['Save', 'Keep the prompts you want to use again in focused Collections.'],
+  ['Use', 'Copy a prompt and apply it quickly to the work in front of you.'],
+  [
+    'Improve',
+    'Publish better Versions while the original history stays visible.',
+  ],
+  [
+    'Create Variant',
+    'Make an independent prompt based on another one, with attribution preserved.',
+  ],
+  ['Share', 'Send a permanent Vrompt link that opens the exact public prompt.'],
+] as const;
+
+const features = [
+  [
+    'Prompt Repositories',
+    'Keep a prompt, its context, and its public home together.',
+  ],
+  [
+    'Version History',
+    'See how a prompt changed instead of guessing which draft is current.',
+  ],
+  [
+    'Create Variant',
+    'Start your own direction without overwriting the source prompt.',
+  ],
+  [
+    'Variant Lineage',
+    'Follow the relationship between an original and the ideas it inspired.',
+  ],
+  [
+    'Example Results',
+    'Review real examples to understand how a prompt is meant to be used.',
+  ],
+  [
+    'Collections',
+    'Organize useful prompts around projects, workflows, and recurring tasks.',
+  ],
+  [
+    'Model Compatibility',
+    'Record the models and tools a prompt is intended to work with.',
+  ],
+  [
+    'Audience Recommendations',
+    'Find prompts relevant to how you work, whether you build, write, research, or design.',
+  ],
+  [
+    'Public Sharing',
+    'Give every public prompt a durable link people can open without an account.',
+  ],
+] as const;
+
+const audiences = [
+  'Developers',
+  'Students',
+  'Researchers',
+  'Designers',
+  'Marketers',
+  'Content Creators',
+  'Business Users',
+  'AI Power Users',
+] as const;
+
+const examples = [
+  [
+    'Research',
+    'Turn scattered research into a clear decision brief.',
+    'research',
+  ],
+  ['Writing', 'Shape a rough idea into a useful first draft.', 'writing'],
+  [
+    'Planning',
+    'Turn a goal into a practical plan with next steps.',
+    'planning',
+  ],
 ] as const;
 
 export default function LandingPage() {
   return (
     <>
       <OrganicFunnelTracker />
-      <div className="grid gap-20 overflow-hidden sm:gap-28 lg:gap-36">
+      <div className="grid gap-24 overflow-hidden sm:gap-32 lg:gap-40">
         <Hero />
 
-        <FeatureGate setting="features.showCommunityStats">
-          <section aria-label="Vrompt community overview">
-            <div className="grid overflow-hidden rounded-[1.75rem] border border-[#E6E6E6] bg-white/80 shadow-[0_18px_60px_rgba(13,13,13,0.05)] backdrop-blur sm:grid-cols-3 dark:border-[#292929] dark:bg-[#151515]/90">
-              {communityStats.map((stat) => (
-                <div
-                  className="flex items-center justify-between gap-4 border-b border-[#E6E6E6] px-5 py-5 last:border-b-0 sm:block sm:border-b-0 sm:border-r sm:px-7 sm:py-7 sm:last:border-r-0 dark:border-[#292929]"
-                  key={stat.label}
-                >
-                  <p className="text-2xl font-semibold tracking-[-0.05em] sm:text-3xl">
-                    {stat.value}
-                  </p>
-                  <p className="text-right text-xs font-medium uppercase tracking-[0.16em] text-brand-mid sm:mt-2 sm:text-left">
-                    {stat.label}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </section>
-        </FeatureGate>
+        <nav
+          aria-label="Explore Vrompt"
+          className="-mt-12 flex flex-wrap gap-x-6 gap-y-3 border-b border-[#E6E6E6] pb-6 text-sm font-medium text-brand-mid sm:-mt-16 dark:border-[#292929]"
+        >
+          <Link className="transition hover:text-foreground" href="/explore">
+            Explore
+          </Link>
+          <Link className="transition hover:text-foreground" href="#categories">
+            Categories
+          </Link>
+          <Link className="transition hover:text-foreground" href="#audiences">
+            Audiences
+          </Link>
+          <Link
+            className="transition hover:text-foreground"
+            href="#public-prompts"
+          >
+            Public prompts
+          </Link>
+        </nav>
 
-        <section className="grid gap-10" id="how-it-works">
+        <section
+          aria-labelledby="problem-title"
+          className="grid gap-10"
+          id="problem"
+        >
           <SectionIntro
-            eyebrow="A better prompt workflow"
-            title="From blank page to better work."
-            text="Vrompt turns scattered prompt experiments into a library you can understand, trust, and build on."
+            eyebrow="The prompt problem"
+            title="The prompts you need are usually somewhere else."
+            text="Good AI prompts are scattered across old chats, notes, screenshots, documents, Reddit, Discord, and bookmarks. Vrompt gives them a place to grow."
+            id="problem-title"
           />
-          <div className="grid gap-4 lg:grid-cols-3">
-            {steps.map((step) => (
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {problems.map(([title, text], index) => (
               <article
-                className="group relative grid min-h-72 content-between overflow-hidden rounded-[1.75rem] border border-[#E6E6E6] bg-white p-6 transition duration-300 hover:-translate-y-1 hover:border-[#BDBDBD] hover:shadow-[0_24px_70px_rgba(13,13,13,0.08)] sm:p-8 dark:border-[#292929] dark:bg-[#151515] dark:hover:border-[#4D4D4D] dark:hover:shadow-none"
-                key={step.number}
+                className="grid gap-6 rounded-[1.5rem] border border-[#E6E6E6] bg-white/80 p-6 dark:border-[#292929] dark:bg-[#151515]"
+                key={title}
               >
-                <div className="flex items-start justify-between gap-6">
-                  <FeatureIcon name={step.icon} />
-                  <span className="font-mono text-xs tracking-[0.2em] text-brand-mid">
-                    {step.number}
-                  </span>
-                </div>
-                <div className="grid gap-3">
-                  <h3 className="max-w-xs text-2xl font-semibold leading-tight tracking-[-0.05em]">
-                    {step.title}
+                <span className="font-mono text-xs font-semibold tracking-[0.2em] text-brand-mid">
+                  0{index + 1}
+                </span>
+                <div className="grid gap-2">
+                  <h3 className="text-xl font-semibold tracking-[-0.04em]">
+                    {title}
                   </h3>
-                  <p className="max-w-sm text-sm leading-7 text-brand-mid">
-                    {step.text}
-                  </p>
+                  <p className="text-sm leading-6 text-brand-mid">{text}</p>
                 </div>
               </article>
             ))}
           </div>
         </section>
 
-        <section className="grid gap-10">
+        <section
+          aria-labelledby="workflow-title"
+          className="grid gap-10"
+          id="how-it-works"
+        >
           <SectionIntro
-            eyebrow="Built for iteration"
-            title="Prompts should have a history."
-            text="Keep the context around every useful prompt so the next person can improve it instead of starting over."
+            eyebrow="How Vrompt works"
+            title="A simple path from discovery to better work."
+            text="Browse freely, keep what helps, and build on it when you have something to add."
+            id="workflow-title"
           />
-          <div className="grid gap-4 lg:grid-cols-[1.18fr_0.82fr]">
-            <article className="relative isolate min-h-[28rem] overflow-hidden rounded-[2rem] bg-[#0D0D0D] p-6 text-white shadow-[0_28px_80px_rgba(13,13,13,0.18)] sm:p-10 dark:border dark:border-[#292929]">
-              <div className="absolute inset-0 opacity-50 [background-image:radial-gradient(circle_at_75%_25%,rgba(255,255,255,0.16),transparent_28%),linear-gradient(rgba(255,255,255,0.04)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.04)_1px,transparent_1px)] [background-size:auto,36px_36px,36px_36px]" />
-              <div className="relative flex h-full flex-col justify-between gap-16">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {workflow.map(([title, text], index) => (
+              <article
+                className="group grid min-h-52 content-between gap-10 rounded-[1.5rem] border border-[#E6E6E6] bg-white p-6 transition hover:-translate-y-1 hover:border-[#BDBDBD] hover:shadow-[0_20px_60px_rgba(13,13,13,0.07)] sm:p-7 dark:border-[#292929] dark:bg-[#151515] dark:hover:border-[#4D4D4D] dark:hover:shadow-none"
+                key={title}
+              >
                 <div className="flex items-center justify-between gap-4">
-                  <span className="rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-[0.65rem] font-semibold uppercase tracking-[0.18em] text-zinc-300">
-                    Version history
+                  <span className="grid size-10 place-items-center rounded-xl bg-[#F1F1EF] text-sm font-semibold dark:bg-[#242424]">
+                    {index + 1}
                   </span>
-                  <span className="font-mono text-xs text-zinc-400">v3.2</span>
-                </div>
-                <div>
-                  <p className="max-w-2xl text-[clamp(2rem,5vw,4.25rem)] font-semibold leading-[0.96] tracking-[-0.065em]">
-                    See how a good idea becomes a great prompt.
-                  </p>
-                  <div className="mt-8 flex items-center gap-3 text-sm text-zinc-300">
-                    <span className="grid size-9 place-items-center rounded-full bg-white text-xs font-bold text-black">
-                      V
+                  {index < workflow.length - 1 ? (
+                    <span className="hidden font-mono text-xs text-brand-mid sm:block">
+                      →
                     </span>
-                    Every improvement stays visible.
-                  </div>
+                  ) : null}
                 </div>
-              </div>
-            </article>
-
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
-              <FeatureTile
-                icon="bookmark"
-                title="Your library, organized"
-                text="Save prompts into focused collections and come back when the work calls for them."
-              />
-              <FeatureTile
-                icon="branch"
-                title="Attribution that travels"
-                text="Variants stay connected to their source, giving every creator visible credit."
-              />
-            </div>
+                <div className="grid gap-2">
+                  <h3 className="text-2xl font-semibold tracking-[-0.05em]">
+                    {title}
+                  </h3>
+                  <p className="text-sm leading-6 text-brand-mid">{text}</p>
+                </div>
+              </article>
+            ))}
           </div>
         </section>
 
-        <section className="relative isolate overflow-hidden rounded-[2rem] border border-[#D8D8D8] bg-[#F5F5F3] px-5 py-10 sm:px-10 sm:py-14 lg:px-16 lg:py-16 dark:border-[#292929] dark:bg-[#151515]">
-          <div className="pointer-events-none absolute -right-24 -top-24 size-72 rounded-full border-[2.5rem] border-black/[0.04] dark:border-white/[0.04]" />
-          <div className="relative grid gap-10 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
-            <div className="grid gap-5">
+        <section
+          aria-labelledby="features-title"
+          className="grid gap-10"
+          id="features"
+        >
+          <SectionIntro
+            eyebrow="What you can build on"
+            title="More than a prompt list."
+            text="Vrompt keeps the useful context around a prompt, so people can learn from it, improve it, and give credit where it is due."
+            id="features-title"
+          />
+          <div className="grid gap-x-8 gap-y-0 border-y border-[#E6E6E6] dark:border-[#292929] sm:grid-cols-2 lg:grid-cols-3">
+            {features.map(([title, text], index) => (
+              <article
+                className="grid gap-3 border-b border-[#E6E6E6] py-6 last:border-b-0 sm:nth-[2n]:border-b-0 lg:nth-[3n]:border-b-0 dark:border-[#292929]"
+                key={title}
+              >
+                <div className="flex items-center gap-3">
+                  <span className="font-mono text-xs text-brand-mid">
+                    {String(index + 1).padStart(2, '0')}
+                  </span>
+                  <h3 className="font-semibold tracking-[-0.03em]">{title}</h3>
+                </div>
+                <p className="pl-8 text-sm leading-6 text-brand-mid">{text}</p>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        <VersionVariant />
+
+        <section
+          aria-labelledby="audience-title"
+          className="grid gap-10"
+          id="audiences"
+        >
+          <SectionIntro
+            eyebrow="Made for real work"
+            title="A better prompt home for every kind of AI user."
+            text="Whether you are shipping software, studying, planning campaigns, or exploring what AI can do, your workflow can start with a prompt that works."
+            id="audience-title"
+          />
+          <div className="flex flex-wrap gap-3">
+            {audiences.map((audience) => (
+              <Link
+                className="rounded-full border border-[#D8D8D8] bg-white px-5 py-3 text-sm font-medium transition hover:border-[#0D0D0D] hover:bg-[#F5F5F3] dark:border-[#333] dark:bg-[#151515] dark:hover:border-white dark:hover:bg-[#202020]"
+                href={`/explore?audience=${encodeURIComponent(audience)}`}
+                key={audience}
+              >
+                {audience}
+              </Link>
+            ))}
+          </div>
+        </section>
+
+        <section
+          aria-labelledby="examples-title"
+          className="grid gap-10"
+          id="categories"
+        >
+          <SectionIntro
+            eyebrow="Start with an example"
+            title="Explore prompts by the work you want to do."
+            text="Use these starting points to browse public prompt repositories, then save what fits your workflow."
+            id="examples-title"
+          />
+          <div className="grid gap-4 lg:grid-cols-3" id="public-prompts">
+            {examples.map(([category, title, query]) => (
+              <Link
+                className="group grid min-h-56 content-between rounded-[1.75rem] border border-[#E6E6E6] bg-[#F5F5F3] p-6 transition hover:-translate-y-1 hover:border-[#BDBDBD] sm:p-8 dark:border-[#292929] dark:bg-[#151515] dark:hover:border-[#4D4D4D]"
+                href={`/explore?q=${query}`}
+                key={category}
+              >
+                <span className="w-fit rounded-full bg-white px-3 py-1.5 text-[0.65rem] font-semibold uppercase tracking-[0.16em] text-brand-mid dark:bg-[#242424]">
+                  {category}
+                </span>
+                <span className="grid gap-4">
+                  <span className="text-2xl font-semibold leading-tight tracking-[-0.05em]">
+                    {title}
+                  </span>
+                  <span className="flex items-center gap-2 text-sm font-semibold">
+                    Explore public prompts{' '}
+                    <span
+                      aria-hidden="true"
+                      className="transition group-hover:translate-x-1"
+                    >
+                      →
+                    </span>
+                  </span>
+                </span>
+              </Link>
+            ))}
+          </div>
+        </section>
+
+        <SharingSection />
+
+        <section
+          aria-labelledby="final-cta-title"
+          className="relative isolate overflow-hidden rounded-[2rem] border border-[#D8D8D8] bg-[#F5F5F3] px-5 py-12 sm:px-10 sm:py-16 lg:px-16 lg:py-20 dark:border-[#292929] dark:bg-[#151515]"
+        >
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute -right-24 -top-24 size-72 rounded-full border-[2.5rem] border-black/[0.04] dark:border-white/[0.04]"
+          />
+          <div className="relative grid gap-8 lg:grid-cols-[1fr_auto] lg:items-end">
+            <div className="grid gap-4">
               <p className="font-mono text-xs font-semibold uppercase tracking-[0.24em] text-brand-mid">
-                Ready when you are
+                Ready to begin?
               </p>
-              <h2 className="max-w-4xl text-[clamp(2.25rem,6vw,5.5rem)] font-semibold leading-[0.92] tracking-[-0.07em]">
-                Your next great prompt is already taking shape.
+              <h2
+                className="max-w-3xl text-[clamp(2.5rem,6vw,5.5rem)] font-semibold leading-[0.92] tracking-[-0.07em]"
+                id="final-cta-title"
+              >
+                Find a Prompt That Works.
               </h2>
               <p className="max-w-xl text-sm leading-7 text-brand-mid sm:text-base">
-                Browse freely, copy what helps, and join the community when you
-                are ready to share what you learned.
+                Explore useful prompts, save what matters, and make them better.
               </p>
             </div>
             <div className="flex flex-col gap-3 sm:flex-row lg:flex-col">
@@ -166,17 +343,22 @@ export default function LandingPage() {
                 )}
                 href="/explore"
               >
-                Explore prompts
-                <ArrowIcon className="size-4 transition group-hover:translate-x-0.5" />
+                Explore Vrompt{' '}
+                <span
+                  aria-hidden="true"
+                  className="transition group-hover:translate-x-0.5"
+                >
+                  →
+                </span>
               </Link>
               <Link
                 className={getButtonClasses(
                   'secondary',
                   'w-full whitespace-nowrap px-6 sm:w-auto',
                 )}
-                href="/login"
+                href="/login?next=%2Fcreate"
               >
-                Share your work
+                Share Your First Prompt
               </Link>
             </div>
           </div>
@@ -188,25 +370,34 @@ export default function LandingPage() {
 
 function Hero() {
   return (
-    <section className="relative isolate overflow-hidden rounded-[2rem] border border-[#E6E6E6] bg-[#F5F5F3] p-3 shadow-[0_28px_90px_rgba(13,13,13,0.08)] sm:p-4 dark:border-[#292929] dark:bg-[#151515] dark:shadow-none">
-      <div className="pointer-events-none absolute inset-0 [background-image:radial-gradient(circle_at_12%_12%,rgba(255,255,255,0.95),transparent_28%),radial-gradient(circle_at_88%_82%,rgba(13,13,13,0.08),transparent_30%)] dark:opacity-10" />
-      <div className="relative overflow-hidden rounded-[1.45rem] border border-white/80 bg-white/75 px-5 py-8 backdrop-blur-xl sm:px-9 sm:py-12 lg:px-12 lg:py-14 dark:border-white/10 dark:bg-[#0D0D0D]/75">
-        <div className="grid gap-12 lg:grid-cols-[minmax(0,1.03fr)_minmax(22rem,0.97fr)] lg:items-center lg:gap-14">
+    <section
+      aria-labelledby="hero-title"
+      className="relative isolate overflow-hidden rounded-[2rem] border border-[#E6E6E6] bg-[#F5F5F3] p-3 shadow-[0_28px_90px_rgba(13,13,13,0.08)] sm:p-4 dark:border-[#292929] dark:bg-[#151515] dark:shadow-none"
+    >
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 [background-image:radial-gradient(circle_at_12%_12%,rgba(255,255,255,0.95),transparent_28%),radial-gradient(circle_at_88%_82%,rgba(13,13,13,0.08),transparent_30%)] dark:opacity-10"
+      />
+      <div className="relative overflow-hidden rounded-[1.45rem] border border-white/80 bg-white/80 px-5 py-10 backdrop-blur-xl sm:px-9 sm:py-14 lg:px-14 lg:py-20 dark:border-white/10 dark:bg-[#0D0D0D]/80">
+        <div className="grid gap-12 lg:grid-cols-[minmax(0,1fr)_minmax(19rem,0.72fr)] lg:items-center lg:gap-16">
           <div className="grid gap-7">
-            <div className="flex w-fit items-center gap-2 rounded-full border border-[#D5D5D5] bg-white px-3 py-1.5 text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-brand-mid shadow-sm dark:border-[#333] dark:bg-[#1A1A1A]">
-              <span className="size-1.5 rounded-full bg-emerald-500" />
-              The open prompt library
-            </div>
+            <p className="font-mono text-xs font-semibold uppercase tracking-[0.24em] text-brand-mid">
+              Vrompt
+            </p>
             <div className="grid gap-5">
-              <h1 className="max-w-4xl text-[clamp(3rem,7vw,6.6rem)] font-semibold leading-[0.87] tracking-[-0.075em]">
-                Don&apos;t just prompt.
+              <h1
+                className="max-w-4xl text-[clamp(3.25rem,8vw,7.5rem)] font-semibold leading-[0.86] tracking-[-0.08em]"
+                id="hero-title"
+              >
+                Find AI Prompts That Work.
                 <span className="block text-zinc-500 dark:text-zinc-400">
-                  Build on what works.
+                  Save Them. Make Them Better.
                 </span>
               </h1>
-              <p className="max-w-xl text-base leading-8 text-brand-mid sm:text-lg">
-                Discover prompts with proof, understand how they evolved, and
-                turn proven ideas into your best work yet.
+              <p className="max-w-2xl text-base leading-8 text-brand-mid sm:text-lg">
+                Discover useful AI prompt repositories, save the ones you need,
+                improve them over time, and create Variants while preserving
+                attribution and history.
               </p>
             </div>
             <div className="flex flex-col gap-3 sm:flex-row">
@@ -217,137 +408,200 @@ function Hero() {
                 )}
                 href="/explore"
               >
-                Explore the library
-                <ArrowIcon className="size-4 transition group-hover:translate-x-0.5" />
+                Explore Prompts{' '}
+                <span
+                  aria-hidden="true"
+                  className="transition group-hover:translate-x-0.5"
+                >
+                  →
+                </span>
               </Link>
               <Link
                 className={getButtonClasses(
                   'secondary',
                   'w-full px-6 sm:w-auto',
                 )}
-                href="#how-it-works"
+                href="/login?next=%2Fcreate"
               >
-                See how it works
+                Share a Prompt
               </Link>
             </div>
-            <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs font-medium text-brand-mid">
-              <span className="inline-flex items-center gap-2">
-                <CheckIcon /> Free to browse
-              </span>
-              <span className="inline-flex items-center gap-2">
-                <CheckIcon /> Built by creators
-              </span>
-              <span className="inline-flex items-center gap-2">
-                <CheckIcon /> Versioned openly
-              </span>
-            </div>
+            <p className="text-xs font-medium text-brand-mid">
+              Browse and copy public prompts without signing in. Sign in with
+              Google or GitHub when you are ready to save, comment, or create.
+            </p>
           </div>
-
-          <PromptShowcase />
+          <HeroCard />
         </div>
       </div>
     </section>
   );
 }
 
-function PromptShowcase() {
+function HeroCard() {
   return (
-    <div className="relative mx-auto w-full max-w-xl lg:mx-0">
-      <div className="absolute -left-5 top-10 hidden w-36 -rotate-6 rounded-2xl border border-[#E6E6E6] bg-white p-4 shadow-xl sm:block dark:border-[#333] dark:bg-[#1A1A1A]">
-        <p className="text-[0.6rem] font-semibold uppercase tracking-[0.16em] text-brand-mid">
-          Community signal
-        </p>
-        <p className="mt-3 text-2xl font-semibold tracking-[-0.05em]">4.9/5</p>
-        <div className="mt-2 flex gap-1" aria-label="Rated 4.9 out of 5">
-          {[0, 1, 2, 3, 4].map((star) => (
-            <span className="text-xs" key={star}>
-              ★
+    <div
+      aria-label="Example Vrompt prompt repository"
+      className="relative mx-auto w-full max-w-md rotate-1 rounded-[1.75rem] border border-[#D8D8D8] bg-[#0D0D0D] p-2.5 shadow-[0_32px_80px_rgba(13,13,13,0.2)] lg:rotate-2"
+    >
+      <div className="overflow-hidden rounded-[1.35rem] bg-white p-5 text-on-light sm:p-7">
+        <div className="flex items-center justify-between border-b border-[#E6E6E6] pb-4 text-xs font-semibold">
+          <span>Prompt repository</span>
+          <span className="font-mono text-on-light-muted">v3</span>
+        </div>
+        <div className="grid gap-6 py-6">
+          <div className="grid gap-2">
+            <span className="w-fit rounded-full bg-[#EEEEEC] px-3 py-1.5 text-[0.62rem] font-semibold uppercase tracking-[0.16em]">
+              Research
             </span>
-          ))}
-        </div>
-      </div>
-      <div className="relative ml-auto w-full rounded-[1.8rem] border border-[#D8D8D8] bg-[#0D0D0D] p-2.5 shadow-[0_32px_80px_rgba(13,13,13,0.22)] sm:w-[88%] dark:border-[#333]">
-        <div className="overflow-hidden rounded-[1.35rem] bg-white text-on-light dark:bg-[#F5F5F3]">
-          <div className="flex items-center justify-between border-b border-[#E6E6E6] px-5 py-4">
-            <div className="flex items-center gap-2.5">
-              <BrandMark className="size-5" />
-              <span className="text-xs font-semibold">Prompt repository</span>
-            </div>
-            <div className="flex gap-1.5" aria-hidden="true">
-              <span className="size-2 rounded-full bg-[#D0D0D0]" />
-              <span className="size-2 rounded-full bg-[#D0D0D0]" />
-              <span className="size-2 rounded-full bg-[#0D0D0D]" />
-            </div>
+            <h2 className="text-2xl font-semibold leading-tight tracking-[-0.055em]">
+              Turn scattered research into a clear decision brief.
+            </h2>
           </div>
-          <div className="grid gap-6 p-5 sm:p-7">
-            <div className="flex items-center justify-between gap-4">
-              <span className="rounded-full bg-[#EEEEEC] px-3 py-1.5 text-[0.62rem] font-semibold uppercase tracking-[0.16em]">
-                Strategy
-              </span>
-              <span className="font-mono text-[0.65rem] text-on-light-muted">
-                v3 · Proven
-              </span>
-            </div>
-            <div>
-              <h2 className="text-2xl font-semibold leading-[1.02] tracking-[-0.055em] sm:text-3xl">
-                Turn scattered research into a clear decision brief.
-              </h2>
-              <p className="mt-3 text-sm leading-6 text-on-light-muted">
-                Distill sources, expose tradeoffs, and end with an actionable
-                recommendation.
-              </p>
-            </div>
-            <div className="rounded-2xl bg-[#F3F3F1] p-4 font-mono text-[0.68rem] leading-5 text-on-light-muted">
-              <span className="text-black">Role:</span> Strategic research
-              partner
-              <br />
-              <span className="text-black">Goal:</span> Compare evidence and
-              recommend...
-            </div>
-            <div className="flex items-center justify-between gap-3 border-t border-[#E6E6E6] pt-5">
-              <div
-                className="flex -space-x-2"
-                aria-label="Used by three creators"
-              >
-                {['A', 'M', 'K'].map((letter) => (
-                  <span
-                    className="grid size-8 place-items-center rounded-full border-2 border-white bg-[#DADAD7] text-[0.62rem] font-bold"
-                    key={letter}
-                  >
-                    {letter}
-                  </span>
-                ))}
-              </div>
-              <span className="rounded-full bg-black px-4 py-2 text-xs font-semibold text-white">
-                Copy prompt
-              </span>
-            </div>
+          <p className="text-sm leading-6 text-on-light-muted">
+            Distill sources, expose tradeoffs, and end with an actionable
+            recommendation.
+          </p>
+          <div className="rounded-2xl bg-[#F3F3F1] p-4 font-mono text-[0.68rem] leading-5 text-on-light-muted">
+            <span className="text-black">Goal:</span> Compare evidence and
+            recommend...
+            <br />
+            <span className="text-black">History:</span> v1 → v2 → v3
+          </div>
+          <div className="flex items-center justify-between border-t border-[#E6E6E6] pt-5">
+            <span className="text-xs font-medium text-on-light-muted">
+              Attribution preserved
+            </span>
+            <span className="rounded-full bg-black px-4 py-2 text-xs font-semibold text-white">
+              Copy prompt
+            </span>
           </div>
         </div>
-      </div>
-      <div className="absolute -bottom-5 right-4 hidden items-center gap-3 rounded-2xl border border-[#E6E6E6] bg-white px-4 py-3 shadow-xl sm:flex dark:border-[#333] dark:bg-[#1A1A1A]">
-        <span className="grid size-8 place-items-center rounded-full bg-[#0D0D0D] text-white">
-          <FeatureIcon name="branch" small />
-        </span>
-        <span>
-          <span className="block text-[0.6rem] font-semibold uppercase tracking-[0.14em] text-brand-mid">
-            New variant
-          </span>
-          <span className="block text-xs font-semibold">Lineage preserved</span>
-        </span>
       </div>
     </div>
   );
 }
 
+function VersionVariant() {
+  return (
+    <section
+      aria-labelledby="version-variant-title"
+      className="grid gap-10"
+      id="version-vs-variant"
+    >
+      <SectionIntro
+        eyebrow="Version vs Variant"
+        title="Improve the same prompt—or take it somewhere new."
+        text="The difference is simple: Versions update one prompt. Variants become independent prompts that still show where they began."
+        id="version-variant-title"
+      />
+      <div className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
+        <div className="rounded-[1.75rem] bg-[#0D0D0D] p-6 text-white sm:p-10 dark:border dark:border-[#292929]">
+          <p className="mb-8 font-mono text-xs uppercase tracking-[0.2em] text-zinc-400">
+            One prompt, visible history
+          </p>
+          <div className="grid gap-4 font-mono text-sm sm:text-base">
+            <div className="flex items-center gap-3">
+              <span className="text-zinc-500 dark:text-zinc-300">
+                Original Prompt
+              </span>
+              <span>v1</span>
+              <span className="text-zinc-500 dark:text-zinc-300">→</span>
+              <span>v2</span>
+              <span className="text-zinc-500 dark:text-zinc-300">→</span>
+              <span>v3</span>
+            </div>
+            <div className="pl-8 text-zinc-400">↓ Create Variant</div>
+            <div className="flex items-center gap-3 pl-8">
+              <span>Variant v1</span>
+              <span className="text-zinc-500 dark:text-zinc-300">→</span>
+              <span>v2</span>
+            </div>
+          </div>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
+          <article className="rounded-[1.5rem] border border-[#E6E6E6] bg-white p-6 dark:border-[#292929] dark:bg-[#151515]">
+            <p className="font-mono text-xs uppercase tracking-[0.18em] text-brand-mid">
+              Version
+            </p>
+            <h3 className="mt-4 text-2xl font-semibold tracking-[-0.05em]">
+              Update the same prompt.
+            </h3>
+            <p className="mt-2 text-sm leading-6 text-brand-mid">
+              Keep improving one repository while its earlier drafts remain
+              available.
+            </p>
+          </article>
+          <article className="rounded-[1.5rem] border border-[#E6E6E6] bg-white p-6 dark:border-[#292929] dark:bg-[#151515]">
+            <p className="font-mono text-xs uppercase tracking-[0.18em] text-brand-mid">
+              Variant
+            </p>
+            <h3 className="mt-4 text-2xl font-semibold tracking-[-0.05em]">
+              Create a new independent prompt.
+            </h3>
+            <p className="mt-2 text-sm leading-6 text-brand-mid">
+              Build your own direction with source attribution and lineage
+              intact.
+            </p>
+          </article>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function SharingSection() {
+  return (
+    <section
+      aria-labelledby="sharing-title"
+      className="grid gap-10"
+      id="sharing"
+    >
+      <SectionIntro
+        eyebrow="Share what works"
+        title="Every public prompt can travel with a permanent link."
+        text="Send a Vrompt link anywhere. The recipient opens the exact prompt first; account actions stay available when they are useful."
+        id="sharing-title"
+      />
+      <div className="grid gap-4 rounded-[1.75rem] border border-[#E6E6E6] bg-white p-6 sm:p-10 lg:grid-cols-[0.8fr_1.2fr] lg:items-center dark:border-[#292929] dark:bg-[#151515]">
+        <div className="rounded-2xl bg-[#F3F3F1] p-5 font-mono text-sm text-on-light-muted dark:bg-[#242424] dark:text-zinc-300">
+          vrompt.com/prompts/...
+        </div>
+        <ol className="grid gap-4 text-sm leading-6 text-brand-mid sm:grid-cols-3">
+          <li>
+            <span className="mb-2 block font-mono text-xs text-foreground">
+              01
+            </span>
+            Recipient opens the exact public prompt.
+          </li>
+          <li>
+            <span className="mb-2 block font-mono text-xs text-foreground">
+              02
+            </span>
+            No login is needed to view public content.
+          </li>
+          <li>
+            <span className="mb-2 block font-mono text-xs text-foreground">
+              03
+            </span>
+            Save, Comment, and Create Variant can request login when needed.
+          </li>
+        </ol>
+      </div>
+    </section>
+  );
+}
+
 function SectionIntro({
   eyebrow,
-  text,
   title,
+  text,
+  id,
 }: {
   eyebrow: string;
-  text: string;
   title: string;
+  text: string;
+  id: string;
 }) {
   return (
     <div className="grid gap-5 md:grid-cols-[0.45fr_1fr] md:items-end md:gap-12">
@@ -355,7 +609,10 @@ function SectionIntro({
         {eyebrow}
       </p>
       <div className="grid gap-4">
-        <h2 className="max-w-4xl text-[clamp(2.4rem,6vw,5.25rem)] font-semibold leading-[0.92] tracking-[-0.07em]">
+        <h2
+          className="max-w-4xl text-[clamp(2.4rem,6vw,5.25rem)] font-semibold leading-[0.92] tracking-[-0.07em]"
+          id={id}
+        >
           {title}
         </h2>
         <p className="max-w-2xl text-sm leading-7 text-brand-mid sm:text-base">
@@ -363,116 +620,5 @@ function SectionIntro({
         </p>
       </div>
     </div>
-  );
-}
-
-function FeatureTile({
-  icon,
-  text,
-  title,
-}: {
-  icon: 'bookmark' | 'branch';
-  text: string;
-  title: string;
-}) {
-  return (
-    <article className="grid min-h-52 content-between gap-10 rounded-[1.75rem] border border-[#E6E6E6] bg-white p-6 sm:p-8 dark:border-[#292929] dark:bg-[#151515]">
-      <FeatureIcon name={icon} />
-      <div className="grid gap-2">
-        <h3 className="text-xl font-semibold tracking-[-0.04em] sm:text-2xl">
-          {title}
-        </h3>
-        <p className="text-sm leading-7 text-brand-mid">{text}</p>
-      </div>
-    </article>
-  );
-}
-
-function FeatureIcon({
-  name,
-  small = false,
-}: {
-  name: 'bookmark' | 'branch' | 'search' | 'spark';
-  small?: boolean;
-}) {
-  const paths = {
-    search: (
-      <>
-        <circle cx="10.5" cy="10.5" r="6" />
-        <path d="m15 15 5 5" />
-      </>
-    ),
-    spark: (
-      <>
-        <path d="M12 2.5 14 9l6.5 2-6.5 2-2 6.5-2-6.5-6.5-2L10 9l2-6.5Z" />
-        <path d="m19 3 .5 1.5L21 5l-1.5.5L19 7l-.5-1.5L17 5l1.5-.5L19 3Z" />
-      </>
-    ),
-    branch: (
-      <>
-        <circle cx="6" cy="5" r="2" />
-        <circle cx="18" cy="7" r="2" />
-        <circle cx="18" cy="18" r="2" />
-        <path d="M8 5h2a4 4 0 0 1 4 4v5a4 4 0 0 0 4 4M14 10a3 3 0 0 1 3-3" />
-      </>
-    ),
-    bookmark: <path d="M6 4h12v17l-6-4-6 4V4Z" />,
-  };
-  const icon = (
-    <svg
-      aria-hidden="true"
-      className={small ? 'size-4' : 'size-5'}
-      fill="none"
-      stroke="currentColor"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth="1.7"
-      viewBox="0 0 24 24"
-    >
-      {paths[name]}
-    </svg>
-  );
-  return small ? (
-    icon
-  ) : (
-    <span className="grid size-11 place-items-center rounded-2xl border border-[#E0E0E0] bg-[#F5F5F3] text-foreground transition group-hover:scale-105 dark:border-[#333] dark:bg-[#202020]">
-      {icon}
-    </span>
-  );
-}
-
-function ArrowIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      aria-hidden="true"
-      className={className}
-      fill="none"
-      stroke="currentColor"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth="1.8"
-      viewBox="0 0 24 24"
-    >
-      <path d="M5 12h14M13 6l6 6-6 6" />
-    </svg>
-  );
-}
-
-function CheckIcon() {
-  return (
-    <span className="grid size-4 place-items-center rounded-full bg-[#0D0D0D] text-white dark:bg-white dark:text-black">
-      <svg
-        aria-hidden="true"
-        className="size-2.5"
-        fill="none"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="2.2"
-        viewBox="0 0 12 12"
-      >
-        <path d="m2.5 6 2.2 2.2L9.5 3.8" />
-      </svg>
-    </span>
   );
 }
