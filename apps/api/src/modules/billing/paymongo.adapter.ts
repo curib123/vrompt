@@ -5,7 +5,10 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
-import type { CheckoutSessionResult, PaymentGatewayAdapter } from './billing.types';
+import type {
+  CheckoutSessionResult,
+  PaymentGatewayAdapter,
+} from './billing.types';
 
 type PayMongoResponse = {
   data?: {
@@ -50,35 +53,38 @@ export class PayMongoAdapter implements PaymentGatewayAdapter {
 
     let response: Response;
     try {
-      response = await fetch(`${baseUrl.replace(/\/$/, '')}/v2/checkout_sessions`, {
-        method: 'POST',
-        headers: {
-          accept: 'application/json',
-          authorization: `Basic ${authorization}`,
-          'content-type': 'application/json',
-          'idempotency-key': input.idempotencyKey,
-        },
-        body: JSON.stringify({
-          data: {
-            attributes: {
-              cancel_url: input.cancelUrl,
-              description: input.description,
-              line_items: [
-                {
-                  amount: input.amount,
-                  currency: input.currency,
-                  name: 'Vrompt Pro',
-                  quantity: 1,
-                },
-              ],
-              metadata: { reference_number: input.referenceNumber },
-              payment_method_types: paymentMethods,
-              reference_number: input.referenceNumber,
-              success_url: input.successUrl,
-            },
+      response = await fetch(
+        `${baseUrl.replace(/\/$/, '')}/v2/checkout_sessions`,
+        {
+          method: 'POST',
+          headers: {
+            accept: 'application/json',
+            authorization: `Basic ${authorization}`,
+            'content-type': 'application/json',
+            'idempotency-key': input.idempotencyKey,
           },
-        }),
-      });
+          body: JSON.stringify({
+            data: {
+              attributes: {
+                cancel_url: input.cancelUrl,
+                description: input.description,
+                line_items: [
+                  {
+                    amount: input.amount,
+                    currency: input.currency,
+                    name: 'Vrompt Pro',
+                    quantity: 1,
+                  },
+                ],
+                metadata: { reference_number: input.referenceNumber },
+                payment_method_types: paymentMethods,
+                reference_number: input.referenceNumber,
+                success_url: input.successUrl,
+              },
+            },
+          }),
+        },
+      );
     } catch (error) {
       this.logger.warn(
         `PayMongo checkout request failed: ${error instanceof Error ? error.name : 'unknown'}`,
@@ -88,8 +94,14 @@ export class PayMongoAdapter implements PaymentGatewayAdapter {
       );
     }
 
-    const body = (await response.json().catch(() => null)) as PayMongoResponse | null;
-    if (!response.ok || !body?.data?.id || !body.data.attributes?.checkout_url) {
+    const body = (await response
+      .json()
+      .catch(() => null)) as PayMongoResponse | null;
+    if (
+      !response.ok ||
+      !body?.data?.id ||
+      !body.data.attributes?.checkout_url
+    ) {
       this.logger.warn(
         `PayMongo checkout rejected with status ${response.status}`,
       );

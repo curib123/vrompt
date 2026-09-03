@@ -5,6 +5,7 @@ import {
   Param,
   ParseUUIDPipe,
   Post,
+  Get,
   UseGuards,
 } from '@nestjs/common';
 
@@ -19,6 +20,12 @@ import { AiGenerationService } from './ai-generation.service';
 @Controller('ai')
 export class AiController {
   constructor(private readonly aiGenerationService: AiGenerationService) {}
+
+  @Get('usage')
+  @UseGuards(AccessTokenGuard)
+  usage(@CurrentUser() user: AuthenticatedUser) {
+    return this.aiGenerationService.usageForUser(user.id);
+  }
 
   @Post('generate')
   @UseGuards(OptionalAccessTokenGuard)

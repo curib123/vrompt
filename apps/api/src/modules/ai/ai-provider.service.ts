@@ -37,6 +37,10 @@ export class AiProviderService implements PromptAiProvider {
         body: JSON.stringify({
           model,
           temperature: 0.4,
+          max_tokens: this.configService.get<number>(
+            'AI_MAX_OUTPUT_TOKENS',
+            1600,
+          ),
           response_format: { type: 'json_object' },
           messages: [
             { role: 'system', content: input.system },

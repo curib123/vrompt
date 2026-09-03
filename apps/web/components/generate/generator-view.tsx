@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import type { Route } from 'next';
 
 import { useAuth } from '@/components/providers/auth-provider';
 import { Badge } from '@/components/ui/badge';
@@ -11,11 +12,13 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
 import { apiRequest } from '@/lib/api';
 import type {
+  AiUsageResponse,
   AiGenerationResponse,
   AiPromptDraft,
   AudienceOption,
   CategoryOption,
 } from '@/lib/api';
+import { ApiError, fetchAiUsage } from '@/lib/api';
 import { copyToClipboard, getCopyClientKey } from '@/lib/clipboard';
 
 type Operation = 'GENERATE' | 'REGENERATE' | 'IMPROVE' | 'EXPAND' | 'SHORTEN';
@@ -38,6 +41,7 @@ export function GeneratorView() {
     'idle',
   );
   const [error, setError] = useState<string | null>(null);
+  const [usage, setUsage] = useState<AiUsageResponse | null>(null);
 
   useEffect(() => {
     void Promise.all([
@@ -50,6 +54,16 @@ export function GeneratorView() {
       })
       .catch(() => undefined);
   }, []);
+
+  useEffect(() => {
+    if (!accessToken) {
+      setUsage(null);
+      return;
+    }
+    void fetchAiUsage(accessToken)
+      .then(setUsage)
+      .catch(() => undefined);
+  }, [accessToken]);
 
   async function generate(operation: Operation) {
     if (goal.trim().length < 10 || busy) return;
@@ -77,9 +91,13 @@ export function GeneratorView() {
       setContent(response.output.content);
     } catch (requestError: unknown) {
       setError(
-        requestError instanceof Error
-          ? requestError.message
-          : 'Generation failed. Try again.',
+        requestError instanceof ApiError && requestError.status === 429
+          ? "You've reached your AI generation limit."
+          : requestError instanceof ApiError && requestError.status === 403
+            ? 'Prompt refinement is available with Vrompt Pro.'
+            : requestError instanceof Error
+              ? requestError.message
+              : 'Generation failed. Try again.',
       );
     } finally {
       setBusy(null);
@@ -121,6 +139,20 @@ export function GeneratorView() {
           Describe what you want to accomplish in plain language. Vrompt turns
           it into a structured prompt you can review, edit, and copy.
         </p>
+        {usage ? (
+          <div className="flex flex-wrap items-center gap-3 text-sm text-brand-mid">
+            <Badge>{usage.plan} plan</Badge>
+            <span>{usage.remaining} AI generations left today</span>
+            {usage.plan === 'FREE' ? (
+              <Link
+                className="font-semibold underline underline-offset-4"
+                href={'/pricing' as Route}
+              >
+                See Pro
+              </Link>
+            ) : null}
+          </div>
+        ) : null}
       </header>
 
       <Card>
@@ -298,10 +330,18 @@ export function GeneratorView() {
                 >
                   {busy === operation
                     ? 'Working...'
-                    : operation.charAt(0) + operation.slice(1).toLowerCase()}
+                    : operation.charAt(0) +
+                      operation.slice(1).toLowerCase() +
+                      (usage?.plan === 'PRO' ? '' : ' · Pro')}
                 </Button>
               ))}
             </div>
+            {usage?.plan !== 'PRO' ? (
+              <p className="mt-3 text-xs text-brand-mid">
+                Refinement tools are part of Vrompt Pro. You can still generate
+                and copy a prompt on Free.
+              </p>
+            ) : null}
           </div>
         </Card>
       ) : null}

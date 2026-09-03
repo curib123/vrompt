@@ -71,6 +71,11 @@ export class RedisService implements OnApplicationShutdown {
     await this.client.del(key);
   }
 
+  async decrement(key: string) {
+    if (!this.client?.isOpen) return 0;
+    return this.client.decr(key);
+  }
+
   async onApplicationShutdown() {
     if (this.client?.isOpen) {
       await this.client.quit();

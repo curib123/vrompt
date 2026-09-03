@@ -35,6 +35,7 @@ export class OptionalAccessTokenGuard implements CanActivate {
           username: true,
           role: true,
           accountType: true,
+          plan: true,
           onboardingCompleted: true,
           status: true,
         },
@@ -47,6 +48,7 @@ export class OptionalAccessTokenGuard implements CanActivate {
           username: user.username,
           role: user.role,
           accountType: user.accountType,
+          plan: user.plan,
           onboardingCompleted: user.onboardingCompleted,
         };
       }

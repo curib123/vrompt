@@ -15,6 +15,8 @@ type Definition = {
   description: string;
   type: 'string' | 'boolean' | 'number';
   maxLength?: number;
+  minValue?: number;
+  maxValue?: number;
 };
 
 export const SETTING_DEFINITIONS: Record<string, Definition> = {
@@ -93,6 +95,85 @@ export const SETTING_DEFINITIONS: Record<string, Definition> = {
     description: 'Desired aggregate analytics retention period in days.',
     type: 'number',
   },
+  'features.aiGenerationEnabled': {
+    defaultValue: true,
+    group: 'AI limits',
+    isPublic: false,
+    label: 'AI generation enabled',
+    description: 'Emergency switch for public and internal AI generation.',
+    type: 'boolean',
+  },
+  'limits.aiFreeDaily': {
+    defaultValue: 10,
+    group: 'AI limits',
+    isPublic: false,
+    label: 'Free daily AI generations',
+    description:
+      'Maximum public AI generations available to free members per UTC day.',
+    type: 'number',
+  },
+  'limits.aiProDaily': {
+    defaultValue: 100,
+    group: 'AI limits',
+    isPublic: false,
+    label: 'Pro daily AI generations',
+    description:
+      'Maximum public AI generations available to Pro members per UTC day.',
+    type: 'number',
+  },
+  'limits.aiInternalDaily': {
+    defaultValue: 50,
+    group: 'AI limits',
+    isPublic: false,
+    label: 'Internal daily AI generations',
+    description: 'Maximum internal/admin AI generations per UTC day.',
+    type: 'number',
+  },
+  'limits.aiConcurrency': {
+    defaultValue: 2,
+    group: 'AI limits',
+    isPublic: false,
+    label: 'AI concurrency per member',
+    description:
+      'Maximum concurrent provider requests for one member or guest key.',
+    type: 'number',
+  },
+  'limits.aiRatePerMinute': {
+    defaultValue: 5,
+    group: 'AI limits',
+    isPublic: false,
+    label: 'AI requests per minute',
+    description: 'Short-window request cap per member or guest key.',
+    type: 'number',
+  },
+  'limits.aiMaxInputChars': {
+    defaultValue: 4000,
+    group: 'AI limits',
+    isPublic: false,
+    label: 'AI input character limit',
+    description: 'Maximum goal length accepted by the generator.',
+    type: 'number',
+    maxValue: 100000,
+  },
+  'billing.proPriceCentavos': {
+    defaultValue: 29900,
+    group: 'Billing',
+    isPublic: false,
+    label: 'Pro price in centavos',
+    description:
+      'Trusted PHP amount sent to PayMongo for one Pro access period.',
+    type: 'number',
+    maxValue: 10000000,
+  },
+  'billing.proPeriodDays': {
+    defaultValue: 30,
+    group: 'Billing',
+    isPublic: false,
+    label: 'Pro access period in days',
+    description: 'Length of access granted after a verified payment.',
+    type: 'number',
+    maxValue: 366,
+  },
 };
 
 @Injectable()
@@ -101,6 +182,24 @@ export class SettingsService {
 
   async publicSettings() {
     return this.values(true);
+  }
+
+  async getNumber(key: string, fallback: number) {
+    const setting = await this.prisma.siteSetting.findUnique({
+      where: { key },
+      select: { value: true },
+    });
+    return typeof setting?.value === 'number' && Number.isFinite(setting.value)
+      ? setting.value
+      : fallback;
+  }
+
+  async getBoolean(key: string, fallback: boolean) {
+    const setting = await this.prisma.siteSetting.findUnique({
+      where: { key },
+      select: { value: true },
+    });
+    return typeof setting?.value === 'boolean' ? setting.value : fallback;
   }
   async adminSettings() {
     const stored = await this.prisma.siteSetting.findMany({
@@ -203,7 +302,9 @@ export class SettingsService {
       return value.trim().slice(0, definition.maxLength ?? 500);
     if (
       typeof value === 'number' &&
-      (!Number.isFinite(value) || value < 1 || value > 3650)
+      (!Number.isFinite(value) ||
+        value < (definition.minValue ?? 1) ||
+        value > (definition.maxValue ?? 3650))
     )
       throw new BadRequestException('Number is outside the allowed range');
     return value as boolean | number;

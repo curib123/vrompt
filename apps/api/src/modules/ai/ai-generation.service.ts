@@ -1,7 +1,10 @@
 import {
+  BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
   InternalServerErrorException,
+  ServiceUnavailableException,
 } from '@nestjs/common';
 import {
   AiGenerationMode,
@@ -18,6 +21,8 @@ import { AiProviderService } from './ai-provider.service';
 import { AiQualityService } from './ai-quality.service';
 import { AiQuotaService } from './ai-quota.service';
 import { AiEntitlementsService } from './ai-entitlements.service';
+import { RedisService } from '../common/redis.service';
+import { TooManyRequestsException } from '../../common/exceptions/too-many-requests.exception';
 import type { AiGenerationInput, AiPromptDraft } from './ai.types';
 import type { SaveGenerationDto } from './dto/save-generation.dto';
 
@@ -31,6 +36,7 @@ export class AiGenerationService {
     private readonly quota: AiQuotaService,
     private readonly promptsService: PromptsService,
     private readonly entitlements: AiEntitlementsService,
+    private readonly redis: RedisService,
   ) {}
 
   async generatePublic(
@@ -38,15 +44,26 @@ export class AiGenerationService {
     user: AuthenticatedUser | undefined,
     guestKey: string,
   ) {
-    const normalized = this.normalizeInput(input);
+    const entitlements = await this.entitlements.forUser(user?.id);
+    const requestedOperation =
+      input.operation ?? AiGenerationOperation.GENERATE;
+    if (
+      requestedOperation !== AiGenerationOperation.GENERATE &&
+      !entitlements.advancedTools
+    ) {
+      throw new ForbiddenException(
+        'Prompt refinement is available with Vrompt Pro.',
+      );
+    }
+    const normalized = this.normalizeInput(input, entitlements.maxInputChars);
     const subjectKey = user?.id ? `user:${user.id}` : `guest:${guestKey}`;
-    const limit = await this.publicLimit(user?.id);
     return this.generate({
       mode: AiGenerationMode.PUBLIC,
       input: normalized,
       subjectKey,
       userId: user?.id,
-      limit,
+      limit: entitlements.dailyGenerationLimit,
+      entitlements,
     });
   }
 
@@ -126,6 +143,29 @@ export class AiGenerationService {
       succeeded,
       failed,
       rejected,
+    };
+  }
+
+  async usageForUser(userId: string) {
+    const start = new Date();
+    start.setUTCHours(0, 0, 0, 0);
+    const entitlements = await this.entitlements.forUser(userId);
+    const used = await this.prismaService.aiUsageEvent.count({
+      where: {
+        userId,
+        mode: AiGenerationMode.PUBLIC,
+        createdAt: { gte: start },
+      },
+    });
+    const resetAt = new Date(start.getTime() + 86_400_000);
+    return {
+      plan: entitlements.plan,
+      used,
+      limit: entitlements.dailyGenerationLimit,
+      remaining: Math.max(entitlements.dailyGenerationLimit - used, 0),
+      resetAt: resetAt.toISOString(),
+      advancedTools: entitlements.advancedTools,
+      generationEnabled: entitlements.generationEnabled,
     };
   }
 
@@ -304,13 +344,15 @@ export class AiGenerationService {
   }
 
   async generateInternal(input: AiGenerationInput, user: AuthenticatedUser) {
-    const normalized = this.normalizeInput(input);
+    const entitlements = await this.entitlements.forUser(user.id);
+    const normalized = this.normalizeInput(input, entitlements.maxInputChars);
     return this.generate({
       mode: AiGenerationMode.INTERNAL,
       input: normalized,
       subjectKey: `internal:${user.id}`,
       userId: user.id,
-      limit: this.entitlements.internalDailyLimit(),
+      limit: await this.entitlements.internalDailyLimit(),
+      entitlements,
     });
   }
 
@@ -320,22 +362,49 @@ export class AiGenerationService {
     subjectKey: string;
     userId?: string;
     limit: number;
+    entitlements: Awaited<ReturnType<AiEntitlementsService['forUser']>>;
   }) {
+    if (!context.entitlements.generationEnabled) {
+      throw new ServiceUnavailableException(
+        'AI generation is temporarily unavailable. Please try again later.',
+      );
+    }
+    const guardKey = `vrompt:ai:${context.subjectKey}`;
+    const rateCount = await this.reserveRedisCounter(
+      `${guardKey}:rate`,
+      60,
+      context.entitlements.rateLimitPerMinute,
+      'AI requests are temporarily limited. Please try again shortly.',
+    );
+    void rateCount;
+    await this.reserveRedisCounter(
+      `${guardKey}:concurrency`,
+      120,
+      context.entitlements.concurrencyLimit,
+      'One or more AI generations are already running. Please wait for them to finish.',
+    );
     const operation = context.input.operation ?? AiGenerationOperation.GENERATE;
     const requestKey = this.requestKey(
       context.mode,
       context.subjectKey,
       context.input,
     );
-    const reservation = await this.quota.reserve({
-      subjectKey: context.subjectKey,
-      userId: context.userId,
-      requestKey,
-      mode: context.mode,
-      operation,
-      limit: context.limit,
-    });
+    let reservation: Awaited<ReturnType<AiQuotaService['reserve']>>;
+    try {
+      reservation = await this.quota.reserve({
+        subjectKey: context.subjectKey,
+        userId: context.userId,
+        requestKey,
+        mode: context.mode,
+        operation,
+        limit: context.limit,
+      });
+    } catch (error) {
+      await this.redis.decrement(`${guardKey}:concurrency`);
+      throw error;
+    }
     if (reservation.reused) {
+      await this.redis.decrement(`${guardKey}:concurrency`);
       if (!reservation.event.generationId) {
         throw new ConflictException(
           'This generation request is already in progress',
@@ -419,7 +488,30 @@ export class AiGenerationService {
       throw error instanceof Error
         ? error
         : new InternalServerErrorException('AI generation failed');
+    } finally {
+      await this.redis.decrement(`${guardKey}:concurrency`);
     }
+  }
+
+  private async reserveRedisCounter(
+    key: string,
+    ttlSeconds: number,
+    limit: number,
+    message: string,
+  ) {
+    let count: number;
+    try {
+      count = await this.redis.increment(key, ttlSeconds);
+    } catch {
+      throw new ServiceUnavailableException(
+        'AI generation is temporarily unavailable. Please try again later.',
+      );
+    }
+    if (count > limit) {
+      await this.redis.decrement(key);
+      throw new TooManyRequestsException(message);
+    }
+    return count;
   }
 
   private async finish(
@@ -435,12 +527,16 @@ export class AiGenerationService {
     await this.quota.complete(eventId, status, generationId);
   }
 
-  private async publicLimit(userId?: string) {
-    return (await this.entitlements.forUser(userId)).dailyGenerationLimit;
-  }
-
-  private normalizeInput(input: AiGenerationInput): AiGenerationInput {
+  private normalizeInput(
+    input: AiGenerationInput,
+    maxInputChars: number,
+  ): AiGenerationInput {
     const goal = input.goal.trim().replace(/\s+/g, ' ');
+    if (goal.length > maxInputChars) {
+      throw new BadRequestException(
+        `AI goals must be ${maxInputChars} characters or fewer`,
+      );
+    }
     return {
       goal,
       categorySlug: input.categorySlug?.trim().toLowerCase() || undefined,

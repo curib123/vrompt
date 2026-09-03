@@ -9,9 +9,10 @@ import { AiQuotaService } from './ai-quota.service';
 import { AiEntitlementsService } from './ai-entitlements.service';
 import { AuthModule } from '../auth/auth.module';
 import { PromptsModule } from '../prompts/prompts.module';
+import { SettingsModule } from '../settings/settings.module';
 
 @Module({
-  imports: [AuthModule, PromptsModule],
+  imports: [AuthModule, PromptsModule, SettingsModule],
   controllers: [AiController, AiAdminController],
   providers: [
     AiGenerationService,

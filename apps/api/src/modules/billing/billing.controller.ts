@@ -1,4 +1,13 @@
-import { Body, Controller, Get, Headers, Param, ParseUUIDPipe, Post, Req, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Headers,
+  Param,
+  ParseUUIDPipe,
+  Post,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
 import type { Request } from 'express';
 
 import type { AuthenticatedUser } from '../auth/auth.types';
@@ -49,6 +58,9 @@ export class PayMongoWebhookController {
     @Req() request: Request & { rawBody?: Buffer },
     @Headers('paymongo-signature') signature?: string,
   ) {
-    return this.service.handleWebhook(request.rawBody ?? Buffer.from(''), signature);
+    return this.service.handleWebhook(
+      request.rawBody ?? Buffer.from(''),
+      signature,
+    );
   }
 }

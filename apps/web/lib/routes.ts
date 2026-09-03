@@ -3,6 +3,7 @@ export const publicPrimaryRoutes = [
   { href: '/generate', label: 'Generate', icon: 'sparkles' },
   { href: '/search', label: 'Search', icon: 'search' },
   { href: '/explore', label: 'Explore', icon: 'explore' },
+  { href: '/pricing', label: 'Pro', icon: 'sparkles' },
 ] as const;
 
 export const memberPrimaryRoutes = [
@@ -10,6 +11,7 @@ export const memberPrimaryRoutes = [
   { href: '/search', label: 'Search', icon: 'search' },
   { href: '/explore', label: 'Explore', icon: 'explore' },
   { href: '/create', label: 'Prompts', icon: 'create' },
+  { href: '/pricing', label: 'Pro', icon: 'sparkles' },
 ] as const;
 
 export const primaryRoutes = memberPrimaryRoutes;

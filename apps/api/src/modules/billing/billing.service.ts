@@ -20,6 +20,7 @@ import { createHash, createHmac, timingSafeEqual } from 'node:crypto';
 
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { PrismaService } from '../prisma/prisma.service';
+import { SettingsService } from '../settings/settings.service';
 import type { BillingSummary, PaymentGatewayAdapter } from './billing.types';
 
 type PayMongoEvent = {
@@ -44,11 +45,18 @@ export class BillingService {
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
     @Inject('PAYMENT_GATEWAY') private readonly gateway: PaymentGatewayAdapter,
+    private readonly settings: SettingsService,
   ) {}
 
-  plans() {
-    const priceCentavos = this.config.get<number>('PAYMONGO_PRO_PRICE_CENTAVOS', 29900);
-    const periodDays = this.config.get<number>('PAYMONGO_PRO_PERIOD_DAYS', 30);
+  async plans() {
+    const priceCentavos = await this.settings.getNumber(
+      'billing.proPriceCentavos',
+      this.config.get<number>('PAYMONGO_PRO_PRICE_CENTAVOS', 29900),
+    );
+    const periodDays = await this.settings.getNumber(
+      'billing.proPeriodDays',
+      this.config.get<number>('PAYMONGO_PRO_PERIOD_DAYS', 30),
+    );
     return {
       currency: 'PHP',
       plans: [
@@ -57,14 +65,22 @@ export class BillingService {
           name: 'Free',
           priceCentavos: 0,
           billingPeriod: 'forever',
-          features: ['Browse and search the public prompt library', 'Copy prompts', 'Limited AI generation'],
+          features: [
+            'Browse and search the public prompt library',
+            'Copy prompts',
+            'Limited AI generation',
+          ],
         },
         {
           id: MembershipPlan.PRO,
           name: 'Vrompt Pro',
           priceCentavos,
           billingPeriod: `${periodDays} days`,
-          features: ['Higher AI generation allowance', 'Advanced generation tools', 'More room for saved workflows'],
+          features: [
+            'Higher AI generation allowance',
+            'Advanced generation tools',
+            'More room for saved workflows',
+          ],
         },
       ],
     };
@@ -95,7 +111,9 @@ export class BillingService {
             ?.checkoutUrl,
         };
       }
-      throw new ConflictException('This checkout request is already processing');
+      throw new ConflictException(
+        'This checkout request is already processing',
+      );
     }
 
     const active = await this.prisma.billingSubscription.findFirst({
@@ -111,8 +129,14 @@ export class BillingService {
       throw new ConflictException('Vrompt Pro is already active');
     }
 
-    const amount = this.config.get<number>('PAYMONGO_PRO_PRICE_CENTAVOS', 29900);
-    const periodDays = this.config.get<number>('PAYMONGO_PRO_PERIOD_DAYS', 30);
+    const amount = await this.settings.getNumber(
+      'billing.proPriceCentavos',
+      this.config.get<number>('PAYMONGO_PRO_PRICE_CENTAVOS', 29900),
+    );
+    const periodDays = await this.settings.getNumber(
+      'billing.proPeriodDays',
+      this.config.get<number>('PAYMONGO_PRO_PERIOD_DAYS', 30),
+    );
     const subscription = await this.prisma.billingSubscription.create({
       data: {
         userId: user.id,
@@ -136,7 +160,10 @@ export class BillingService {
     });
 
     try {
-      const webOrigin = this.config.get<string>('WEB_ORIGIN', 'http://localhost:3000');
+      const webOrigin = this.config.get<string>(
+        'WEB_ORIGIN',
+        'http://localhost:3000',
+      );
       const result = await this.gateway.createCheckoutSession({
         amount,
         currency: 'PHP',
@@ -153,11 +180,16 @@ export class BillingService {
           metadata: { checkoutUrl: result.checkoutUrl },
         },
       });
-      await this.audit('BILLING_CHECKOUT_CREATED', 'BILLING_PAYMENT', payment.id, {
-        provider: BillingProvider.PAYMONGO,
-        amount,
-        currency: 'PHP',
-      });
+      await this.audit(
+        'BILLING_CHECKOUT_CREATED',
+        'BILLING_PAYMENT',
+        payment.id,
+        {
+          provider: BillingProvider.PAYMONGO,
+          amount,
+          currency: 'PHP',
+        },
+      );
       return {
         paymentId: payment.id,
         status: BillingPaymentStatus.PENDING,
@@ -167,11 +199,17 @@ export class BillingService {
       await this.prisma.$transaction([
         this.prisma.billingPayment.update({
           where: { id: payment.id },
-          data: { status: BillingPaymentStatus.FAILED, failureCode: 'CHECKOUT_CREATE_FAILED' },
+          data: {
+            status: BillingPaymentStatus.FAILED,
+            failureCode: 'CHECKOUT_CREATE_FAILED',
+          },
         }),
         this.prisma.billingSubscription.update({
           where: { id: subscription.id },
-          data: { status: BillingSubscriptionStatus.CANCELLED, canceledAt: new Date() },
+          data: {
+            status: BillingSubscriptionStatus.CANCELLED,
+            canceledAt: new Date(),
+          },
         }),
       ]);
       throw error;
@@ -181,16 +219,30 @@ export class BillingService {
   async summary(userId: string): Promise<BillingSummary> {
     await this.expireStaleSubscriptions(userId);
     const [user, subscription, latestPayment] = await Promise.all([
-      this.prisma.user.findUnique({ where: { id: userId }, select: { plan: true } }),
+      this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { plan: true },
+      }),
       this.prisma.billingSubscription.findFirst({
         where: { userId },
         orderBy: { createdAt: 'desc' },
-        select: { id: true, status: true, currentPeriodStart: true, currentPeriodEnd: true },
+        select: {
+          id: true,
+          status: true,
+          currentPeriodStart: true,
+          currentPeriodEnd: true,
+        },
       }),
       this.prisma.billingPayment.findFirst({
         where: { userId },
         orderBy: { createdAt: 'desc' },
-        select: { id: true, status: true, amount: true, currency: true, createdAt: true },
+        select: {
+          id: true,
+          status: true,
+          amount: true,
+          currency: true,
+          createdAt: true,
+        },
       }),
     ]);
     if (!user) throw new NotFoundException('User not found');
@@ -213,22 +265,107 @@ export class BillingService {
   async paymentStatus(paymentId: string, userId: string) {
     const payment = await this.prisma.billingPayment.findFirst({
       where: { id: paymentId, userId },
-      select: { id: true, status: true, failureCode: true, subscription: { select: { status: true } } },
+      select: {
+        id: true,
+        status: true,
+        failureCode: true,
+        subscription: { select: { status: true } },
+      },
     });
     if (!payment) throw new NotFoundException('Payment not found');
     return {
       id: payment.id,
       status: payment.status,
       subscriptionStatus: payment.subscription?.status ?? null,
-      failureCode: payment.status === BillingPaymentStatus.FAILED ? payment.failureCode : null,
+      failureCode:
+        payment.status === BillingPaymentStatus.FAILED
+          ? payment.failureCode
+          : null,
     };
+  }
+
+  async adminOverview() {
+    const [
+      freeUsers,
+      proUsers,
+      payments,
+      activeSubscriptions,
+      failedWebhooks,
+      aiUsage,
+    ] = await Promise.all([
+      this.prisma.user.count({ where: { plan: MembershipPlan.FREE } }),
+      this.prisma.user.count({ where: { plan: MembershipPlan.PRO } }),
+      this.prisma.billingPayment.groupBy({
+        by: ['status'],
+        _count: { _all: true },
+      }),
+      this.prisma.billingSubscription.count({
+        where: {
+          plan: MembershipPlan.PRO,
+          status: BillingSubscriptionStatus.ACTIVE,
+          currentPeriodEnd: { gt: new Date() },
+        },
+      }),
+      this.prisma.billingWebhookEvent.count({
+        where: { status: BillingWebhookStatus.FAILED },
+      }),
+      this.prisma.aiUsageEvent.count({
+        where: { createdAt: { gte: new Date(Date.now() - 86_400_000) } },
+      }),
+    ]);
+    return {
+      users: { free: freeUsers, pro: proUsers },
+      activeSubscriptions,
+      aiUsageToday: aiUsage,
+      failedWebhooks,
+      payments: Object.fromEntries(
+        payments.map((item) => [item.status, item._count._all]),
+      ),
+    };
+  }
+
+  async adminPayments() {
+    return this.prisma.billingPayment.findMany({
+      orderBy: { createdAt: 'desc' },
+      take: 100,
+      select: {
+        id: true,
+        plan: true,
+        status: true,
+        amount: true,
+        currency: true,
+        createdAt: true,
+        paidAt: true,
+        user: { select: { username: true, email: true, plan: true } },
+      },
+    });
+  }
+
+  async adminWebhookFailures() {
+    return this.prisma.billingWebhookEvent.findMany({
+      where: { status: BillingWebhookStatus.FAILED },
+      orderBy: { receivedAt: 'desc' },
+      take: 50,
+      select: {
+        externalEventId: true,
+        eventType: true,
+        status: true,
+        errorCode: true,
+        receivedAt: true,
+      },
+    });
   }
 
   async handleWebhook(rawBody: Buffer, signature: string | undefined) {
     if (!this.verifySignature(rawBody, signature)) {
-      await this.audit('BILLING_WEBHOOK_REJECTED', 'BILLING_WEBHOOK', undefined, {
-        reason: 'invalid_signature',
-      });
+      await this.audit(
+        'BILLING_WEBHOOK_REJECTED',
+        'BILLING_WEBHOOK',
+        undefined,
+        {
+          reason: 'invalid_signature',
+        },
+      );
       throw new UnauthorizedException('Invalid webhook signature');
     }
     let event: PayMongoEvent;
@@ -252,10 +389,18 @@ export class BillingService {
         },
       });
     } catch (error) {
-      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
-        await this.audit('BILLING_WEBHOOK_DUPLICATE', 'BILLING_WEBHOOK', undefined, {
-          eventType,
-        });
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002'
+      ) {
+        await this.audit(
+          'BILLING_WEBHOOK_DUPLICATE',
+          'BILLING_WEBHOOK',
+          undefined,
+          {
+            eventType,
+          },
+        );
         return { received: true, processed: false, duplicate: true };
       }
       throw error;
@@ -275,7 +420,11 @@ export class BillingService {
       await this.markWebhook(eventId, BillingWebhookStatus.PROCESSED);
       return { received: true, processed: true };
     } catch (error) {
-      await this.markWebhook(eventId, BillingWebhookStatus.FAILED, error instanceof Error ? 'PROCESSING_FAILED' : 'UNKNOWN_ERROR');
+      await this.markWebhook(
+        eventId,
+        BillingWebhookStatus.FAILED,
+        error instanceof Error ? 'PROCESSING_FAILED' : 'UNKNOWN_ERROR',
+      );
       this.logger.error(`Billing webhook processing failed for ${eventType}`);
       return { received: true, processed: false };
     }
@@ -284,11 +433,17 @@ export class BillingService {
   private async processCheckoutPaid(event: PayMongoEvent) {
     const resource = event.data?.attributes?.data;
     const attributes = resource?.attributes ?? {};
-    const reference = typeof attributes.reference_number === 'string'
-      ? attributes.reference_number
-      : typeof attributes.metadata === 'object' && attributes.metadata && 'reference_number' in attributes.metadata
-        ? String((attributes.metadata as { reference_number?: unknown }).reference_number ?? '')
-        : '';
+    const reference =
+      typeof attributes.reference_number === 'string'
+        ? attributes.reference_number
+        : typeof attributes.metadata === 'object' &&
+            attributes.metadata &&
+            'reference_number' in attributes.metadata
+          ? String(
+              (attributes.metadata as { reference_number?: unknown })
+                .reference_number ?? '',
+            )
+          : '';
     const payment = await this.prisma.billingPayment.findFirst({
       where: {
         OR: [
@@ -300,17 +455,29 @@ export class BillingService {
     });
     if (!payment || !payment.subscription) return;
     if (payment.status === BillingPaymentStatus.PAID) return;
-    if (typeof attributes.currency === 'string' && attributes.currency !== payment.currency) return;
-    if (typeof attributes.amount === 'number' && attributes.amount !== payment.amount) return;
+    if (
+      typeof attributes.currency === 'string' &&
+      attributes.currency !== payment.currency
+    )
+      return;
+    if (
+      typeof attributes.amount === 'number' &&
+      attributes.amount !== payment.amount
+    )
+      return;
 
-    const paymentId = typeof attributes.id === 'string' ? attributes.id : undefined;
+    const paymentId =
+      typeof attributes.id === 'string' ? attributes.id : undefined;
     await this.prisma.$transaction([
       this.prisma.billingPayment.update({
         where: { id: payment.id },
         data: {
           status: BillingPaymentStatus.PAID,
           externalPaymentId: paymentId,
-          externalPaymentIntentId: typeof attributes.payment_intent_id === 'string' ? attributes.payment_intent_id : undefined,
+          externalPaymentIntentId:
+            typeof attributes.payment_intent_id === 'string'
+              ? attributes.payment_intent_id
+              : undefined,
           paidAt: new Date(),
         },
       }),
@@ -327,7 +494,10 @@ export class BillingService {
           action: 'BILLING_PRO_ACTIVATED',
           targetType: 'BILLING_SUBSCRIPTION',
           targetId: payment.subscription.id,
-          metadata: { paymentId: payment.id, provider: BillingProvider.PAYMONGO },
+          metadata: {
+            paymentId: payment.id,
+            provider: BillingProvider.PAYMONGO,
+          },
         },
       }),
     ]);
@@ -336,7 +506,8 @@ export class BillingService {
   private async processPaymentFailed(event: PayMongoEvent) {
     const resource = event.data?.attributes?.data;
     const attributes = resource?.attributes ?? {};
-    const externalPaymentId = typeof resource?.id === 'string' ? resource.id : '';
+    const externalPaymentId =
+      typeof resource?.id === 'string' ? resource.id : '';
     if (!externalPaymentId) return;
     const payment = await this.prisma.billingPayment.findFirst({
       where: { externalPaymentId },
@@ -346,23 +517,37 @@ export class BillingService {
     await this.prisma.$transaction([
       this.prisma.billingPayment.update({
         where: { id: payment.id },
-        data: { status: BillingPaymentStatus.FAILED, failureCode: 'PROVIDER_PAYMENT_FAILED' },
+        data: {
+          status: BillingPaymentStatus.FAILED,
+          failureCode: 'PROVIDER_PAYMENT_FAILED',
+        },
       }),
       ...(payment.subscription
-        ? [this.prisma.billingSubscription.update({
-            where: { id: payment.subscription.id },
-            data: { status: BillingSubscriptionStatus.CANCELLED, canceledAt: new Date() },
-          })]
+        ? [
+            this.prisma.billingSubscription.update({
+              where: { id: payment.subscription.id },
+              data: {
+                status: BillingSubscriptionStatus.CANCELLED,
+                canceledAt: new Date(),
+              },
+            }),
+          ]
         : []),
       this.prisma.auditLog.create({
-        data: { action: 'BILLING_PAYMENT_FAILED', targetType: 'BILLING_PAYMENT', targetId: payment.id, metadata: { providerStatus: attributes.status ?? 'failed' } },
+        data: {
+          action: 'BILLING_PAYMENT_FAILED',
+          targetType: 'BILLING_PAYMENT',
+          targetId: payment.id,
+          metadata: { providerStatus: attributes.status ?? 'failed' },
+        },
       }),
     ]);
   }
 
   private async processPaymentRefunded(event: PayMongoEvent) {
     const resource = event.data?.attributes?.data;
-    const externalPaymentId = typeof resource?.id === 'string' ? resource.id : '';
+    const externalPaymentId =
+      typeof resource?.id === 'string' ? resource.id : '';
     if (!externalPaymentId) return;
     const payment = await this.prisma.billingPayment.findFirst({
       where: { externalPaymentId },
@@ -370,12 +555,29 @@ export class BillingService {
     });
     if (!payment) return;
     await this.prisma.$transaction([
-      this.prisma.billingPayment.update({ where: { id: payment.id }, data: { status: BillingPaymentStatus.REFUNDED } }),
+      this.prisma.billingPayment.update({
+        where: { id: payment.id },
+        data: { status: BillingPaymentStatus.REFUNDED },
+      }),
       ...(payment.subscription
-        ? [this.prisma.billingSubscription.update({ where: { id: payment.subscription.id }, data: { status: BillingSubscriptionStatus.REFUNDED } })]
+        ? [
+            this.prisma.billingSubscription.update({
+              where: { id: payment.subscription.id },
+              data: { status: BillingSubscriptionStatus.REFUNDED },
+            }),
+          ]
         : []),
-      this.prisma.user.update({ where: { id: payment.userId }, data: { plan: MembershipPlan.FREE } }),
-      this.prisma.auditLog.create({ data: { action: 'BILLING_PAYMENT_REFUNDED', targetType: 'BILLING_PAYMENT', targetId: payment.id } }),
+      this.prisma.user.update({
+        where: { id: payment.userId },
+        data: { plan: MembershipPlan.FREE },
+      }),
+      this.prisma.auditLog.create({
+        data: {
+          action: 'BILLING_PAYMENT_REFUNDED',
+          targetType: 'BILLING_PAYMENT',
+          targetId: payment.id,
+        },
+      }),
     ]);
   }
 
@@ -393,12 +595,19 @@ export class BillingService {
         where: { id: userId, plan: MembershipPlan.PRO },
         data: { plan: MembershipPlan.FREE },
       });
-      await this.audit('BILLING_PRO_EXPIRED', 'BILLING_SUBSCRIPTION', undefined, { userId });
+      await this.audit(
+        'BILLING_PRO_EXPIRED',
+        'BILLING_SUBSCRIPTION',
+        undefined,
+        { userId },
+      );
     }
   }
 
   private verifySignature(rawBody: Buffer, signatureHeader?: string) {
-    const secret = this.config.get<string>('PAYMONGO_WEBHOOK_SECRET', '').trim();
+    const secret = this.config
+      .get<string>('PAYMONGO_WEBHOOK_SECRET', '')
+      .trim();
     if (!secret || !signatureHeader) return false;
     const parts = Object.fromEntries(
       signatureHeader.split(',').map((part) => {
@@ -407,17 +616,34 @@ export class BillingService {
       }),
     ) as Record<string, string | undefined>;
     const timestamp = parts.t;
-    const expectedSignature = parts[this.config.get<string>('PAYMONGO_MODE', 'test') === 'live' ? 'li' : 'te'];
+    const expectedSignature =
+      parts[
+        this.config.get<string>('PAYMONGO_MODE', 'test') === 'live'
+          ? 'li'
+          : 'te'
+      ];
     if (!timestamp || !expectedSignature) return false;
     const timestampSeconds = Number(timestamp);
-    if (!Number.isFinite(timestampSeconds) || Math.abs(Date.now() / 1000 - timestampSeconds) > 300) return false;
-    const digest = createHmac('sha256', secret).update(`${timestamp}.${rawBody.toString('utf8')}`).digest('hex');
+    if (
+      !Number.isFinite(timestampSeconds) ||
+      Math.abs(Date.now() / 1000 - timestampSeconds) > 300
+    )
+      return false;
+    const digest = createHmac('sha256', secret)
+      .update(`${timestamp}.${rawBody.toString('utf8')}`)
+      .digest('hex');
     const expected = Buffer.from(expectedSignature, 'utf8');
     const actual = Buffer.from(digest, 'utf8');
-    return expected.length === actual.length && timingSafeEqual(expected, actual);
+    return (
+      expected.length === actual.length && timingSafeEqual(expected, actual)
+    );
   }
 
-  private async markWebhook(id: string, status: BillingWebhookStatus, errorCode?: string) {
+  private async markWebhook(
+    id: string,
+    status: BillingWebhookStatus,
+    errorCode?: string,
+  ) {
     await this.prisma.billingWebhookEvent.update({
       where: { externalEventId: id },
       data: { status, errorCode, processedAt: new Date() },
@@ -426,11 +652,23 @@ export class BillingService {
 
   private normalizeIdempotencyKey(value?: string) {
     const normalized = value?.trim();
-    if (normalized && normalized.length <= 255 && /^[A-Za-z0-9._:-]+$/.test(normalized)) return normalized;
+    if (
+      normalized &&
+      normalized.length <= 255 &&
+      /^[A-Za-z0-9._:-]+$/.test(normalized)
+    )
+      return normalized;
     return `vrompt-${createHash('sha256').update(`${Date.now()}:${Math.random()}`).digest('hex')}`;
   }
 
-  private audit(action: Prisma.AuditLogCreateInput['action'], targetType: Prisma.AuditLogCreateInput['targetType'], targetId: string | undefined, metadata?: Prisma.InputJsonValue) {
-    return this.prisma.auditLog.create({ data: { action, targetType, targetId, metadata } });
+  private audit(
+    action: Prisma.AuditLogCreateInput['action'],
+    targetType: Prisma.AuditLogCreateInput['targetType'],
+    targetId: string | undefined,
+    metadata?: Prisma.InputJsonValue,
+  ) {
+    return this.prisma.auditLog.create({
+      data: { action, targetType, targetId, metadata },
+    });
   }
 }

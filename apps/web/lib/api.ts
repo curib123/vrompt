@@ -15,7 +15,110 @@ export interface AuthUser {
   username: string;
   role: 'USER' | 'MODERATOR' | 'ADMIN';
   accountType: 'REAL' | 'STARTER' | 'OFFICIAL';
+  plan: 'FREE' | 'PRO';
   onboardingCompleted: boolean;
+}
+
+export interface BillingPlan {
+  id: 'FREE' | 'PRO';
+  name: string;
+  priceCentavos: number;
+  billingPeriod: string;
+  features: string[];
+}
+
+export interface BillingPlansResponse {
+  currency: string;
+  plans: BillingPlan[];
+}
+
+export interface BillingSummaryResponse {
+  plan: 'FREE' | 'PRO';
+  subscription: {
+    id: string;
+    status:
+      | 'PENDING'
+      | 'ACTIVE'
+      | 'PAST_DUE'
+      | 'UNPAID'
+      | 'CANCELLED'
+      | 'EXPIRED'
+      | 'REFUNDED';
+    currentPeriodStart: string;
+    currentPeriodEnd: string;
+  } | null;
+  latestPayment: {
+    id: string;
+    status:
+      | 'PENDING'
+      | 'PAID'
+      | 'FAILED'
+      | 'CANCELLED'
+      | 'EXPIRED'
+      | 'REFUNDED'
+      | 'REQUIRES_ACTION';
+    amount: number;
+    currency: string;
+    createdAt: string;
+  } | null;
+}
+
+export interface CheckoutResponse {
+  paymentId: string;
+  status:
+    | 'PENDING'
+    | 'PAID'
+    | 'FAILED'
+    | 'CANCELLED'
+    | 'EXPIRED'
+    | 'REFUNDED'
+    | 'REQUIRES_ACTION';
+  checkoutUrl?: string;
+}
+
+export interface PaymentStatusResponse {
+  id: string;
+  status: CheckoutResponse['status'];
+  subscriptionStatus:
+    NonNullable<BillingSummaryResponse['subscription']>['status'] | null;
+  failureCode: string | null;
+}
+
+export interface AiUsageResponse {
+  plan: 'FREE' | 'PRO';
+  used: number;
+  limit: number;
+  remaining: number;
+  resetAt: string;
+  advancedTools: boolean;
+  generationEnabled: boolean;
+}
+
+export interface AdminBillingOverview {
+  users: { free: number; pro: number };
+  activeSubscriptions: number;
+  aiUsageToday: number;
+  failedWebhooks: number;
+  payments: Record<string, number>;
+}
+
+export interface AdminBillingPayment {
+  id: string;
+  plan: 'FREE' | 'PRO';
+  status: CheckoutResponse['status'];
+  amount: number;
+  currency: string;
+  createdAt: string;
+  paidAt: string | null;
+  user: { username: string; email: string; plan: 'FREE' | 'PRO' };
+}
+
+export interface AdminBillingWebhookFailure {
+  externalEventId: string;
+  eventType: string;
+  status: string;
+  errorCode: string | null;
+  receivedAt: string;
 }
 
 export interface AudienceOption {
@@ -815,4 +918,31 @@ export async function fetchAudience(
   } catch {
     return null;
   }
+}
+
+export function fetchBillingPlans() {
+  return apiRequest<BillingPlansResponse>('/billing/plans');
+}
+
+export function fetchBillingSummary(accessToken: string) {
+  return apiRequest<BillingSummaryResponse>('/billing/me', { accessToken });
+}
+
+export function fetchAiUsage(accessToken: string) {
+  return apiRequest<AiUsageResponse>('/ai/usage', { accessToken });
+}
+
+export function startProCheckout(accessToken: string) {
+  return apiRequest<CheckoutResponse>('/billing/checkout', {
+    accessToken,
+    headers: { 'idempotency-key': crypto.randomUUID() },
+    method: 'POST',
+  });
+}
+
+export function fetchPaymentStatus(paymentId: string, accessToken: string) {
+  return apiRequest<PaymentStatusResponse>(
+    `/billing/payments/${encodeURIComponent(paymentId)}`,
+    { accessToken },
+  );
 }

@@ -11,6 +11,7 @@ const footerLinks = [
   { href: '/', label: 'Home' },
   { href: '/search', label: 'Search prompts' },
   { href: '/explore', label: 'Explore prompts' },
+  { href: '/pricing', label: 'Vrompt Pro' },
   { href: '/#about', label: 'About Vrompt' },
 ] as const;
 
