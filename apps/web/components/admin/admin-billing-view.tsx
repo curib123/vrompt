@@ -56,7 +56,7 @@ export function AdminBillingView() {
         </p>
       </header>
       {error ? (
-        <p className="text-sm text-red-600" role="alert">
+        <p className="text-sm text-red-600 dark:text-red-300" role="alert">
           {error}
         </p>
       ) : null}
