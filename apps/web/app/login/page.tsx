@@ -171,7 +171,7 @@ export default function LoginPage() {
           </Link>
           <Link
             className="w-fit text-xs font-medium text-brand-mid underline underline-offset-4"
-            href="/staff/login"
+            href={'/staff/login' as Route}
           >
             Administrator or moderator sign in
           </Link>

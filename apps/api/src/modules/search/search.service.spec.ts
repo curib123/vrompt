@@ -34,15 +34,24 @@ describe('SearchService', () => {
     const promptFindMany = jest.fn().mockResolvedValue([]);
     const userFindMany = jest.fn().mockResolvedValue([]);
     const collectionFindMany = jest.fn().mockResolvedValue([]);
+    const categoryFindMany = jest.fn().mockResolvedValue([]);
+    const audienceFindMany = jest.fn().mockResolvedValue([]);
     const prisma = {
       promptRepository: { findMany: promptFindMany },
       user: { findMany: userFindMany },
       collection: { findMany: collectionFindMany },
+      category: { findMany: categoryFindMany },
+      audience: { findMany: audienceFindMany },
     };
 
     await expect(
       new SearchService(prisma as unknown as PrismaService).sitemap(),
-    ).resolves.toEqual({ prompts: [], profiles: [], collections: [] });
+    ).resolves.toEqual({
+      prompts: [],
+      profiles: [],
+      collections: [],
+      landingPages: { minimumPromptCount: 3, categories: [], audiences: [] },
+    });
     expect(promptFindMany).toHaveBeenCalledWith(
       expect.objectContaining({
         select: expect.objectContaining({ id: true, slug: true }),

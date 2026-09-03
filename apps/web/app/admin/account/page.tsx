@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import type { Route } from 'next';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/components/providers/auth-provider';
 import { Button } from '@/components/ui/button';
@@ -32,7 +33,7 @@ export default function StaffSecurityPage() {
         body: JSON.stringify({ currentPassword, newPassword }),
       });
       await logout();
-      router.replace('/staff/login');
+      router.replace('/staff/login' as Route);
     } catch (e) {
       setError(
         e instanceof Error ? e.message : 'Password could not be changed',

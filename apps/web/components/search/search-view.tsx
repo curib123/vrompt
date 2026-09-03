@@ -26,6 +26,8 @@ type Filters = {
 };
 
 export function SearchView({
+  heading = 'Find a better prompt.',
+  intro = 'Describe the outcome you want. Search across prompt ideas, creators, topics, and tools.',
   initialAi,
   initialAudience,
   initialCategory,
@@ -34,6 +36,8 @@ export function SearchView({
   initialResult,
   initialSort,
 }: {
+  heading?: string;
+  intro?: string;
   initialAi?: string;
   initialAudience?: string;
   initialCategory?: string;
@@ -145,11 +149,10 @@ export function SearchView({
         <div className="relative space-y-4">
           <Badge className="!border-white/30 !text-zinc-300">Discover</Badge>
           <h1 className="text-4xl font-semibold tracking-[-0.07em] sm:text-6xl">
-            Find a better prompt.
+            {heading}
           </h1>
           <p className="max-w-2xl text-sm leading-7 text-zinc-300 sm:text-base">
-            Describe the outcome you want. Search across prompt ideas, creators,
-            topics, and tools.
+            {intro}
           </p>
         </div>
       </Card>

@@ -253,6 +253,24 @@ export interface SitemapResponse {
     updatedAt: string;
     owner: { username: string };
   }>;
+  landingPages?: SeoLandingPageIndex;
+}
+
+export interface SeoLandingPageIndex {
+  minimumPromptCount: number;
+  categories: Array<{
+    id: string;
+    name: string;
+    slug: string;
+    promptCount: number;
+  }>;
+  audiences: Array<{
+    id: string;
+    name: string;
+    slug: string;
+    description: string | null;
+    promptCount: number;
+  }>;
 }
 
 export interface ExploreRepository {
@@ -685,6 +703,55 @@ export async function fetchSearchData(
 
     if (!response.ok) return null;
     return (await response.json()) as SearchResponse;
+  } catch {
+    return null;
+  }
+}
+
+export async function fetchSeoLandingPages(): Promise<SeoLandingPageIndex | null> {
+  try {
+    const response = await fetch(`${getApiBaseUrl()}/search/landing-pages`, {
+      next: { revalidate: 3600 },
+      headers: { accept: 'application/json' },
+    });
+    if (!response.ok) return null;
+    return (await response.json()) as SeoLandingPageIndex;
+  } catch {
+    return null;
+  }
+}
+
+export async function fetchCategory(
+  slug: string,
+): Promise<CategoryOption | null> {
+  try {
+    const response = await fetch(
+      `${getApiBaseUrl()}/categories/${encodeURIComponent(slug)}`,
+      {
+        next: { revalidate: 3600 },
+        headers: { accept: 'application/json' },
+      },
+    );
+    if (!response.ok) return null;
+    return (await response.json()) as CategoryOption;
+  } catch {
+    return null;
+  }
+}
+
+export async function fetchAudience(
+  slug: string,
+): Promise<AudienceOption | null> {
+  try {
+    const response = await fetch(
+      `${getApiBaseUrl()}/audiences/${encodeURIComponent(slug)}`,
+      {
+        next: { revalidate: 3600 },
+        headers: { accept: 'application/json' },
+      },
+    );
+    if (!response.ok) return null;
+    return (await response.json()) as AudienceOption;
   } catch {
     return null;
   }

@@ -445,6 +445,7 @@ export function RepositoryDetail({
                 content={
                   activeVersion?.content ?? 'No prompt content is available.'
                 }
+                variables={activeVersion?.variables ?? []}
               />
             ),
             id: 'prompt',
@@ -977,19 +978,82 @@ function formatDateTime(value: string) {
   }).format(new Date(value));
 }
 
-function PromptTab({ content }: { content: string }) {
+function PromptTab({
+  content,
+  variables,
+}: {
+  content: string;
+  variables: PromptVersionContent['variables'];
+}) {
+  const [values, setValues] = useState<Record<string, string>>(() =>
+    Object.fromEntries(
+      variables.map((variable) => [variable.name, variable.defaultValue ?? '']),
+    ),
+  );
+  const customized = variables.reduce((result, variable) => {
+    const value = values[variable.name] || `[${variable.name}]`;
+    return result
+      .replaceAll(`{{${variable.name}}}`, value)
+      .replaceAll(`{${variable.name}}`, value)
+      .replaceAll(`[${variable.name}]`, value);
+  }, content);
+
+  async function copyCustomized() {
+    await copyToClipboard(customized);
+  }
+
   return (
-    <Card className="overflow-hidden bg-[#0D0D0D] p-0 text-white dark:border-white">
-      <div className="flex items-center justify-between border-b border-white/10 px-5 py-4">
-        <span className="font-mono text-xs uppercase tracking-[0.2em] text-zinc-400">
-          Current prompt
-        </span>
-        <span className="text-xs text-zinc-400">Preview</span>
-      </div>
-      <pre className="overflow-x-auto whitespace-pre-wrap p-6 font-mono text-sm leading-8 text-zinc-200">
-        {content}
-      </pre>
-    </Card>
+    <div className="grid gap-4">
+      {variables.length > 0 ? (
+        <Card>
+          <div className="space-y-1">
+            <h2 className="text-lg font-semibold">Customize this prompt</h2>
+            <p className="text-sm leading-6 text-zinc-600 dark:text-zinc-400">
+              Fill in the variables, then copy your ready-to-use version.
+            </p>
+          </div>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            {variables.map((variable) => (
+              <label
+                className="grid gap-1.5 text-sm font-medium"
+                key={variable.id}
+              >
+                {variable.name}
+                <Input
+                  aria-label={`Value for ${variable.name}`}
+                  onChange={(event) =>
+                    setValues((current) => ({
+                      ...current,
+                      [variable.name]: event.target.value,
+                    }))
+                  }
+                  placeholder={variable.description ?? variable.name}
+                  value={values[variable.name] ?? ''}
+                />
+              </label>
+            ))}
+          </div>
+          <Button
+            className="mt-4"
+            onClick={() => void copyCustomized()}
+            type="button"
+          >
+            Copy customized prompt
+          </Button>
+        </Card>
+      ) : null}
+      <Card className="overflow-hidden bg-[#0D0D0D] p-0 text-white dark:border-white">
+        <div className="flex items-center justify-between border-b border-white/10 px-5 py-4">
+          <span className="font-mono text-xs uppercase tracking-[0.2em] text-zinc-400">
+            Current prompt
+          </span>
+          <span className="text-xs text-zinc-400">Preview</span>
+        </div>
+        <pre className="overflow-x-auto whitespace-pre-wrap p-6 font-mono text-sm leading-8 text-zinc-200">
+          {customized}
+        </pre>
+      </Card>
+    </div>
   );
 }
 

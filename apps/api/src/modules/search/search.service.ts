@@ -3,6 +3,7 @@ import {
   AccountType,
   PromptRepositoryStatus,
   PromptVisibility,
+  PromptVersionStatus,
 } from '@prisma/client';
 
 import { PrismaService } from '../prisma/prisma.service';
@@ -325,7 +326,7 @@ export class SearchService {
   } as const;
 
   async sitemap() {
-    const [prompts, profiles, collections] = await Promise.all([
+    const [prompts, profiles, collections, landingPages] = await Promise.all([
       this.prismaService.promptRepository.findMany({
         where: {
           status: PromptRepositoryStatus.ACTIVE,
@@ -375,6 +376,7 @@ export class SearchService {
           _count: { select: { items: true } },
         },
       }),
+      this.landingPages(),
     ]);
 
     return {
@@ -383,6 +385,53 @@ export class SearchService {
       collections: collections
         .filter((collection) => collection._count.items > 0)
         .map(({ _count: _collectionCount, ...collection }) => collection),
+      landingPages,
+    };
+  }
+
+  async landingPages() {
+    const publicWhere = {
+      status: PromptRepositoryStatus.ACTIVE,
+      visibility: PromptVisibility.PUBLIC,
+      currentVersion: { status: PromptVersionStatus.PUBLISHED },
+    };
+    const [categories, audiences] = await Promise.all([
+      this.prismaService.category.findMany({
+        orderBy: { name: 'asc' },
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          _count: { select: { repositories: { where: publicWhere } } },
+        },
+      }),
+      this.prismaService.audience.findMany({
+        where: { isActive: true },
+        orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          description: true,
+          _count: {
+            select: {
+              promptAudiences: { where: { promptRepository: publicWhere } },
+            },
+          },
+        },
+      }),
+    ]);
+
+    return {
+      minimumPromptCount: 3,
+      categories: categories.map(({ _count, ...category }) => ({
+        ...category,
+        promptCount: _count.repositories,
+      })),
+      audiences: audiences.map(({ _count, ...audience }) => ({
+        ...audience,
+        promptCount: _count.promptAudiences,
+      })),
     };
   }
 

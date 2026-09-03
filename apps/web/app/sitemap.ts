@@ -25,6 +25,26 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   return [
     ...staticEntries,
+    ...(data.landingPages?.categories ?? [])
+      .filter(
+        (category) =>
+          category.promptCount >= (data.landingPages?.minimumPromptCount ?? 3),
+      )
+      .map((category) => ({
+        url: absoluteUrl(`/prompts/category/${category.slug}`),
+        changeFrequency: 'weekly' as const,
+        priority: 0.8,
+      })),
+    ...(data.landingPages?.audiences ?? [])
+      .filter(
+        (audience) =>
+          audience.promptCount >= (data.landingPages?.minimumPromptCount ?? 3),
+      )
+      .map((audience) => ({
+        url: absoluteUrl(`/prompts/for/${audience.slug}`),
+        changeFrequency: 'weekly' as const,
+        priority: 0.8,
+      })),
     ...data.prompts.map((prompt) => ({
       url: absoluteUrl(getPublicPromptPath(prompt.id, prompt.slug)),
       lastModified: prompt.updatedAt,

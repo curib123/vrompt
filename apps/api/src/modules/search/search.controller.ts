@@ -21,6 +21,11 @@ export class SearchController {
     return this.searchService.sitemap();
   }
 
+  @Get('/landing-pages')
+  landingPages() {
+    return this.searchService.landingPages();
+  }
+
   @Get()
   @UseGuards(OptionalAccessTokenGuard)
   search(
