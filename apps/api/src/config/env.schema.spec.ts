@@ -31,4 +31,15 @@ describe('environment validation', () => {
     expect(result.value.AUTH_COOKIE_SECURE).toBe(false);
     expect(result.value.SWAGGER_ENABLED).toBe('true');
   });
+
+  it('requires PayMongo server credentials in production', () => {
+    const result = envValidationSchema.validate({
+      NODE_ENV: 'production',
+      AUTH_COOKIE_SECURE: true,
+      JWT_ACCESS_SECRET: 'a-unique-production-secret-at-least-32-characters',
+    });
+
+    expect(result.error?.message).toContain('PAYMONGO_SECRET_KEY');
+    expect(result.error?.message).toContain('PAYMONGO_WEBHOOK_SECRET');
+  });
 });
