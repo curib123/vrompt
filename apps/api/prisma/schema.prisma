@@ -30,6 +30,37 @@ enum AccountType {
   OFFICIAL
 }
 
+enum MembershipPlan {
+  FREE
+  PREMIUM
+}
+
+enum PromptOrigin {
+  COMMUNITY
+  AI_GENERATED
+  IMPORTED
+}
+
+enum AiGenerationMode {
+  PUBLIC
+  INTERNAL
+}
+
+enum AiGenerationOperation {
+  GENERATE
+  REGENERATE
+  IMPROVE
+  EXPAND
+  SHORTEN
+}
+
+enum AiGenerationStatus {
+  REQUESTED
+  SUCCEEDED
+  FAILED
+  REJECTED
+}
+
 enum PromptVisibility {
   PUBLIC
   UNLISTED
@@ -152,6 +183,7 @@ model User {
   role                UserRole    @default(USER)
   status              UserStatus  @default(ACTIVE)
   accountType         AccountType @default(REAL)
+  plan                MembershipPlan @default(FREE)
   onboardingCompleted Boolean     @default(true)
   createdAt           DateTime    @default(now())
   updatedAt           DateTime    @updatedAt
@@ -179,6 +211,8 @@ model User {
   activityEvents        ActivityEvent[]
   audienceInterests     UserAudience[]
   settingUpdates        SiteSetting[]
+  aiGenerations         AiGeneration[]
+  aiUsageEvents         AiUsageEvent[]
 
   @@index([status, createdAt])
 }
@@ -267,6 +301,7 @@ model PromptRepository {
   visibility       PromptVisibility       @default(PRIVATE)
   status           PromptRepositoryStatus @default(ACTIVE)
   license          String?                @db.VarChar(120)
+  origin           PromptOrigin           @default(COMMUNITY)
   variantCount     Int                    @default(0)
   copyCount        Int                    @default(0)
   saveCount        Int                    @default(0)
@@ -293,6 +328,7 @@ model PromptRepository {
   copyEvents        PromptCopyEvent[]
   activityEvents    ActivityEvent[]
   promptAudiences   PromptAudience[]
+  aiGenerations     AiGeneration[]
 
   @@index([ownerId, visibility, status])
   @@index([categoryId, visibility, status])
@@ -467,6 +503,64 @@ model AnalyticsEvent {
 
   @@index([name, createdAt])
   @@index([accountType, createdAt])
+}
+
+model AiGeneration {
+  id            String                @id @default(uuid()) @db.Uuid
+  requesterId   String?               @db.Uuid
+  repositoryId  String?               @db.Uuid
+  mode          AiGenerationMode
+  operation     AiGenerationOperation
+  status        AiGenerationStatus    @default(REQUESTED)
+  goal          String                @db.Text
+  categorySlug  String?               @db.VarChar(100)
+  audienceSlug  String?               @db.VarChar(100)
+  input         Json
+  output        Json?
+  providerModel String?               @db.VarChar(120)
+  errorCode     String?               @db.VarChar(80)
+  createdAt     DateTime              @default(now())
+  completedAt   DateTime?
+
+  requester   User?              @relation(fields: [requesterId], references: [id], onDelete: SetNull)
+  repository  PromptRepository?  @relation(fields: [repositoryId], references: [id], onDelete: SetNull)
+  usageEvents AiUsageEvent[]
+
+  @@index([requesterId, createdAt])
+  @@index([mode, status, createdAt])
+  @@index([repositoryId])
+}
+
+model AiUsageEvent {
+  id           String                @id @default(uuid()) @db.Uuid
+  userId       String?               @db.Uuid
+  generationId String?               @db.Uuid
+  subjectKey   String                @db.VarChar(180)
+  requestKey   String                @unique @db.VarChar(255)
+  mode         AiGenerationMode
+  operation    AiGenerationOperation
+  status       AiGenerationStatus
+  units        Int                   @default(1)
+  createdAt    DateTime              @default(now())
+
+  user       User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+  generation AiGeneration? @relation(fields: [generationId], references: [id], onDelete: SetNull)
+
+  @@index([subjectKey, createdAt])
+  @@index([userId, createdAt])
+  @@index([mode, status, createdAt])
+}
+
+model AiQuotaBucket {
+  id           String   @id @default(uuid()) @db.Uuid
+  subjectKey   String   @db.VarChar(180)
+  periodStart  DateTime @db.Date
+  publicUsed   Int      @default(0)
+  internalUsed Int      @default(0)
+  updatedAt    DateTime @updatedAt
+
+  @@unique([subjectKey, periodStart])
+  @@index([periodStart, subjectKey])
 }
 
 model Category {

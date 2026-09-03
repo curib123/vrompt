@@ -92,4 +92,16 @@ export const envValidationSchema = Joi.object({
       is: 'cloudinary',
       then: Joi.string().min(1).required(),
     }),
+  AI_API_BASE_URL: Joi.string().uri().default('https://api.openai.com/v1'),
+  AI_API_KEY: Joi.string().allow('').default(''),
+  AI_MODEL: Joi.string().min(1).default('gpt-5-mini'),
+  AI_REQUEST_TIMEOUT_MS: Joi.number()
+    .integer()
+    .min(1000)
+    .max(120000)
+    .default(60000),
+  AI_PUBLIC_GUEST_DAILY_LIMIT: Joi.number().integer().min(0).default(3),
+  AI_PUBLIC_FREE_DAILY_LIMIT: Joi.number().integer().min(0).default(10),
+  AI_PUBLIC_PREMIUM_DAILY_LIMIT: Joi.number().integer().min(0).default(100),
+  AI_INTERNAL_DAILY_LIMIT: Joi.number().integer().min(0).default(50),
 });
