@@ -33,11 +33,14 @@ describe('environment validation', () => {
   });
 
   it('requires PayMongo server credentials in production', () => {
-    const result = envValidationSchema.validate({
-      NODE_ENV: 'production',
-      AUTH_COOKIE_SECURE: true,
-      JWT_ACCESS_SECRET: 'a-unique-production-secret-at-least-32-characters',
-    });
+    const result = envValidationSchema.validate(
+      {
+        NODE_ENV: 'production',
+        AUTH_COOKIE_SECURE: true,
+        JWT_ACCESS_SECRET: 'a-unique-production-secret-at-least-32-characters',
+      },
+      { abortEarly: false },
+    );
 
     expect(result.error?.message).toContain('PAYMONGO_SECRET_KEY');
     expect(result.error?.message).toContain('PAYMONGO_WEBHOOK_SECRET');
