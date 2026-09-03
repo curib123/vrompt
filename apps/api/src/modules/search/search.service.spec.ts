@@ -55,7 +55,11 @@ describe('SearchService', () => {
     expect(promptFindMany).toHaveBeenCalledWith(
       expect.objectContaining({
         select: expect.objectContaining({ id: true, slug: true }),
-        where: { status: 'ACTIVE', visibility: 'PUBLIC' },
+        where: {
+          status: 'ACTIVE',
+          visibility: 'PUBLIC',
+          currentVersion: { status: 'PUBLISHED' },
+        },
       }),
     );
     expect(collectionFindMany).toHaveBeenCalledWith(
