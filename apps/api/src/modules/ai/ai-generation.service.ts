@@ -12,7 +12,7 @@ import {
   AiGenerationStatus,
 } from '@prisma/client';
 import { ConfigService } from '@nestjs/config';
-import { createHash } from 'node:crypto';
+import { createHash, createHmac } from 'node:crypto';
 
 import { PrismaService } from '../prisma/prisma.service';
 import type { AuthenticatedUser } from '../auth/auth.types';
@@ -56,7 +56,17 @@ export class AiGenerationService {
       );
     }
     const normalized = this.normalizeInput(input, entitlements.maxInputChars);
-    const subjectKey = user?.id ? `user:${user.id}` : `guest:${guestKey}`;
+    const subjectKey = user?.id
+      ? `user:${user.id}`
+      : `guest:${createHmac(
+          'sha256',
+          this.configService.get<string>(
+            'JWT_ACCESS_SECRET',
+            'local-development-access-secret-change-me',
+          ),
+        )
+          .update(guestKey)
+          .digest('hex')}`;
     return this.generate({
       mode: AiGenerationMode.PUBLIC,
       input: normalized,
@@ -532,9 +542,14 @@ export class AiGenerationService {
     maxInputChars: number,
   ): AiGenerationInput {
     const goal = input.goal.trim().replace(/\s+/g, ' ');
-    if (goal.length > maxInputChars) {
+    const basePrompt = input.basePrompt?.trim() || undefined;
+    if (
+      goal.length > maxInputChars ||
+      (basePrompt?.length ?? 0) > maxInputChars ||
+      goal.length + (basePrompt?.length ?? 0) > maxInputChars
+    ) {
       throw new BadRequestException(
-        `AI goals must be ${maxInputChars} characters or fewer`,
+        `AI input must be ${maxInputChars} characters or fewer`,
       );
     }
     return {
@@ -542,7 +557,7 @@ export class AiGenerationService {
       categorySlug: input.categorySlug?.trim().toLowerCase() || undefined,
       audienceSlug: input.audienceSlug?.trim().toLowerCase() || undefined,
       operation: input.operation ?? AiGenerationOperation.GENERATE,
-      basePrompt: input.basePrompt?.trim() || undefined,
+      basePrompt,
       requestId: input.requestId?.trim() || undefined,
     };
   }

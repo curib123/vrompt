@@ -39,6 +39,14 @@ export class PayMongoAdapter implements PaymentGatewayAdapter {
         'Payments are not configured. Please try again later.',
       );
     }
+    const mode = this.config.get<string>('PAYMONGO_MODE', 'test');
+    const expectedPrefix = mode === 'live' ? 'sk_live_' : 'sk_test_';
+    if (!secretKey.startsWith(expectedPrefix)) {
+      this.logger.error('PayMongo key does not match the configured mode');
+      throw new ServiceUnavailableException(
+        'Payments are not configured. Please try again later.',
+      );
+    }
 
     const baseUrl = this.config.get<string>(
       'PAYMONGO_API_BASE_URL',
@@ -110,9 +118,26 @@ export class PayMongoAdapter implements PaymentGatewayAdapter {
       );
     }
 
-    return {
-      id: body.data.id,
-      checkoutUrl: body.data.attributes.checkout_url,
-    };
+    const checkoutUrl = body.data.attributes.checkout_url;
+    let parsedCheckoutUrl: URL;
+    try {
+      parsedCheckoutUrl = new URL(checkoutUrl);
+    } catch {
+      throw new ServiceUnavailableException(
+        'Payment provider returned an invalid checkout.',
+      );
+    }
+    if (
+      parsedCheckoutUrl.protocol !== 'https:' ||
+      (parsedCheckoutUrl.hostname !== 'checkout.paymongo.com' &&
+        !parsedCheckoutUrl.hostname.endsWith('.checkout.paymongo.com'))
+    ) {
+      this.logger.error('PayMongo returned an untrusted checkout URL');
+      throw new ServiceUnavailableException(
+        'Payment provider returned an invalid checkout.',
+      );
+    }
+
+    return { id: body.data.id, checkoutUrl };
   }
 }

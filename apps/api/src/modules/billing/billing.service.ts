@@ -19,6 +19,8 @@ import {
 import { createHash, createHmac, timingSafeEqual } from 'node:crypto';
 
 import type { AuthenticatedUser } from '../auth/auth.types';
+import { TooManyRequestsException } from '../../common/exceptions/too-many-requests.exception';
+import { RedisService } from '../common/redis.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { SettingsService } from '../settings/settings.service';
 import type { BillingSummary, PaymentGatewayAdapter } from './billing.types';
@@ -28,6 +30,8 @@ type PayMongoEvent = {
     id?: string;
     attributes?: {
       type?: string;
+      livemode?: boolean;
+      created_at?: number;
       data?: {
         id?: string;
         type?: string;
@@ -46,6 +50,7 @@ export class BillingService {
     private readonly config: ConfigService,
     @Inject('PAYMENT_GATEWAY') private readonly gateway: PaymentGatewayAdapter,
     private readonly settings: SettingsService,
+    private readonly redis: RedisService,
   ) {}
 
   async plans() {
@@ -75,7 +80,7 @@ export class BillingService {
           id: MembershipPlan.PRO,
           name: 'Vrompt Pro',
           priceCentavos,
-          billingPeriod: `${periodDays} days`,
+          billingPeriod: `${periodDays} days · one-time payment`,
           features: [
             'Higher AI generation allowance',
             'Advanced generation tools',
@@ -87,8 +92,21 @@ export class BillingService {
   }
 
   async createCheckout(user: AuthenticatedUser, requestedKey?: string) {
+    const checkoutAttempts = await this.redis.increment(
+      `billing:checkout:${user.id}`,
+      3_600,
+    );
+    if (
+      checkoutAttempts >
+      this.config.get<number>('PAYMONGO_CHECKOUT_RATE_LIMIT_PER_HOUR', 5)
+    ) {
+      throw new TooManyRequestsException(
+        'Too many checkout attempts. Please try again later.',
+      );
+    }
     const idempotencyKey = this.normalizeIdempotencyKey(requestedKey);
     const now = new Date();
+    await this.expireStaleSubscriptions(user.id);
     const existing = await this.prisma.billingPayment.findUnique({
       where: { idempotencyKey },
       select: {
@@ -116,17 +134,42 @@ export class BillingService {
       );
     }
 
-    const active = await this.prisma.billingSubscription.findFirst({
+    const openSubscription = await this.prisma.billingSubscription.findFirst({
       where: {
         userId: user.id,
         plan: MembershipPlan.PRO,
-        status: BillingSubscriptionStatus.ACTIVE,
-        currentPeriodEnd: { gt: now },
+        status: {
+          in: [
+            BillingSubscriptionStatus.PENDING,
+            BillingSubscriptionStatus.ACTIVE,
+          ],
+        },
       },
-      select: { id: true },
+      include: {
+        payments: { orderBy: { createdAt: 'desc' }, take: 1 },
+      },
     });
-    if (active) {
+    if (
+      openSubscription?.status === BillingSubscriptionStatus.ACTIVE &&
+      openSubscription.currentPeriodEnd > now
+    ) {
       throw new ConflictException('Vrompt Pro is already active');
+    }
+    const pendingPayment = openSubscription?.payments[0];
+    if (pendingPayment?.status === BillingPaymentStatus.PENDING) {
+      await this.expirePendingPayment(pendingPayment.id, user.id);
+      const refreshed = await this.prisma.billingPayment.findUnique({
+        where: { id: pendingPayment.id },
+        select: { status: true, metadata: true },
+      });
+      if (refreshed?.status === BillingPaymentStatus.PENDING) {
+        return {
+          paymentId: pendingPayment.id,
+          status: refreshed.status,
+          checkoutUrl: (refreshed.metadata as { checkoutUrl?: string } | null)
+            ?.checkoutUrl,
+        };
+      }
     }
 
     const amount = await this.settings.getNumber(
@@ -189,6 +232,7 @@ export class BillingService {
           amount,
           currency: 'PHP',
         },
+        user.id,
       );
       return {
         paymentId: payment.id,
@@ -319,13 +363,18 @@ export class BillingService {
   }
 
   async adminOverview() {
+    const now = new Date();
+    const today = new Date(now);
+    today.setUTCHours(0, 0, 0, 0);
+    const last30Days = new Date(now.getTime() - 30 * 86_400_000);
     const [
       freeUsers,
       proUsers,
       payments,
       activeSubscriptions,
       failedWebhooks,
-      aiUsage,
+      paidRevenue,
+      paidRevenue30Days,
     ] = await Promise.all([
       this.prisma.user.count({ where: { plan: MembershipPlan.FREE } }),
       this.prisma.user.count({ where: { plan: MembershipPlan.PRO } }),
@@ -343,18 +392,64 @@ export class BillingService {
       this.prisma.billingWebhookEvent.count({
         where: { status: BillingWebhookStatus.FAILED },
       }),
-      this.prisma.aiUsageEvent.count({
-        where: { createdAt: { gte: new Date(Date.now() - 86_400_000) } },
+      this.prisma.billingPayment.aggregate({
+        where: { status: BillingPaymentStatus.PAID },
+        _sum: { amount: true },
+      }),
+      this.prisma.billingPayment.aggregate({
+        where: {
+          status: BillingPaymentStatus.PAID,
+          paidAt: { gte: last30Days },
+        },
+        _sum: { amount: true },
       }),
     ]);
+    const usageRows = await this.prisma.aiUsageEvent.findMany({
+      where: { createdAt: { gte: today } },
+      select: {
+        units: true,
+        user: { select: { plan: true } },
+      },
+    });
+    const usageByPlan = usageRows.reduce(
+      (totals, row) => {
+        const key = row.user?.plan ?? 'GUEST';
+        totals[key] += row.units;
+        return totals;
+      },
+      { GUEST: 0, FREE: 0, PRO: 0 },
+    );
+    const paymentCounts = Object.fromEntries(
+      payments.map((item) => [item.status, item._count._all]),
+    ) as Record<string, number>;
+    const totalUsers = freeUsers + proUsers;
+    const checkoutCount = Object.values(paymentCounts).reduce(
+      (total, count) => total + count,
+      0,
+    );
+    const paidCount = paymentCounts[BillingPaymentStatus.PAID] ?? 0;
+    const aiUsageToday = Object.values(usageByPlan).reduce(
+      (total, units) => total + units,
+      0,
+    );
     return {
       users: { free: freeUsers, pro: proUsers },
       activeSubscriptions,
-      aiUsageToday: aiUsage,
+      aiUsageToday,
+      usageByPlan,
       failedWebhooks,
-      payments: Object.fromEntries(
-        payments.map((item) => [item.status, item._count._all]),
-      ),
+      payments: paymentCounts,
+      analytics: {
+        proSharePercent: totalUsers
+          ? Math.round((proUsers / totalUsers) * 10_000) / 100
+          : 0,
+        checkoutConversionPercent: checkoutCount
+          ? Math.round((paidCount / checkoutCount) * 10_000) / 100
+          : 0,
+        retainedRevenueCentavos: paidRevenue._sum.amount ?? 0,
+        retainedRevenue30DaysCentavos: paidRevenue30Days._sum.amount ?? 0,
+        currency: 'PHP',
+      },
     };
   }
 
@@ -412,13 +507,26 @@ export class BillingService {
     const eventType = event.data?.attributes?.type;
     if (!eventId || !eventType) return { received: true, processed: false };
 
+    const expectedLiveMode =
+      this.config.get<string>('PAYMONGO_MODE', 'test') === 'live';
+    if (event.data?.attributes?.livemode !== expectedLiveMode) {
+      await this.audit(
+        'BILLING_WEBHOOK_REJECTED',
+        'BILLING_WEBHOOK',
+        undefined,
+        { reason: 'mode_mismatch', eventType },
+      );
+      throw new UnauthorizedException('Invalid webhook environment');
+    }
+
+    let retryingFailedEvent = false;
     try {
       await this.prisma.billingWebhookEvent.create({
         data: {
           provider: BillingProvider.PAYMONGO,
           externalEventId: eventId,
           eventType,
-          livemode: this.config.get<string>('PAYMONGO_MODE', 'test') === 'live',
+          livemode: expectedLiveMode,
           payloadHash: createHash('sha256').update(rawBody).digest('hex'),
         },
       });
@@ -427,17 +535,32 @@ export class BillingService {
         error instanceof Prisma.PrismaClientKnownRequestError &&
         error.code === 'P2002'
       ) {
-        await this.audit(
-          'BILLING_WEBHOOK_DUPLICATE',
-          'BILLING_WEBHOOK',
-          undefined,
-          {
-            eventType,
+        const claimed = await this.prisma.billingWebhookEvent.updateMany({
+          where: {
+            externalEventId: eventId,
+            status: BillingWebhookStatus.FAILED,
           },
-        );
-        return { received: true, processed: false, duplicate: true };
+          data: {
+            status: BillingWebhookStatus.RECEIVED,
+            errorCode: null,
+            processedAt: null,
+          },
+        });
+        if (claimed.count === 1) {
+          retryingFailedEvent = true;
+        } else {
+          await this.audit(
+            'BILLING_WEBHOOK_DUPLICATE',
+            'BILLING_WEBHOOK',
+            undefined,
+            {
+              eventType,
+            },
+          );
+          return { received: true, processed: false, duplicate: true };
+        }
       }
-      throw error;
+      if (!retryingFailedEvent) throw error;
     }
 
     try {
@@ -460,7 +583,7 @@ export class BillingService {
         error instanceof Error ? 'PROCESSING_FAILED' : 'UNKNOWN_ERROR',
       );
       this.logger.error(`Billing webhook processing failed for ${eventType}`);
-      return { received: true, processed: false };
+      throw error;
     }
   }
 
@@ -478,74 +601,105 @@ export class BillingService {
                 .reference_number ?? '',
             )
           : '';
+    if (!resource?.id || !reference)
+      throw new Error('Missing checkout identity');
     const payment = await this.prisma.billingPayment.findFirst({
-      where: {
-        OR: [
-          ...(resource?.id ? [{ externalCheckoutSessionId: resource.id }] : []),
-          ...(reference ? [{ id: reference }] : []),
-        ],
-      },
+      where: { id: reference, externalCheckoutSessionId: resource.id },
       include: { subscription: true },
     });
-    if (!payment || !payment.subscription) return;
+    if (!payment || !payment.subscription)
+      throw new Error('Unknown checkout session');
     if (payment.status === BillingPaymentStatus.PAID) return;
+    const gatewayPayments = Array.isArray(attributes.payments)
+      ? (attributes.payments as Array<{
+          id?: unknown;
+          attributes?: Record<string, unknown>;
+        }>)
+      : [];
+    const gatewayPayment = gatewayPayments.find(
+      (item) => item?.attributes?.status === 'paid',
+    );
+    const gatewayAttributes = gatewayPayment?.attributes;
+    const paymentIntent =
+      typeof attributes.payment_intent === 'object' && attributes.payment_intent
+        ? (attributes.payment_intent as {
+            id?: unknown;
+            attributes?: Record<string, unknown>;
+          })
+        : undefined;
+    const gatewayPaymentIntentId =
+      typeof gatewayAttributes?.payment_intent_id === 'string'
+        ? gatewayAttributes.payment_intent_id
+        : undefined;
     if (
-      typeof attributes.currency === 'string' &&
-      attributes.currency !== payment.currency
-    )
-      return;
-    if (
-      typeof attributes.amount === 'number' &&
-      attributes.amount !== payment.amount
-    )
-      return;
+      !gatewayPayment ||
+      typeof gatewayPayment.id !== 'string' ||
+      gatewayAttributes?.amount !== payment.amount ||
+      gatewayAttributes.currency !== payment.currency ||
+      attributes.livemode !==
+        (this.config.get<string>('PAYMONGO_MODE', 'test') === 'live')
+    ) {
+      throw new Error('Checkout payment did not match local payment');
+    }
+    const gatewayPaymentId = gatewayPayment.id;
 
-    const paymentId =
-      typeof attributes.id === 'string' ? attributes.id : undefined;
-    await this.prisma.$transaction([
-      this.prisma.billingPayment.update({
-        where: { id: payment.id },
+    const periodDays = await this.settings.getNumber(
+      'billing.proPeriodDays',
+      this.config.get<number>('PAYMONGO_PRO_PERIOD_DAYS', 30),
+    );
+    const activatedAt = new Date();
+    await this.prisma.$transaction(async (transaction) => {
+      const updated = await transaction.billingPayment.updateMany({
+        where: {
+          id: payment.id,
+          status: {
+            in: [
+              BillingPaymentStatus.PENDING,
+              BillingPaymentStatus.REQUIRES_ACTION,
+              BillingPaymentStatus.CANCELLED,
+              BillingPaymentStatus.EXPIRED,
+            ],
+          },
+        },
         data: {
           status: BillingPaymentStatus.PAID,
-          externalPaymentId: paymentId,
+          externalPaymentId: gatewayPaymentId,
           externalPaymentIntentId:
-            typeof attributes.payment_intent_id === 'string'
-              ? attributes.payment_intent_id
-              : undefined,
-          paidAt: new Date(),
+            typeof paymentIntent?.id === 'string'
+              ? paymentIntent.id
+              : gatewayPaymentIntentId,
+          paidAt: activatedAt,
+          failureCode: null,
         },
-      }),
-      this.prisma.billingSubscription.update({
-        where: { id: payment.subscription.id },
+      });
+      if (updated.count !== 1) return;
+      await transaction.billingSubscription.update({
+        where: { id: payment.subscription!.id },
         data: {
           status: BillingSubscriptionStatus.ACTIVE,
-          currentPeriodStart: new Date(),
+          currentPeriodStart: activatedAt,
           currentPeriodEnd: new Date(
-            Date.now() +
-              (await this.settings.getNumber(
-                'billing.proPeriodDays',
-                this.config.get<number>('PAYMONGO_PRO_PERIOD_DAYS', 30),
-              )) *
-                86_400_000,
+            activatedAt.getTime() + periodDays * 86_400_000,
           ),
+          canceledAt: null,
         },
-      }),
-      this.prisma.user.update({
+      });
+      await transaction.user.update({
         where: { id: payment.userId },
         data: { plan: MembershipPlan.PRO },
-      }),
-      this.prisma.auditLog.create({
+      });
+      await transaction.auditLog.create({
         data: {
           action: 'BILLING_PRO_ACTIVATED',
           targetType: 'BILLING_SUBSCRIPTION',
-          targetId: payment.subscription.id,
+          targetId: payment.subscription!.id,
           metadata: {
             paymentId: payment.id,
             provider: BillingProvider.PAYMONGO,
           },
         },
-      }),
-    ]);
+      });
+    });
   }
 
   private async processPaymentFailed(event: PayMongoEvent) {
@@ -688,6 +842,13 @@ export class BillingService {
       .get<string>('PAYMONGO_WEBHOOK_SECRET', '')
       .trim();
     if (!secret || !signatureHeader) return false;
+    const rawDigest = createHmac('sha256', secret)
+      .update(rawBody)
+      .digest('hex');
+    if (this.safeEqual(signatureHeader.trim(), rawDigest)) return true;
+
+    // Older PayMongo endpoints use the timestamped t/te/li format. Supporting
+    // it keeps existing registered endpoints valid during key rotation.
     const parts = Object.fromEntries(
       signatureHeader.split(',').map((part) => {
         const [key, ...value] = part.trim().split('=');
@@ -711,8 +872,12 @@ export class BillingService {
     const digest = createHmac('sha256', secret)
       .update(`${timestamp}.${rawBody.toString('utf8')}`)
       .digest('hex');
-    const expected = Buffer.from(expectedSignature, 'utf8');
-    const actual = Buffer.from(digest, 'utf8');
+    return this.safeEqual(expectedSignature, digest);
+  }
+
+  private safeEqual(left: string, right: string) {
+    const expected = Buffer.from(left, 'utf8');
+    const actual = Buffer.from(right, 'utf8');
     return (
       expected.length === actual.length && timingSafeEqual(expected, actual)
     );
@@ -745,9 +910,10 @@ export class BillingService {
     targetType: Prisma.AuditLogCreateInput['targetType'],
     targetId: string | undefined,
     metadata?: Prisma.InputJsonValue,
+    actorId?: string,
   ) {
     return this.prisma.auditLog.create({
-      data: { action, targetType, targetId, metadata },
+      data: { action, targetType, targetId, metadata, actorId },
     });
   }
 }

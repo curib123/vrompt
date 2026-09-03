@@ -586,8 +586,8 @@ model BillingPayment {
   currency                String                @db.Char(3)
   idempotencyKey          String                @unique @db.VarChar(255)
   externalCheckoutSessionId String?             @unique @db.VarChar(255)
-  externalPaymentIntentId String?               @db.VarChar(255)
-  externalPaymentId       String?               @db.VarChar(255)
+  externalPaymentIntentId String?               @unique @db.VarChar(255)
+  externalPaymentId       String?               @unique @db.VarChar(255)
   failureCode             String?               @db.VarChar(100)
   metadata                Json?
   createdAt               DateTime              @default(now())

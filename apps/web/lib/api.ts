@@ -98,8 +98,16 @@ export interface AdminBillingOverview {
   users: { free: number; pro: number };
   activeSubscriptions: number;
   aiUsageToday: number;
+  usageByPlan: { GUEST: number; FREE: number; PRO: number };
   failedWebhooks: number;
   payments: Record<string, number>;
+  analytics: {
+    proSharePercent: number;
+    checkoutConversionPercent: number;
+    retainedRevenueCentavos: number;
+    retainedRevenue30DaysCentavos: number;
+    currency: string;
+  };
 }
 
 export interface AdminBillingPayment {

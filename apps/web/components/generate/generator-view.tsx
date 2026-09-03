@@ -19,7 +19,7 @@ import type {
   CategoryOption,
 } from '@/lib/api';
 import { ApiError, fetchAiUsage } from '@/lib/api';
-import { copyToClipboard, getCopyClientKey } from '@/lib/clipboard';
+import { copyToClipboard } from '@/lib/clipboard';
 
 type Operation = 'GENERATE' | 'REGENERATE' | 'IMPROVE' | 'EXPAND' | 'SHORTEN';
 
@@ -56,10 +56,7 @@ export function GeneratorView() {
   }, []);
 
   useEffect(() => {
-    if (!accessToken) {
-      setUsage(null);
-      return;
-    }
+    if (!accessToken) return;
     void fetchAiUsage(accessToken)
       .then(setUsage)
       .catch(() => undefined);
@@ -74,7 +71,6 @@ export function GeneratorView() {
     try {
       const response = await apiRequest<AiGenerationResponse>('/ai/generate', {
         accessToken: accessToken ?? undefined,
-        headers: { 'x-vrompt-client-key': getCopyClientKey() },
         method: 'POST',
         body: JSON.stringify({
           goal,

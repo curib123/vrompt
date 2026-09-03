@@ -1,13 +1,14 @@
 import {
   Body,
   Controller,
-  Headers,
   Param,
   ParseUUIDPipe,
   Post,
   Get,
+  Req,
   UseGuards,
 } from '@nestjs/common';
+import type { Request } from 'express';
 
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '../auth/auth.types';
@@ -31,13 +32,13 @@ export class AiController {
   @UseGuards(OptionalAccessTokenGuard)
   generate(
     @Body() input: GeneratePromptDto,
-    @Headers('x-vrompt-client-key') clientKey: string | undefined,
+    @Req() request: Request,
     @CurrentUser() user?: AuthenticatedUser,
   ) {
     return this.aiGenerationService.generatePublic(
       input,
       user,
-      clientKey?.trim() || 'anonymous',
+      request.ip || request.socket.remoteAddress || 'unknown',
     );
   }
 

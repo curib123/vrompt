@@ -136,4 +136,9 @@ export const envValidationSchema = Joi.object({
     .min(1)
     .max(168)
     .default(24),
+  PAYMONGO_CHECKOUT_RATE_LIMIT_PER_HOUR: Joi.number()
+    .integer()
+    .min(1)
+    .max(100)
+    .default(5),
 });
