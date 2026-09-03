@@ -233,6 +233,11 @@ export function RepositoryDetail({
               <Badge className="!border-white/30 !text-zinc-300">
                 {repository.visibility.toLowerCase()}
               </Badge>
+              {repository.origin === 'AI_GENERATED' ? (
+                <Badge className="!border-white/30 !text-zinc-300">
+                  AI-generated
+                </Badge>
+              ) : null}
               {repository.category ? (
                 <Badge className="!border-white/30 !text-zinc-300">
                   {repository.category.name}

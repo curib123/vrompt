@@ -11,6 +11,7 @@ import { cn } from '@/lib/cn';
 
 const sharedLinks = [
   { href: '/admin', label: 'Overview' },
+  { href: '/admin/ai', label: 'AI studio' },
   { href: '/admin/moderation', label: 'Moderation' },
   { href: '/admin/audiences', label: 'Audiences' },
   { href: '/admin/analytics', label: 'Analytics' },

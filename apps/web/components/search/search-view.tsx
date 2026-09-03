@@ -342,6 +342,7 @@ function ResultCard({ item, query }: { item: SearchResult; query: string }) {
           <Badge key={itemAudience.slug}>{itemAudience.name}</Badge>
         ))}
         {item.owner.accountType !== 'REAL' ? <Badge>Vrompt pick</Badge> : null}
+        {item.origin === 'AI_GENERATED' ? <Badge>AI-generated</Badge> : null}
       </div>
       <h3 className="mt-5 text-2xl font-semibold tracking-[-0.04em] group-hover:underline group-hover:decoration-[#BDBDBD] group-hover:underline-offset-4">
         {highlight(item.title, query)}

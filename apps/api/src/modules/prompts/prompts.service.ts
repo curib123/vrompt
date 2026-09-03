@@ -732,6 +732,7 @@ export class PromptsService {
     saveCount: true,
     likeCount: true,
     license: true,
+    origin: true,
     createdAt: true,
     updatedAt: true,
     owner: {

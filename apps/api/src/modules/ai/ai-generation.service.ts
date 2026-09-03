@@ -13,10 +13,12 @@ import { createHash } from 'node:crypto';
 
 import { PrismaService } from '../prisma/prisma.service';
 import type { AuthenticatedUser } from '../auth/auth.types';
+import { PromptsService } from '../prompts/prompts.service';
 import { AiProviderService } from './ai-provider.service';
 import { AiQualityService } from './ai-quality.service';
 import { AiQuotaService } from './ai-quota.service';
 import type { AiGenerationInput, AiPromptDraft } from './ai.types';
+import type { SaveGenerationDto } from './dto/save-generation.dto';
 
 @Injectable()
 export class AiGenerationService {
@@ -26,6 +28,7 @@ export class AiGenerationService {
     private readonly provider: AiProviderService,
     private readonly quality: AiQualityService,
     private readonly quota: AiQuotaService,
+    private readonly promptsService: PromptsService,
   ) {}
 
   async generatePublic(
@@ -43,6 +46,149 @@ export class AiGenerationService {
       userId: user?.id,
       limit,
     });
+  }
+
+  async saveGeneration(
+    generationId: string,
+    userId: string,
+    input?: SaveGenerationDto,
+  ) {
+    return this.saveGenerated(
+      generationId,
+      userId,
+      AiGenerationMode.PUBLIC,
+      input,
+    );
+  }
+
+  async saveInternalDraft(generationId: string, userId: string) {
+    return this.saveGenerated(generationId, userId, AiGenerationMode.INTERNAL);
+  }
+
+  async listInternal() {
+    return this.prismaService.aiGeneration.findMany({
+      where: { mode: AiGenerationMode.INTERNAL },
+      orderBy: { createdAt: 'desc' },
+      take: 100,
+      select: {
+        id: true,
+        goal: true,
+        operation: true,
+        status: true,
+        output: true,
+        providerModel: true,
+        repositoryId: true,
+        createdAt: true,
+        completedAt: true,
+        requester: { select: { username: true } },
+        repository: {
+          select: {
+            slug: true,
+            title: true,
+            visibility: true,
+            currentVersion: { select: { status: true } },
+          },
+        },
+      },
+    });
+  }
+
+  async reviewInternal(generationId: string, action: 'REJECT' | 'PUBLISH') {
+    const generation = await this.prismaService.aiGeneration.findUnique({
+      where: { id: generationId },
+    });
+    if (
+      !generation ||
+      generation.mode !== AiGenerationMode.INTERNAL ||
+      generation.status !== AiGenerationStatus.SUCCEEDED
+    ) {
+      throw new ConflictException(
+        'Internal generation is not ready for review',
+      );
+    }
+    if (action === 'REJECT') {
+      await this.prismaService.aiGeneration.update({
+        where: { id: generation.id },
+        data: { status: AiGenerationStatus.REJECTED, completedAt: new Date() },
+      });
+      return { id: generation.id, status: AiGenerationStatus.REJECTED };
+    }
+    if (!generation.repositoryId) {
+      throw new ConflictException(
+        'Save the internal generation as a draft before publishing',
+      );
+    }
+    const repository = await this.prismaService.promptRepository.findUnique({
+      where: { id: generation.repositoryId },
+      select: { id: true, currentVersionId: true, visibility: true },
+    });
+    if (!repository?.currentVersionId)
+      throw new ConflictException('Draft prompt version not found');
+    await this.prismaService.$transaction([
+      this.prismaService.promptVersion.update({
+        where: { id: repository.currentVersionId },
+        data: { status: 'PUBLISHED', publishedAt: new Date() },
+      }),
+      this.prismaService.promptRepository.update({
+        where: { id: repository.id },
+        data: { visibility: 'PUBLIC', origin: 'AI_GENERATED' },
+      }),
+    ]);
+    return { id: repository.id, status: 'PUBLISHED' };
+  }
+
+  private async saveGenerated(
+    generationId: string,
+    userId: string,
+    mode: AiGenerationMode,
+    input?: SaveGenerationDto,
+  ) {
+    const generation = await this.prismaService.aiGeneration.findUnique({
+      where: { id: generationId },
+    });
+    if (
+      !generation ||
+      generation.mode !== mode ||
+      generation.status !== AiGenerationStatus.SUCCEEDED ||
+      !generation.output
+    ) {
+      throw new ConflictException('Generated prompt is not ready to save');
+    }
+    if (generation.repositoryId) {
+      return { id: generation.repositoryId, alreadySaved: true };
+    }
+
+    const draft = this.quality.validateDraft({
+      ...(generation.output as object),
+      ...(input?.content !== undefined ? { content: input.content } : {}),
+    });
+    const audience = draft.audienceSlug
+      ? await this.prismaService.audience.findFirst({
+          where: { slug: draft.audienceSlug, isActive: true },
+          select: { id: true },
+        })
+      : null;
+    const created = await this.promptsService.create(userId, {
+      title: draft.title,
+      description: draft.description,
+      content: draft.content,
+      categorySlug: draft.categorySlug,
+      tags: draft.tags,
+      audienceIds: audience ? [audience.id] : [],
+      variables: draft.variables,
+      visibility: 'PRIVATE',
+    });
+    await this.prismaService.$transaction([
+      this.prismaService.promptRepository.update({
+        where: { id: created.id },
+        data: { origin: 'AI_GENERATED' },
+      }),
+      this.prismaService.aiGeneration.update({
+        where: { id: generation.id },
+        data: { repositoryId: created.id },
+      }),
+    ]);
+    return { id: created.id, slug: created.slug, alreadySaved: false };
   }
 
   async generateInternal(input: AiGenerationInput, user: AuthenticatedUser) {
@@ -77,7 +223,12 @@ export class AiGenerationService {
       operation,
       limit: context.limit,
     });
-    if (reservation.reused && reservation.event.generationId) {
+    if (reservation.reused) {
+      if (!reservation.event.generationId) {
+        throw new ConflictException(
+          'This generation request is already in progress',
+        );
+      }
       const existing = await this.prismaService.aiGeneration.findUniqueOrThrow({
         where: { id: reservation.event.generationId },
       });

@@ -219,6 +219,7 @@ export interface SearchResult {
   title: string;
   slug: string;
   description: string | null;
+  origin: 'COMMUNITY' | 'AI_GENERATED' | 'IMPORTED';
   aiCompatibility: string | null;
   visibility: 'PUBLIC' | 'UNLISTED' | 'PRIVATE';
   copyCount: number;
@@ -238,6 +239,47 @@ export interface SearchResponse {
   pageSize: number;
   total: number;
   hasNextPage: boolean;
+}
+
+export interface AiPromptDraft {
+  title: string;
+  description: string;
+  content: string;
+  variables: Array<{
+    name: string;
+    description?: string;
+    defaultValue?: string;
+    required?: boolean;
+  }>;
+  tags: string[];
+  categorySlug?: string;
+  audienceSlug?: string;
+}
+
+export interface AiGenerationResponse {
+  id: string;
+  status: 'SUCCEEDED' | 'FAILED' | 'REJECTED' | 'REQUESTED';
+  output: AiPromptDraft | null;
+  createdAt: string;
+}
+
+export interface AdminAiGeneration {
+  id: string;
+  goal: string;
+  operation: string;
+  status: string;
+  output: AiPromptDraft | null;
+  providerModel: string | null;
+  repositoryId: string | null;
+  createdAt: string;
+  completedAt: string | null;
+  requester: { username: string } | null;
+  repository: {
+    slug: string;
+    title: string;
+    visibility: string;
+    currentVersion: { status: string } | null;
+  } | null;
 }
 
 export interface SitemapResponse {
@@ -278,6 +320,7 @@ export interface ExploreRepository {
   title: string;
   slug: string;
   description: string | null;
+  origin: 'COMMUNITY' | 'AI_GENERATED' | 'IMPORTED';
   copyCount: number;
   saveCount: number;
   likeCount: number;
@@ -521,6 +564,7 @@ export interface PromptRepositoryDetail {
   title: string;
   slug: string;
   description: string | null;
+  origin: 'COMMUNITY' | 'AI_GENERATED' | 'IMPORTED';
   aiCompatibility: string | null;
   visibility: 'PUBLIC' | 'UNLISTED' | 'PRIVATE';
   status: 'ACTIVE' | 'HIDDEN' | 'ARCHIVED';
