@@ -5,6 +5,7 @@ import type { Route } from 'next';
 import { useEffect, useState } from 'react';
 
 import { useAuth } from '@/components/providers/auth-provider';
+import { AuthModalTrigger } from '@/components/auth/auth-modal';
 import { Badge } from '@/components/ui/badge';
 import { Button, getButtonClasses } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -120,12 +121,14 @@ export function PricingView() {
                         {busy ? 'Opening secure checkout…' : 'Upgrade to Pro'}
                       </Button>
                     ) : (
-                      <Link
+                      <AuthModalTrigger
                         className={getButtonClasses('primary') + ' w-full'}
-                        href="/login?next=/pricing"
+                        description="Sign in before upgrading so Vrompt can securely attach Pro access to your account."
+                        returnTo="/pricing"
+                        title="Upgrade to Vrompt Pro"
                       >
                         Sign in to upgrade
-                      </Link>
+                      </AuthModalTrigger>
                     )
                   ) : null}
                 </div>

@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation';
 import { useEffect, useEffectEvent, useRef, useState } from 'react';
 
 import { BrandLockup } from '@/components/brand/brand-mark';
+import { AuthModalTrigger } from '@/components/auth/auth-modal';
 import { useAuth } from '@/components/providers/auth-provider';
 import { Avatar } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -278,20 +279,23 @@ export function MobileNav() {
                 </p>
               ) : !user ? (
                 <div className="grid grid-cols-2 gap-2">
-                  <Link
+                  <AuthModalTrigger
                     className="inline-flex min-h-11 items-center justify-center rounded-full border border-[#E6E6E6] px-3 py-2 text-sm font-medium text-foreground transition hover:bg-[#E6E6E6] dark:border-[#4D4D4D] dark:hover:bg-[#1A1A1A]"
-                    href="/login"
                     onClick={closeDrawer}
+                    returnTo={pathname}
+                    title="Sign in to Vrompt"
                   >
                     Login
-                  </Link>
-                  <Link
+                  </AuthModalTrigger>
+                  <AuthModalTrigger
                     className="inline-flex min-h-11 items-center justify-center whitespace-nowrap rounded-full bg-[#0D0D0D] px-3 py-2 text-sm font-medium !text-background transition hover:bg-[#1A1A1A] dark:bg-white dark:hover:bg-[#E6E6E6]"
-                    href="/login"
                     onClick={closeDrawer}
+                    description="Create your Vrompt identity to save, publish, and share prompts."
+                    returnTo="/create"
+                    title="Become a creator"
                   >
                     Become a creator
-                  </Link>
+                  </AuthModalTrigger>
                 </div>
               ) : null}
             </div>

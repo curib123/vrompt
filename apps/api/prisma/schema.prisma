@@ -631,6 +631,13 @@ model AiGeneration {
   input         Json
   output        Json?
   providerModel String?               @db.VarChar(120)
+  providerResponseId String?          @unique @db.VarChar(255)
+  guestSaveTokenHash String?          @db.VarChar(64)
+  inputTokens   Int?
+  outputTokens  Int?
+  totalTokens   Int?
+  reviewDecision String?              @db.VarChar(20)
+  reviewedAt    DateTime?
   errorCode     String?               @db.VarChar(80)
   createdAt     DateTime              @default(now())
   completedAt   DateTime?

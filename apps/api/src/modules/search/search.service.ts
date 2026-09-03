@@ -192,6 +192,7 @@ export class SearchService {
       mostSaved,
       mostVariants,
       categories,
+      audiences,
       starterCollections,
     ] = await Promise.all([
       this.prismaService.promptRepository.findMany({
@@ -240,6 +241,19 @@ export class SearchService {
         take: 20,
         select: { id: true, name: true, slug: true },
       }),
+      this.prismaService.audience.findMany({
+        where: { isActive: true },
+        orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
+        take: 20,
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          description: true,
+          isActive: true,
+          sortOrder: true,
+        },
+      }),
       this.prismaService.collection.findMany({
         where: {
           visibility: 'PUBLIC',
@@ -269,6 +283,7 @@ export class SearchService {
       mostSaved,
       mostVariants,
       categories,
+      audiences,
       starterCollections,
       recommendedForYou: await this.recommend(interestIds, publicWhere, select),
     };

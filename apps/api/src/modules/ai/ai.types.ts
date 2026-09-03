@@ -37,5 +37,13 @@ export interface PromptAiProvider {
   generate(input: {
     system: string;
     user: string;
-  }): Promise<{ content: string; model: string }>;
+    safetyIdentifier: string;
+  }): Promise<{
+    content: string;
+    model: string;
+    responseId?: string;
+    inputTokens?: number;
+    outputTokens?: number;
+    totalTokens?: number;
+  }>;
 }

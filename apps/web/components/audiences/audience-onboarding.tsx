@@ -48,8 +48,8 @@ export function AudienceOnboarding() {
   }, [accessToken]);
 
   async function continueOnboarding() {
-    if (!accessToken || selectedIds.length < 1) {
-      setError('Choose at least one audience interest to continue.');
+    if (!accessToken) {
+      setError('Your session is no longer available. Please sign in again.');
       return;
     }
     setIsSaving(true);
@@ -115,12 +115,22 @@ export function AudienceOnboarding() {
         </p>
       ) : null}
       <div className="flex justify-end">
-        <Button
-          disabled={isSaving || selectedIds.length < 1}
-          onClick={() => void continueOnboarding()}
-        >
-          {isSaving ? 'Saving...' : 'Continue'}
-        </Button>
+        <div className="flex flex-wrap justify-end gap-3">
+          <Button
+            disabled={isSaving}
+            onClick={() => setSelectedIds([])}
+            variant="ghost"
+          >
+            Clear choices
+          </Button>
+          <Button disabled={isSaving} onClick={() => void continueOnboarding()}>
+            {isSaving
+              ? 'Saving...'
+              : selectedIds.length > 0
+                ? 'Continue'
+                : 'Skip for now'}
+          </Button>
+        </div>
       </div>
     </Card>
   );

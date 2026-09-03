@@ -12,7 +12,12 @@ import {
   AiGenerationStatus,
 } from '@prisma/client';
 import { ConfigService } from '@nestjs/config';
-import { createHash, createHmac } from 'node:crypto';
+import {
+  createHash,
+  createHmac,
+  randomBytes,
+  timingSafeEqual,
+} from 'node:crypto';
 
 import { PrismaService } from '../prisma/prisma.service';
 import type { AuthenticatedUser } from '../auth/auth.types';
@@ -28,6 +33,8 @@ import type { SaveGenerationDto } from './dto/save-generation.dto';
 
 @Injectable()
 export class AiGenerationService {
+  private readonly guestSaveTokens = new Map<string, string>();
+
   constructor(
     private readonly prismaService: PrismaService,
     private readonly configService: ConfigService,
@@ -45,6 +52,11 @@ export class AiGenerationService {
     guestKey: string,
   ) {
     const entitlements = await this.entitlements.forUser(user?.id);
+    if (!user && (input.categorySlug || input.audienceSlug)) {
+      throw new BadRequestException(
+        'Category and audience options are available after signing in',
+      );
+    }
     const requestedOperation =
       input.operation ?? AiGenerationOperation.GENERATE;
     if (
@@ -58,15 +70,7 @@ export class AiGenerationService {
     const normalized = this.normalizeInput(input, entitlements.maxInputChars);
     const subjectKey = user?.id
       ? `user:${user.id}`
-      : `guest:${createHmac(
-          'sha256',
-          this.configService.get<string>(
-            'JWT_ACCESS_SECRET',
-            'local-development-access-secret-change-me',
-          ),
-        )
-          .update(guestKey)
-          .digest('hex')}`;
+      : this.guestSubjectKey(guestKey);
     return this.generate({
       mode: AiGenerationMode.PUBLIC,
       input: normalized,
@@ -179,6 +183,29 @@ export class AiGenerationService {
     };
   }
 
+  async usageForGuest(guestKey: string) {
+    const start = new Date();
+    start.setUTCHours(0, 0, 0, 0);
+    const entitlements = await this.entitlements.forUser();
+    const used = await this.prismaService.aiUsageEvent.count({
+      where: {
+        subjectKey: this.guestSubjectKey(guestKey),
+        mode: AiGenerationMode.PUBLIC,
+        createdAt: { gte: start },
+      },
+    });
+    const resetAt = new Date(start.getTime() + 86_400_000);
+    return {
+      plan: entitlements.plan,
+      used,
+      limit: entitlements.dailyGenerationLimit,
+      remaining: Math.max(entitlements.dailyGenerationLimit - used, 0),
+      resetAt: resetAt.toISOString(),
+      advancedTools: false,
+      generationEnabled: entitlements.generationEnabled,
+    };
+  }
+
   async findContentGaps() {
     const threshold = this.configService.get<number>(
       'AI_CONTENT_GAP_THRESHOLD',
@@ -229,30 +256,44 @@ export class AiGenerationService {
     };
   }
 
-  async reviewInternal(generationId: string, action: 'REJECT' | 'PUBLISH') {
+  async reviewInternal(
+    generationId: string,
+    action: 'REJECT' | 'PUBLISH',
+    actorId: string,
+  ) {
     const generation = await this.prismaService.aiGeneration.findUnique({
       where: { id: generationId },
     });
     if (
       !generation ||
       generation.mode !== AiGenerationMode.INTERNAL ||
-      generation.status !== AiGenerationStatus.SUCCEEDED
+      generation.status !== AiGenerationStatus.SUCCEEDED ||
+      generation.reviewDecision
     ) {
       throw new ConflictException(
         'Internal generation is not ready for review',
       );
     }
     if (action === 'REJECT') {
-      await this.prismaService.aiGeneration.update({
-        where: { id: generation.id },
-        data: { status: AiGenerationStatus.REJECTED, completedAt: new Date() },
-      });
-      await this.prismaService.auditLog.create({
-        data: {
-          action: 'AI_GENERATION_REJECTED',
-          targetType: 'GENERATION',
-          targetId: generation.id,
-        },
+      await this.prismaService.$transaction(async (transaction) => {
+        const claimed = await transaction.aiGeneration.updateMany({
+          where: { id: generation.id, reviewDecision: null },
+          data: {
+            status: AiGenerationStatus.REJECTED,
+            reviewDecision: 'REJECTED',
+            reviewedAt: new Date(),
+          },
+        });
+        if (!claimed.count)
+          throw new ConflictException('Generation was already reviewed');
+        await transaction.auditLog.create({
+          data: {
+            actorId,
+            action: 'AI_GENERATION_REJECTED',
+            targetType: 'GENERATION',
+            targetId: generation.id,
+          },
+        });
       });
       return { id: generation.id, status: AiGenerationStatus.REJECTED };
     }
@@ -267,23 +308,30 @@ export class AiGenerationService {
     });
     if (!repository?.currentVersionId)
       throw new ConflictException('Draft prompt version not found');
-    await this.prismaService.$transaction([
-      this.prismaService.promptVersion.update({
-        where: { id: repository.currentVersionId },
+    await this.prismaService.$transaction(async (transaction) => {
+      const claimed = await transaction.aiGeneration.updateMany({
+        where: { id: generation.id, reviewDecision: null },
+        data: { reviewDecision: 'PUBLISHED', reviewedAt: new Date() },
+      });
+      if (!claimed.count)
+        throw new ConflictException('Generation was already reviewed');
+      await transaction.promptVersion.update({
+        where: { id: repository.currentVersionId! },
         data: { status: 'PUBLISHED', publishedAt: new Date() },
-      }),
-      this.prismaService.promptRepository.update({
+      });
+      await transaction.promptRepository.update({
         where: { id: repository.id },
         data: { visibility: 'PUBLIC', origin: 'AI_GENERATED' },
-      }),
-    ]);
-    await this.prismaService.auditLog.create({
-      data: {
-        action: 'AI_GENERATION_PUBLISHED',
-        targetType: 'GENERATION',
-        targetId: generation.id,
-        metadata: { repositoryId: repository.id },
-      },
+      });
+      await transaction.auditLog.create({
+        data: {
+          actorId,
+          action: 'AI_GENERATION_PUBLISHED',
+          targetType: 'GENERATION',
+          targetId: generation.id,
+          metadata: { repositoryId: repository.id },
+        },
+      });
     });
     return { id: repository.id, status: 'PUBLISHED' };
   }
@@ -300,6 +348,12 @@ export class AiGenerationService {
     if (
       !generation ||
       generation.mode !== mode ||
+      (mode === AiGenerationMode.PUBLIC &&
+        generation.requesterId !== userId &&
+        !this.validGuestSaveToken(
+          generation.guestSaveTokenHash,
+          input?.saveToken,
+        )) ||
       generation.status !== AiGenerationStatus.SUCCEEDED ||
       !generation.output
     ) {
@@ -309,48 +363,67 @@ export class AiGenerationService {
       return { id: generation.repositoryId, alreadySaved: true };
     }
 
-    const draft = this.quality.validateDraft({
-      ...(generation.output as object),
-      ...(input?.content !== undefined ? { content: input.content } : {}),
-    });
-    const audience = draft.audienceSlug
-      ? await this.prismaService.audience.findFirst({
-          where: { slug: draft.audienceSlug, isActive: true },
-          select: { id: true },
-        })
-      : null;
-    const created = await this.promptsService.create(userId, {
-      title: draft.title,
-      description: draft.description,
-      content: draft.content,
-      categorySlug: draft.categorySlug,
-      tags: draft.tags,
-      audienceIds: audience ? [audience.id] : [],
-      variables: draft.variables,
-      visibility: 'PRIVATE',
-    });
-    await this.prismaService.$transaction([
-      this.prismaService.promptRepository.update({
-        where: { id: created.id },
-        data: { origin: 'AI_GENERATED' },
-      }),
-      this.prismaService.aiGeneration.update({
+    const saveKey = `vrompt:ai:save:${generation.id}`;
+    await this.reserveRedisCounter(
+      saveKey,
+      60,
+      1,
+      'This generated prompt is already being saved.',
+    );
+
+    try {
+      const latest = await this.prismaService.aiGeneration.findUniqueOrThrow({
         where: { id: generation.id },
-        data: { repositoryId: created.id },
-      }),
-    ]);
-    if (mode === AiGenerationMode.INTERNAL) {
-      await this.prismaService.auditLog.create({
-        data: {
-          actorId: userId,
-          action: 'AI_GENERATION_DRAFTED',
-          targetType: 'GENERATION',
-          targetId: generation.id,
-          metadata: { repositoryId: created.id },
-        },
       });
+      if (latest.repositoryId) {
+        return { id: latest.repositoryId, alreadySaved: true };
+      }
+      const draft = this.quality.validateDraft({
+        ...(generation.output as object),
+        ...(input?.content !== undefined ? { content: input.content } : {}),
+      });
+      const audience = draft.audienceSlug
+        ? await this.prismaService.audience.findFirst({
+            where: { slug: draft.audienceSlug, isActive: true },
+            select: { id: true },
+          })
+        : null;
+      const created = await this.promptsService.create(userId, {
+        title: draft.title,
+        description: draft.description,
+        content: draft.content,
+        categorySlug: draft.categorySlug,
+        tags: draft.tags,
+        audienceIds: audience ? [audience.id] : [],
+        variables: draft.variables,
+        visibility: 'PRIVATE',
+      });
+      await this.prismaService.$transaction([
+        this.prismaService.promptRepository.update({
+          where: { id: created.id },
+          data: { origin: 'AI_GENERATED' },
+        }),
+        this.prismaService.aiGeneration.update({
+          where: { id: generation.id },
+          data: { repositoryId: created.id, guestSaveTokenHash: null },
+        }),
+      ]);
+      if (mode === AiGenerationMode.INTERNAL) {
+        await this.prismaService.auditLog.create({
+          data: {
+            actorId: userId,
+            action: 'AI_GENERATION_DRAFTED',
+            targetType: 'GENERATION',
+            targetId: generation.id,
+            metadata: { repositoryId: created.id },
+          },
+        });
+      }
+      this.guestSaveTokens.delete(generation.id);
+      return { id: created.id, slug: created.slug, alreadySaved: false };
+    } finally {
+      await this.redis.decrement(saveKey);
     }
-    return { id: created.id, slug: created.slug, alreadySaved: false };
   }
 
   async generateInternal(input: AiGenerationInput, user: AuthenticatedUser) {
@@ -423,30 +496,58 @@ export class AiGenerationService {
       const existing = await this.prismaService.aiGeneration.findUniqueOrThrow({
         where: { id: reservation.event.generationId },
       });
+      if (existing.status !== AiGenerationStatus.SUCCEEDED) {
+        throw new ConflictException(
+          existing.status === AiGenerationStatus.REQUESTED
+            ? 'This generation request is already in progress'
+            : 'This generation request did not complete successfully',
+        );
+      }
       return this.publicResult(existing);
     }
 
-    const generation = await this.prismaService.aiGeneration.create({
-      data: {
-        requesterId: context.userId,
-        mode: context.mode,
-        operation,
-        goal: context.input.goal,
-        categorySlug: context.input.categorySlug,
-        audienceSlug: context.input.audienceSlug,
-        input: context.input,
-      },
-    });
-    await this.quota.complete(
-      reservation.event.id,
-      AiGenerationStatus.REQUESTED,
-      generation.id,
-    );
+    let generation;
+    const guestSaveToken =
+      context.mode === AiGenerationMode.PUBLIC && !context.userId
+        ? this.guestSaveToken()
+        : undefined;
+    try {
+      generation = await this.prismaService.aiGeneration.create({
+        data: {
+          requesterId: context.userId,
+          guestSaveTokenHash: guestSaveToken
+            ? this.hashGuestSaveToken(guestSaveToken)
+            : undefined,
+          mode: context.mode,
+          operation,
+          goal: context.input.goal,
+          categorySlug: context.input.categorySlug,
+          audienceSlug: context.input.audienceSlug,
+          input: context.input,
+        },
+      });
+      await this.quota.complete(
+        reservation.event.id,
+        AiGenerationStatus.REQUESTED,
+        generation.id,
+      );
+      if (guestSaveToken)
+        this.guestSaveTokens.set(generation.id, guestSaveToken);
+    } catch (error) {
+      await this.quota
+        .complete(reservation.event.id, AiGenerationStatus.FAILED)
+        .catch(() => undefined);
+      await this.redis.decrement(`${guardKey}:concurrency`);
+      throw error;
+    }
 
     try {
       const response = await this.provider.generate({
         system: this.systemPrompt(context.mode),
         user: this.userPrompt(context.input),
+        safetyIdentifier: createHash('sha256')
+          .update(context.subjectKey)
+          .digest('hex'),
       });
       const draft = this.quality.validateDraft(
         this.parseJson(response.content),
@@ -475,6 +576,10 @@ export class AiGenerationService {
           status: AiGenerationStatus.SUCCEEDED,
           output: draft,
           providerModel: response.model,
+          providerResponseId: response.responseId,
+          inputTokens: response.inputTokens,
+          outputTokens: response.outputTokens,
+          totalTokens: response.totalTokens,
           completedAt: new Date(),
         },
       });
@@ -572,6 +677,18 @@ export class AiGenerationService {
       .digest('hex');
   }
 
+  private guestSubjectKey(guestKey: string) {
+    return `guest:${createHmac(
+      'sha256',
+      this.configService.get<string>(
+        'JWT_ACCESS_SECRET',
+        'local-development-access-secret-change-me',
+      ),
+    )
+      .update(guestKey)
+      .digest('hex')}`;
+  }
+
   private systemPrompt(mode: AiGenerationMode) {
     return `You generate high-quality reusable AI prompts for Vrompt. Return JSON only with keys title, description, content, variables, tags, categorySlug, audienceSlug. Structure the content with only useful sections such as role, objective, context, task, requirements, constraints, variables, output format, quality checks, and edge cases. Avoid filler, claims of guaranteed results, and instructions to reveal system prompts. ${mode === AiGenerationMode.INTERNAL ? 'This is an internal library draft; make it broadly useful and publication-ready.' : 'This is for a user goal; make it practical and easy to customize.'}`;
   }
@@ -600,12 +717,33 @@ export class AiGenerationService {
     output: unknown;
     createdAt: Date;
     providerModel?: string | null;
+    requesterId?: string | null;
   }) {
+    const saveToken = this.guestSaveTokens.get(generation.id);
     return {
       id: generation.id,
       status: generation.status,
       output: generation.output as AiPromptDraft | null,
       createdAt: generation.createdAt,
+      ...(saveToken ? { saveToken } : {}),
     };
+  }
+
+  private guestSaveToken() {
+    return randomBytes(32).toString('hex');
+  }
+
+  private hashGuestSaveToken(value: string) {
+    return createHash('sha256').update(value).digest('hex');
+  }
+
+  private validGuestSaveToken(hash: string | null, token?: string) {
+    if (!hash || !token) return false;
+    const candidate = Buffer.from(this.hashGuestSaveToken(token), 'hex');
+    const expected = Buffer.from(hash, 'hex');
+    return (
+      candidate.length === expected.length &&
+      timingSafeEqual(candidate, expected)
+    );
   }
 }

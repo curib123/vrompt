@@ -91,7 +91,8 @@ export class AiAdminController {
   review(
     @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
     @Body() input: ReviewGenerationDto,
+    @CurrentUser() user: AuthenticatedUser,
   ) {
-    return this.aiGenerationService.reviewInternal(id, input.action);
+    return this.aiGenerationService.reviewInternal(id, input.action, user.id);
   }
 }

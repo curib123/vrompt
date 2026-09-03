@@ -5,6 +5,7 @@ import type { Route } from 'next';
 import { usePathname } from 'next/navigation';
 
 import { BrandLockup } from '@/components/brand/brand-mark';
+import { AuthModalTrigger } from '@/components/auth/auth-modal';
 import { AccountMenu } from '@/components/layout/account-menu';
 import { MobileNav } from '@/components/layout/mobile-nav';
 import { useAuth } from '@/components/providers/auth-provider';
@@ -76,15 +77,21 @@ export function SiteHeader() {
               <AccountMenu />
             ) : (
               <>
-                <Link className={getButtonClasses('ghost')} href="/login">
+                <AuthModalTrigger
+                  className={getButtonClasses('ghost')}
+                  returnTo={pathname}
+                  title="Sign in to Vrompt"
+                >
                   Sign in
-                </Link>
-                <Link
+                </AuthModalTrigger>
+                <AuthModalTrigger
                   className={getButtonClasses('primary', 'whitespace-nowrap')}
-                  href="/login"
+                  description="Create your Vrompt identity to save, publish, and share prompts."
+                  returnTo="/create"
+                  title="Become a creator"
                 >
                   Become a creator
-                </Link>
+                </AuthModalTrigger>
               </>
             )}
           </div>
@@ -110,15 +117,17 @@ export function SiteHeader() {
               <AccountMenu />
             ) : (
               <span className="hidden sm:inline-flex">
-                <Link
+                <AuthModalTrigger
                   className={getButtonClasses(
                     'primary',
                     'min-h-10 whitespace-nowrap px-4 py-2',
                   )}
-                  href="/login"
+                  description="Create your Vrompt identity to save, publish, and share prompts."
+                  returnTo="/create"
+                  title="Become a creator"
                 >
                   Become a creator
-                </Link>
+                </AuthModalTrigger>
               </span>
             )}
           </div>

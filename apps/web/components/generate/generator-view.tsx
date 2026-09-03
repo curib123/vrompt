@@ -5,6 +5,7 @@ import Link from 'next/link';
 import type { Route } from 'next';
 
 import { useAuth } from '@/components/providers/auth-provider';
+import { AuthModalTrigger } from '@/components/auth/auth-modal';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -23,16 +24,16 @@ import { copyToClipboard } from '@/lib/clipboard';
 
 type Operation = 'GENERATE' | 'REGENERATE' | 'IMPROVE' | 'EXPAND' | 'SHORTEN';
 
+const guestDraftStorageKey = 'vrompt-guest-generated-draft';
+
 export function GeneratorView() {
-  const { accessToken, user } = useAuth();
+  const { accessToken, isLoading, user } = useAuth();
   const [goal, setGoal] = useState('');
   const [category, setCategory] = useState('');
   const [audience, setAudience] = useState('');
   const [draft, setDraft] = useState<AiPromptDraft | null>(null);
   const [generationId, setGenerationId] = useState<string | null>(null);
   const [content, setContent] = useState('');
-  const [categories, setCategories] = useState<CategoryOption[]>([]);
-  const [audiences, setAudiences] = useState<AudienceOption[]>([]);
   const [busy, setBusy] = useState<Operation | null>(null);
   const [copyState, setCopyState] = useState<'idle' | 'copied' | 'failed'>(
     'idle',
@@ -42,8 +43,40 @@ export function GeneratorView() {
   );
   const [error, setError] = useState<string | null>(null);
   const [usage, setUsage] = useState<AiUsageResponse | null>(null);
+  const [categories, setCategories] = useState<CategoryOption[]>([]);
+  const [audiences, setAudiences] = useState<AudienceOption[]>([]);
 
   useEffect(() => {
+    try {
+      const stored = window.sessionStorage.getItem(guestDraftStorageKey);
+      if (!stored) return;
+      const saved = JSON.parse(stored) as {
+        draft?: AiPromptDraft;
+        generationId?: string;
+        content?: string;
+        saveToken?: string;
+      };
+      if (saved.draft && saved.generationId && saved.saveToken) {
+        // Restore the explicitly retained guest draft after the OAuth redirect.
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setDraft(saved.draft);
+        setGenerationId(saved.generationId);
+        setContent(saved.content || saved.draft.content);
+      }
+    } catch {
+      window.sessionStorage.removeItem(guestDraftStorageKey);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (isLoading) return;
+    void fetchAiUsage(accessToken ?? undefined)
+      .then(setUsage)
+      .catch(() => undefined);
+  }, [accessToken, isLoading]);
+
+  useEffect(() => {
+    if (!user) return;
     void Promise.all([
       apiRequest<CategoryOption[]>('/categories'),
       apiRequest<AudienceOption[]>('/audiences'),
@@ -53,14 +86,7 @@ export function GeneratorView() {
         setAudiences(nextAudiences);
       })
       .catch(() => undefined);
-  }, []);
-
-  useEffect(() => {
-    if (!accessToken) return;
-    void fetchAiUsage(accessToken)
-      .then(setUsage)
-      .catch(() => undefined);
-  }, [accessToken]);
+  }, [user]);
 
   async function generate(operation: Operation) {
     if (goal.trim().length < 10 || busy) return;
@@ -74,8 +100,8 @@ export function GeneratorView() {
         method: 'POST',
         body: JSON.stringify({
           goal,
-          categorySlug: category || undefined,
-          audienceSlug: audience || undefined,
+          categorySlug: user ? category || undefined : undefined,
+          audienceSlug: user ? audience || undefined : undefined,
           operation,
           basePrompt: draft ? content : undefined,
           requestId: crypto.randomUUID(),
@@ -85,6 +111,20 @@ export function GeneratorView() {
       setDraft(response.output);
       setGenerationId(response.id);
       setContent(response.output.content);
+      if (!accessToken && response.saveToken) {
+        window.sessionStorage.setItem(
+          guestDraftStorageKey,
+          JSON.stringify({
+            draft: response.output,
+            generationId: response.id,
+            content: response.output.content,
+            saveToken: response.saveToken,
+          }),
+        );
+      }
+      void fetchAiUsage(accessToken ?? undefined)
+        .then(setUsage)
+        .catch(() => undefined);
     } catch (requestError: unknown) {
       setError(
         requestError instanceof ApiError && requestError.status === 429
@@ -115,43 +155,82 @@ export function GeneratorView() {
     try {
       await apiRequest(`/ai/generations/${generationId}/save`, {
         accessToken,
-        body: JSON.stringify({ content }),
+        body: JSON.stringify({
+          content,
+          saveToken: window.sessionStorage.getItem(guestDraftStorageKey)
+            ? JSON.parse(
+                window.sessionStorage.getItem(guestDraftStorageKey) as string,
+              ).saveToken
+            : undefined,
+        }),
         method: 'POST',
       });
       setSaveState('saved');
+      window.sessionStorage.removeItem(guestDraftStorageKey);
     } catch {
       setSaveState('failed');
     }
   }
 
   return (
-    <div className="grid gap-8">
-      <header className="grid gap-4">
-        <Badge>AI prompt generator</Badge>
-        <h1 className="max-w-4xl text-4xl font-semibold tracking-[-0.07em] sm:text-7xl">
-          Start with the outcome. Get a prompt you can use.
-        </h1>
-        <p className="max-w-2xl text-base leading-8 text-brand-mid">
-          Describe what you want to accomplish in plain language. Vrompt turns
-          it into a structured prompt you can review, edit, and copy.
-        </p>
-        {usage ? (
-          <div className="flex flex-wrap items-center gap-3 text-sm text-brand-mid">
-            <Badge>{usage.plan} plan</Badge>
-            <span>{usage.remaining} AI generations left today</span>
-            {usage.plan === 'FREE' ? (
-              <Link
-                className="font-semibold underline underline-offset-4"
-                href={'/pricing' as Route}
-              >
-                See Pro
-              </Link>
-            ) : null}
-          </div>
-        ) : null}
+    <div className="mx-auto grid max-w-5xl gap-8 pb-10 sm:gap-10">
+      <header className="relative isolate grid gap-5 overflow-hidden rounded-[2rem] border border-zinc-200 bg-gradient-to-br from-white via-white to-zinc-100 p-6 shadow-[0_24px_70px_rgba(13,13,13,0.07)] sm:p-10 dark:border-zinc-800 dark:from-zinc-950 dark:via-zinc-950 dark:to-zinc-900 dark:shadow-none">
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute -right-20 -top-24 size-64 rounded-full bg-zinc-200/70 blur-3xl dark:bg-zinc-800/50"
+        />
+        <div className="relative grid gap-4">
+          <Badge>
+            <SparklesIcon />
+            AI prompt generator
+          </Badge>
+          <h1 className="max-w-4xl text-4xl font-semibold tracking-[-0.07em] sm:text-7xl">
+            Start with the outcome. Get a prompt you can use.
+          </h1>
+          <p className="max-w-2xl text-base leading-8 text-brand-mid">
+            Describe what you want to accomplish in plain language. Vrompt turns
+            it into a structured prompt you can review, edit, and copy.
+          </p>
+          {!user && !isLoading ? (
+            <p className="max-w-2xl rounded-2xl border border-zinc-200 bg-white/70 p-4 text-sm leading-6 text-brand-mid dark:border-zinc-800 dark:bg-zinc-950/60">
+              <strong className="text-foreground">Guest trial:</strong> generate
+              and copy up to three prompts today. Sign in to save prompts,
+              create Versions, or build Variants.
+            </p>
+          ) : null}
+          {usage ? (
+            <div className="grid gap-3 rounded-2xl border border-zinc-200 bg-white/70 p-4 dark:border-zinc-800 dark:bg-zinc-950/60">
+              <div className="flex flex-wrap items-center gap-3 text-sm text-brand-mid">
+                <Badge>{usage.plan} plan</Badge>
+                <strong className="text-foreground">
+                  {usage.remaining} of {usage.limit} generations left today
+                </strong>
+                {usage.plan !== 'PRO' ? (
+                  <Link
+                    className="inline-flex min-h-10 items-center rounded-full bg-[#0D0D0D] px-4 text-sm font-semibold !text-white transition hover:bg-[#242424] dark:bg-white dark:!text-black"
+                    href={'/pricing' as Route}
+                  >
+                    Become Premium
+                  </Link>
+                ) : null}
+              </div>
+              <p className="text-xs leading-5 text-brand-mid">
+                {usage.plan === 'GUEST'
+                  ? 'Guest usage is shared by devices on the same public IP address and resets daily at 00:00 UTC. Sign in for a personal Free allowance.'
+                  : 'Your personal allowance resets daily at 00:00 UTC.'}
+              </p>
+              {usage.remaining === 0 ? (
+                <p className="text-sm font-semibold text-foreground">
+                  Today&apos;s allowance is used up. Become Premium for more
+                  daily generations.
+                </p>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
       </header>
 
-      <Card>
+      <Card className="border-zinc-200 p-5 shadow-[0_18px_50px_rgba(13,13,13,0.05)] sm:p-8 dark:border-zinc-800 dark:shadow-none">
         <form
           className="grid gap-4"
           onSubmit={(event) => {
@@ -159,6 +238,19 @@ export function GeneratorView() {
             void generate('GENERATE');
           }}
         >
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <p className="text-lg font-semibold tracking-tight">
+                Describe your outcome
+              </p>
+              <p className="mt-1 text-sm text-brand-mid">
+                The more context you share, the more useful the prompt becomes.
+              </p>
+            </div>
+            <span className="hidden rounded-full bg-zinc-100 px-3 py-1 text-xs font-medium text-brand-mid sm:inline-flex dark:bg-zinc-900">
+              Plain language is perfect
+            </span>
+          </div>
           <label
             className="grid gap-2 text-sm font-semibold"
             htmlFor="generation-goal"
@@ -172,52 +264,65 @@ export function GeneratorView() {
               required
               value={goal}
             />
+            <span className="text-right text-xs font-normal text-brand-mid">
+              {goal.length.toLocaleString()} / 4,000 characters
+            </span>
           </label>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <label
-              className="grid gap-2 text-sm font-semibold"
-              htmlFor="generation-category"
-            >
-              Category{' '}
-              <select
-                className="min-h-11 rounded-2xl border border-zinc-300 bg-white px-4 text-sm font-normal dark:border-zinc-700 dark:bg-zinc-950"
-                id="generation-category"
-                onChange={(event) => setCategory(event.target.value)}
-                value={category}
+          {user ? (
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label
+                className="grid gap-2 text-sm font-semibold"
+                htmlFor="generation-category"
               >
-                <option value="">Choose later</option>
-                {categories.map((item) => (
-                  <option key={item.id} value={item.slug}>
-                    {item.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label
-              className="grid gap-2 text-sm font-semibold"
-              htmlFor="generation-audience"
-            >
-              Audience{' '}
-              <select
-                className="min-h-11 rounded-2xl border border-zinc-300 bg-white px-4 text-sm font-normal dark:border-zinc-700 dark:bg-zinc-950"
-                id="generation-audience"
-                onChange={(event) => setAudience(event.target.value)}
-                value={audience}
+                Category
+                <select
+                  className="min-h-11 rounded-2xl border border-zinc-300 bg-white px-4 text-sm font-normal dark:border-zinc-700 dark:bg-zinc-950"
+                  id="generation-category"
+                  onChange={(event) => setCategory(event.target.value)}
+                  value={category}
+                >
+                  <option value="">Choose later</option>
+                  {categories.map((item) => (
+                    <option key={item.id} value={item.slug}>
+                      {item.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label
+                className="grid gap-2 text-sm font-semibold"
+                htmlFor="generation-audience"
               >
-                <option value="">Choose later</option>
-                {audiences.map((item) => (
-                  <option key={item.id} value={item.slug}>
-                    {item.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </div>
+                Audience
+                <select
+                  className="min-h-11 rounded-2xl border border-zinc-300 bg-white px-4 text-sm font-normal dark:border-zinc-700 dark:bg-zinc-950"
+                  id="generation-audience"
+                  onChange={(event) => setAudience(event.target.value)}
+                  value={audience}
+                >
+                  <option value="">Choose later</option>
+                  {audiences.map((item) => (
+                    <option key={item.id} value={item.slug}>
+                      {item.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+          ) : null}
           <Button
-            disabled={Boolean(busy) || goal.trim().length < 10}
+            disabled={
+              Boolean(busy) || goal.trim().length < 10 || usage?.remaining === 0
+            }
+            className="min-h-12 w-full sm:w-auto sm:px-8"
             type="submit"
           >
-            {busy === 'GENERATE' ? 'Generating...' : 'Generate prompt'}
+            <SparklesIcon />
+            {busy === 'GENERATE'
+              ? 'Generating...'
+              : usage?.remaining === 0
+                ? 'Daily limit reached'
+                : 'Generate prompt'}
           </Button>
         </form>
       </Card>
@@ -296,12 +401,14 @@ export function GeneratorView() {
                   : 'Save to my prompts'}
               </Button>
             ) : (
-              <Link
+              <AuthModalTrigger
                 className="inline-flex min-h-11 items-center rounded-full border border-zinc-300 px-5 text-sm font-medium dark:border-zinc-700"
-                href="/login"
+                description="Sign in to save this generated prompt to your private Vrompt library."
+                returnTo="/generate"
+                title="Save your generated prompt"
               >
                 Sign in to save
-              </Link>
+              </AuthModalTrigger>
             )}
           </div>
           {copyState === 'failed' || saveState === 'failed' ? (
@@ -342,5 +449,23 @@ export function GeneratorView() {
         </Card>
       ) : null}
     </div>
+  );
+}
+
+function SparklesIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      className="size-4"
+      fill="none"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="1.8"
+      viewBox="0 0 24 24"
+    >
+      <path d="m12 3-1.1 4.1L7 8.2l3.9 1.1L12 13l1.1-3.7L17 8.2l-3.9-1.1L12 3Z" />
+      <path d="m19 14-.6 2.4L16 17l2.4.6L19 20l.6-2.4L22 17l-2.4-.6L19 14ZM5 14l-.5 1.8L3 16.2l1.5.4L5 18l.5-1.4 1.5-.4-1.5-.4L5 14Z" />
+    </svg>
   );
 }

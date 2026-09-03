@@ -5,6 +5,7 @@ import {
   ParseUUIDPipe,
   Post,
   Get,
+  Header,
   Req,
   UseGuards,
 } from '@nestjs/common';
@@ -23,9 +24,15 @@ export class AiController {
   constructor(private readonly aiGenerationService: AiGenerationService) {}
 
   @Get('usage')
-  @UseGuards(AccessTokenGuard)
-  usage(@CurrentUser() user: AuthenticatedUser) {
-    return this.aiGenerationService.usageForUser(user.id);
+  @UseGuards(OptionalAccessTokenGuard)
+  @Header('Cache-Control', 'private, no-store, max-age=0')
+  @Header('Pragma', 'no-cache')
+  usage(@Req() request: Request, @CurrentUser() user?: AuthenticatedUser) {
+    return user
+      ? this.aiGenerationService.usageForUser(user.id)
+      : this.aiGenerationService.usageForGuest(
+          request.ip || request.socket.remoteAddress || 'unknown',
+        );
   }
 
   @Post('generate')

@@ -19,9 +19,9 @@ export class AiQualityService {
       typeof draft.content === 'string' ? draft.content.trim() : '';
     if (title.length < 5 || title.length > 160)
       throw new Error('Generated title is invalid');
-    if (description.length < 20 || description.length > 5000)
+    if (description.length < 20 || description.length > 2000)
       throw new Error('Generated description is invalid');
-    if (content.length < 80 || content.length > 100000)
+    if (content.length < 80 || content.length > 20000)
       throw new Error('Generated prompt is invalid');
     if (
       /^(write a prompt|you are an ai assistant|help the user)$/i.test(title)
@@ -54,14 +54,32 @@ export class AiQualityService {
                 : undefined,
             required: item.required === true,
           }))
-          .filter((item) => item.name.length > 0 && item.name.length <= 80)
+          .filter(
+            (item) =>
+              item.name.length > 0 &&
+              item.name.length <= 80 &&
+              (item.description?.length ?? 0) <= 1000 &&
+              (item.defaultValue?.length ?? 0) <= 5000,
+          )
+          .filter(
+            (item, index, all) =>
+              all.findIndex(
+                (other) => other.name.toLowerCase() === item.name.toLowerCase(),
+              ) === index,
+          )
           .slice(0, 20)
       : [];
     const tags = Array.isArray(draft.tags)
       ? draft.tags
           .filter((tag): tag is string => typeof tag === 'string')
           .map((tag) => tag.trim())
-          .filter(Boolean)
+          .filter((tag) => tag.length > 0 && tag.length <= 50)
+          .filter(
+            (tag, index, all) =>
+              all.findIndex(
+                (other) => other.toLowerCase() === tag.toLowerCase(),
+              ) === index,
+          )
           .slice(0, 8)
       : [];
     return {
@@ -70,10 +88,10 @@ export class AiQualityService {
       content,
       variables,
       tags,
-      ...(typeof draft.categorySlug === 'string'
+      ...(this.validSlug(draft.categorySlug)
         ? { categorySlug: draft.categorySlug.trim().toLowerCase() }
         : {}),
-      ...(typeof draft.audienceSlug === 'string'
+      ...(this.validSlug(draft.audienceSlug)
         ? { audienceSlug: draft.audienceSlug.trim().toLowerCase() }
         : {}),
     };
@@ -130,5 +148,13 @@ export class AiQualityService {
 
   private tokens(value: string) {
     return value.toLowerCase().match(/[a-z0-9]{4,}/g) ?? [];
+  }
+
+  private validSlug(value: unknown): value is string {
+    return (
+      typeof value === 'string' &&
+      value.length <= 100 &&
+      /^[a-z0-9]+(?:-[a-z0-9]+)*$/i.test(value.trim())
+    );
   }
 }

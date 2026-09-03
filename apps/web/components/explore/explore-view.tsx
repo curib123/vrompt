@@ -100,20 +100,6 @@ export function ExploreView({
           metric="variants"
         />
       </div>
-      <section className="grid gap-5">
-        <SectionHeading showSwipe={false} title="Categories" />
-        <div className="flex flex-wrap gap-3">
-          {explore.categories.map((category) => (
-            <Link
-              className="rounded-full border border-zinc-300 px-4 py-2 text-sm transition hover:border-black dark:border-zinc-700 dark:hover:border-white"
-              href={`/search?category=${encodeURIComponent(category.slug)}`}
-              key={category.id}
-            >
-              {category.name}
-            </Link>
-          ))}
-        </div>
-      </section>
       {explore.starterCollections.length > 0 ? (
         <section className="grid gap-5">
           <SectionHeading showSwipe={false} title="Starter collections" />

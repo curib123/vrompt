@@ -2,13 +2,14 @@ import Link from 'next/link';
 import type { Metadata } from 'next';
 
 import { OrganicFunnelTracker } from '@/components/analytics/organic-funnel-tracker';
+import { AuthModalTrigger } from '@/components/auth/auth-modal';
 import { getButtonClasses } from '@/components/ui/button';
 import { createPageMetadata, siteConfig } from '@/lib/seo';
 
 export const metadata: Metadata = createPageMetadata({
   title: siteConfig.tagline,
   description:
-    'Explore a public repository of useful AI prompts. Save prompts, publish versions, create attributed variants, and share what works.',
+    'Generate structured, effective AI prompts from your goals, explore proven community prompts, and save, improve, or share what works.',
   path: '/',
 });
 
@@ -93,31 +94,6 @@ const features = [
   ],
 ] as const;
 
-const audiences = [
-  'Developers',
-  'Students',
-  'Researchers',
-  'Designers',
-  'Marketers',
-  'Content Creators',
-  'Business Users',
-  'AI Power Users',
-] as const;
-
-const examples = [
-  [
-    'Research',
-    'Turn scattered research into a clear decision brief.',
-    'research',
-  ],
-  ['Writing', 'Shape a rough idea into a useful first draft.', 'writing'],
-  [
-    'Planning',
-    'Turn a goal into a practical plan with next steps.',
-    'planning',
-  ],
-] as const;
-
 export default function LandingPage() {
   return (
     <>
@@ -131,18 +107,6 @@ export default function LandingPage() {
         >
           <Link className="transition hover:text-foreground" href="/explore">
             Explore
-          </Link>
-          <Link className="transition hover:text-foreground" href="#categories">
-            Categories
-          </Link>
-          <Link className="transition hover:text-foreground" href="#audiences">
-            Audiences
-          </Link>
-          <Link
-            className="transition hover:text-foreground"
-            href="#public-prompts"
-          >
-            Public prompts
           </Link>
         </nav>
 
@@ -246,70 +210,6 @@ export default function LandingPage() {
 
         <VersionVariant />
 
-        <section
-          aria-labelledby="audience-title"
-          className="grid gap-10"
-          id="audiences"
-        >
-          <SectionIntro
-            eyebrow="A repository for everyone"
-            title="Useful prompts for every kind of work."
-            text="Browse across audiences without being placed in a box. Whether you build, study, research, design, market, or create, the whole repository remains open to you."
-            id="audience-title"
-          />
-          <div className="flex flex-wrap gap-3">
-            {audiences.map((audience) => (
-              <Link
-                className="rounded-full border border-[#D8D8D8] bg-white px-5 py-3 text-sm font-medium transition hover:border-[#0D0D0D] hover:bg-[#F5F5F3] dark:border-[#333] dark:bg-[#151515] dark:hover:border-white dark:hover:bg-[#202020]"
-                href={`/explore?audience=${encodeURIComponent(audience)}`}
-                key={audience}
-              >
-                {audience}
-              </Link>
-            ))}
-          </div>
-        </section>
-
-        <section
-          aria-labelledby="examples-title"
-          className="grid gap-10"
-          id="categories"
-        >
-          <SectionIntro
-            eyebrow="Start with an example"
-            title="Explore prompts by the work you want to do."
-            text="Use these starting points to browse public prompt repositories, then save what fits your workflow."
-            id="examples-title"
-          />
-          <div className="grid gap-4 lg:grid-cols-3" id="public-prompts">
-            {examples.map(([category, title, query]) => (
-              <Link
-                className="group grid min-h-56 content-between rounded-[1.75rem] border border-[#E6E6E6] bg-[#F5F5F3] p-6 transition hover:-translate-y-1 hover:border-[#BDBDBD] sm:p-8 dark:border-[#292929] dark:bg-[#151515] dark:hover:border-[#4D4D4D]"
-                href={`/explore?q=${query}`}
-                key={category}
-              >
-                <span className="w-fit rounded-full bg-white px-3 py-1.5 text-[0.65rem] font-semibold uppercase tracking-[0.16em] text-brand-mid dark:bg-[#242424]">
-                  {category}
-                </span>
-                <span className="grid gap-4">
-                  <span className="text-2xl font-semibold leading-tight tracking-[-0.05em]">
-                    {title}
-                  </span>
-                  <span className="flex items-center gap-2 text-sm font-semibold">
-                    Explore public prompts{' '}
-                    <span
-                      aria-hidden="true"
-                      className="transition group-hover:translate-x-1"
-                    >
-                      →
-                    </span>
-                  </span>
-                </span>
-              </Link>
-            ))}
-          </div>
-        </section>
-
         <SharingSection />
 
         <section
@@ -351,15 +251,17 @@ export default function LandingPage() {
                   →
                 </span>
               </Link>
-              <Link
+              <AuthModalTrigger
                 className={getButtonClasses(
                   'secondary',
                   'w-full whitespace-nowrap px-6 sm:w-auto',
                 )}
-                href="/login?next=%2Fcreate"
+                description="Create your Vrompt identity to publish prompts and build your creator profile."
+                returnTo="/create"
+                title="Become a creator"
               >
                 Share Your First Prompt
-              </Link>
+              </AuthModalTrigger>
             </div>
           </div>
         </section>
@@ -382,22 +284,23 @@ function Hero() {
         <div className="grid gap-12 lg:grid-cols-[minmax(0,1fr)_minmax(19rem,0.72fr)] lg:items-center lg:gap-16">
           <div className="grid gap-7">
             <p className="font-mono text-xs font-semibold uppercase tracking-[0.24em] text-brand-mid">
-              Vrompt · The AI prompt repository
+              Vrompt · AI prompt generator and repository
             </p>
             <div className="grid gap-5">
               <h1
                 className="max-w-4xl text-[clamp(3.25rem,8vw,7.5rem)] font-semibold leading-[0.86] tracking-[-0.08em]"
                 id="hero-title"
               >
-                The repository for prompts that work.
+                Structured AI prompts that work.
                 <span className="block text-zinc-500 dark:text-zinc-400">
-                  Find them. Save them. Improve them.
+                  Generate them. Find them. Improve them.
                 </span>
               </h1>
               <p className="max-w-2xl text-base leading-8 text-brand-mid sm:text-lg">
-                Vrompt is a public repository for discovering, organizing, and
-                sharing useful AI prompts. Each prompt can keep its Versions,
-                examples, Variants, attribution, and history in one place.
+                Turn your goal into a structured, effective AI prompt, then
+                discover, organize, and share proven prompts from the community.
+                Keep every Version, example, Variant, attribution, and update in
+                one place.
               </p>
             </div>
             <div className="flex flex-col gap-3 sm:flex-row">
@@ -421,13 +324,13 @@ function Hero() {
                   'secondary',
                   'w-full px-6 sm:w-auto',
                 )}
-                href="/login?next=%2Fcreate"
+                href="/generate"
               >
-                Share a Prompt
+                Generate a Prompt
               </Link>
             </div>
             <p className="text-xs font-medium text-brand-mid">
-              Browse and copy the public repository without signing in. Use
+              Browse, copy, and try AI prompt generation for free. Sign in with
               Google or GitHub when you are ready to save, comment, or publish.
             </p>
           </div>

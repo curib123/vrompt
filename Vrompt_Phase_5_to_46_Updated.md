@@ -2707,4 +2707,3 @@ Do not implement Phase 2 features as part of this task.
 When all acceptance checks pass, consider:
 
 **\*\*Vrompt Phase 1 MVP — Production Ready.\*\***
-

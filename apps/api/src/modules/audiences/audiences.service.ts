@@ -85,10 +85,8 @@ export class AudiencesService {
       );
     }
     const ids = [...new Set(audienceIds)];
-    if (ids.length < 1 || ids.length > 5) {
-      throw new BadRequestException(
-        'Choose between 1 and 5 audience interests',
-      );
+    if (ids.length > 5) {
+      throw new BadRequestException('Choose up to 5 audience interests');
     }
 
     const activeAudiences = await this.prismaService.audience.findMany({

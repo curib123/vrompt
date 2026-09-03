@@ -85,7 +85,7 @@ export interface PaymentStatusResponse {
 }
 
 export interface AiUsageResponse {
-  plan: 'FREE' | 'PRO';
+  plan: 'GUEST' | 'FREE' | 'PRO';
   used: number;
   limit: number;
   remaining: number;
@@ -372,6 +372,7 @@ export interface AiGenerationResponse {
   status: 'SUCCEEDED' | 'FAILED' | 'REJECTED' | 'REQUESTED';
   output: AiPromptDraft | null;
   createdAt: string;
+  saveToken?: string;
 }
 
 export interface AdminAiGeneration {
@@ -467,6 +468,7 @@ export interface ExploreResponse {
   mostSaved: ExploreRepository[];
   mostVariants: ExploreRepository[];
   categories: CategoryOption[];
+  audiences: AudienceOption[];
   starterCollections: Array<{
     id: string;
     name: string;
@@ -936,7 +938,7 @@ export function fetchBillingSummary(accessToken: string) {
   return apiRequest<BillingSummaryResponse>('/billing/me', { accessToken });
 }
 
-export function fetchAiUsage(accessToken: string) {
+export function fetchAiUsage(accessToken?: string) {
   return apiRequest<AiUsageResponse>('/ai/usage', { accessToken });
 }
 
