@@ -9,12 +9,13 @@ import { useAuth } from '@/components/providers/auth-provider';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { fetchPaymentStatus } from '@/lib/api';
+import { cancelPayment, fetchPaymentStatus } from '@/lib/api';
 import type { PaymentStatusResponse } from '@/lib/api';
 
 export function CheckoutStatusView() {
   const searchParams = useSearchParams();
   const paymentId = searchParams.get('payment');
+  const checkoutState = searchParams.get('state');
   const { accessToken, refreshSession } = useAuth();
   const [status, setStatus] = useState<PaymentStatusResponse | null>(null);
   const [attempts, setAttempts] = useState(0);
@@ -25,13 +26,19 @@ export function CheckoutStatusView() {
       !paymentId ||
       attempts >= 12 ||
       status?.status === 'PAID' ||
-      status?.status === 'FAILED'
+      status?.status === 'FAILED' ||
+      status?.status === 'CANCELLED' ||
+      status?.status === 'EXPIRED'
     )
       return;
     let active = true;
     const timer = window.setTimeout(
       () => {
-        void fetchPaymentStatus(paymentId, accessToken)
+        const request =
+          checkoutState === 'cancelled'
+            ? cancelPayment(paymentId, accessToken)
+            : fetchPaymentStatus(paymentId, accessToken);
+        void request
           .then((nextStatus) => {
             if (!active) return;
             setStatus(nextStatus);
@@ -48,12 +55,20 @@ export function CheckoutStatusView() {
       active = false;
       window.clearTimeout(timer);
     };
-  }, [accessToken, attempts, paymentId, refreshSession, status?.status]);
+  }, [
+    accessToken,
+    attempts,
+    checkoutState,
+    paymentId,
+    refreshSession,
+    status?.status,
+  ]);
 
   const paid = status?.status === 'PAID';
   const failed =
     status?.status === 'FAILED' ||
     status?.status === 'CANCELLED' ||
+    status?.status === 'EXPIRED' ||
     status?.status === 'REFUNDED';
   return (
     <div className="mx-auto grid max-w-2xl gap-6 py-12 text-center">

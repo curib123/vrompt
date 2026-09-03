@@ -131,4 +131,9 @@ export const envValidationSchema = Joi.object({
   PAYMONGO_PAYMENT_METHODS: Joi.string().default('card,gcash,qrph'),
   PAYMONGO_PRO_PRICE_CENTAVOS: Joi.number().integer().min(100).default(29900),
   PAYMONGO_PRO_PERIOD_DAYS: Joi.number().integer().min(1).max(366).default(30),
+  PAYMONGO_CHECKOUT_EXPIRY_HOURS: Joi.number()
+    .integer()
+    .min(1)
+    .max(168)
+    .default(24),
 });

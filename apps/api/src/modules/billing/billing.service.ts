@@ -170,7 +170,7 @@ export class BillingService {
         description: 'Vrompt Pro access',
         referenceNumber: payment.id,
         successUrl: `${webOrigin}/billing/checkout?payment=${payment.id}&state=processing`,
-        cancelUrl: `${webOrigin}/pricing?checkout=cancelled`,
+        cancelUrl: `${webOrigin}/billing/checkout?payment=${payment.id}&state=cancelled`,
         idempotencyKey,
       });
       await this.prisma.billingPayment.update({
@@ -263,6 +263,7 @@ export class BillingService {
   }
 
   async paymentStatus(paymentId: string, userId: string) {
+    await this.expirePendingPayment(paymentId, userId);
     const payment = await this.prisma.billingPayment.findFirst({
       where: { id: paymentId, userId },
       select: {
@@ -282,6 +283,34 @@ export class BillingService {
           ? payment.failureCode
           : null,
     };
+  }
+
+  async cancelPayment(paymentId: string, userId: string) {
+    const payment = await this.prisma.billingPayment.findFirst({
+      where: { id: paymentId, userId },
+      select: { id: true, status: true, subscriptionId: true },
+    });
+    if (!payment) throw new NotFoundException('Payment not found');
+    if (payment.status === BillingPaymentStatus.PENDING) {
+      await this.prisma.$transaction([
+        this.prisma.billingPayment.update({
+          where: { id: payment.id },
+          data: { status: BillingPaymentStatus.CANCELLED },
+        }),
+        ...(payment.subscriptionId
+          ? [
+              this.prisma.billingSubscription.update({
+                where: { id: payment.subscriptionId },
+                data: {
+                  status: BillingSubscriptionStatus.CANCELLED,
+                  canceledAt: new Date(),
+                },
+              }),
+            ]
+          : []),
+      ]);
+    }
+    return this.paymentStatus(paymentId, userId);
   }
 
   async adminOverview() {
@@ -602,6 +631,39 @@ export class BillingService {
         { userId },
       );
     }
+  }
+
+  private async expirePendingPayment(paymentId: string, userId: string) {
+    const payment = await this.prisma.billingPayment.findFirst({
+      where: { id: paymentId, userId, status: BillingPaymentStatus.PENDING },
+      select: { id: true, subscriptionId: true, createdAt: true },
+    });
+    const expiryHours = this.config.get<number>(
+      'PAYMONGO_CHECKOUT_EXPIRY_HOURS',
+      24,
+    );
+    if (
+      !payment ||
+      payment.createdAt.getTime() > Date.now() - expiryHours * 3_600_000
+    )
+      return;
+    await this.prisma.$transaction([
+      this.prisma.billingPayment.update({
+        where: { id: payment.id },
+        data: { status: BillingPaymentStatus.EXPIRED },
+      }),
+      ...(payment.subscriptionId
+        ? [
+            this.prisma.billingSubscription.update({
+              where: { id: payment.subscriptionId },
+              data: {
+                status: BillingSubscriptionStatus.EXPIRED,
+                canceledAt: new Date(),
+              },
+            }),
+          ]
+        : []),
+    ]);
   }
 
   private verifySignature(rawBody: Buffer, signatureHeader?: string) {

@@ -946,3 +946,10 @@ export function fetchPaymentStatus(paymentId: string, accessToken: string) {
     { accessToken },
   );
 }
+
+export function cancelPayment(paymentId: string, accessToken: string) {
+  return apiRequest<PaymentStatusResponse>(
+    `/billing/payments/${encodeURIComponent(paymentId)}/cancel`,
+    { accessToken, method: 'POST' },
+  );
+}

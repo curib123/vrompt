@@ -47,6 +47,15 @@ export class BillingController {
   ) {
     return this.service.paymentStatus(id, user.id);
   }
+
+  @Post('payments/:id/cancel')
+  @UseGuards(AccessTokenGuard)
+  cancelPayment(
+    @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.service.cancelPayment(id, user.id);
+  }
 }
 
 @Controller('webhooks/paymongo')
