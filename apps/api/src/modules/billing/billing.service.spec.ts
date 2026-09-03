@@ -1,5 +1,6 @@
 import { UnauthorizedException } from '@nestjs/common';
 import { createHmac } from 'node:crypto';
+import { Prisma } from '@prisma/client';
 
 import { BillingService } from './billing.service';
 
@@ -43,7 +44,10 @@ function buildService(overrides: Record<string, unknown> = {}) {
         fallback,
     ),
   };
-  const settings = { getNumber: jest.fn(), getBoolean: jest.fn() };
+  const settings = {
+    getNumber: jest.fn().mockResolvedValue(30),
+    getBoolean: jest.fn(),
+  };
   const gateway = { createCheckoutSession: jest.fn() };
   Object.assign(prisma, overrides);
   return {
@@ -147,6 +151,31 @@ describe('BillingService webhook security', () => {
     expect(prisma.billingWebhookEvent.update).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({ status: 'PROCESSED' }),
+      }),
+    );
+  });
+
+  it('acknowledges a duplicate event without processing it again', async () => {
+    const { service, prisma } = buildService();
+    prisma.billingWebhookEvent.create.mockRejectedValue(
+      new Prisma.PrismaClientKnownRequestError('duplicate', {
+        code: 'P2002',
+        clientVersion: '6.12.0',
+      }),
+    );
+    const payload = {
+      data: { id: 'evt_duplicate', attributes: { type: 'payment.paid' } },
+    };
+    const { raw, signature } = signedPayload(payload, 'secret');
+
+    await expect(service.handleWebhook(raw, signature)).resolves.toEqual({
+      received: true,
+      processed: false,
+      duplicate: true,
+    });
+    expect(prisma.auditLog.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ action: 'BILLING_WEBHOOK_DUPLICATE' }),
       }),
     );
   });

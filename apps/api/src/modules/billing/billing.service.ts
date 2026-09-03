@@ -246,8 +246,13 @@ export class BillingService {
       }),
     ]);
     if (!user) throw new NotFoundException('User not found');
+    const hasActiveSubscription = Boolean(
+      subscription &&
+      subscription.status === BillingSubscriptionStatus.ACTIVE &&
+      subscription.currentPeriodEnd > new Date(),
+    );
     return {
-      plan: user.plan,
+      plan: hasActiveSubscription ? MembershipPlan.PRO : MembershipPlan.FREE,
       subscription: subscription
         ? {
             id: subscription.id,
@@ -512,7 +517,18 @@ export class BillingService {
       }),
       this.prisma.billingSubscription.update({
         where: { id: payment.subscription.id },
-        data: { status: BillingSubscriptionStatus.ACTIVE },
+        data: {
+          status: BillingSubscriptionStatus.ACTIVE,
+          currentPeriodStart: new Date(),
+          currentPeriodEnd: new Date(
+            Date.now() +
+              (await this.settings.getNumber(
+                'billing.proPeriodDays',
+                this.config.get<number>('PAYMONGO_PRO_PERIOD_DAYS', 30),
+              )) *
+                86_400_000,
+          ),
+        },
       }),
       this.prisma.user.update({
         where: { id: payment.userId },
@@ -543,6 +559,7 @@ export class BillingService {
       include: { subscription: true },
     });
     if (!payment) return;
+    if (payment.status === BillingPaymentStatus.PAID) return;
     await this.prisma.$transaction([
       this.prisma.billingPayment.update({
         where: { id: payment.id },
