@@ -315,6 +315,10 @@ function PromptPreviewContent({
     <div className="grid gap-5">
       <div className="flex flex-wrap gap-2">
         {repository.category ? <Badge>{repository.category.name}</Badge> : null}
+        {repository.origin === 'AI_GENERATED' ? (
+          <Badge>AI-generated</Badge>
+        ) : null}
+        {repository.origin === 'IMPORTED' ? <Badge>Imported</Badge> : null}
         {repository.aiCompatibility ? (
           <Badge>{repository.aiCompatibility}</Badge>
         ) : null}

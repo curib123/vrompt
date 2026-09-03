@@ -238,6 +238,11 @@ export function RepositoryDetail({
                   AI-generated
                 </Badge>
               ) : null}
+              {repository.origin === 'IMPORTED' ? (
+                <Badge className="!border-white/30 !text-zinc-300">
+                  Imported
+                </Badge>
+              ) : null}
               {repository.category ? (
                 <Badge className="!border-white/30 !text-zinc-300">
                   {repository.category.name}

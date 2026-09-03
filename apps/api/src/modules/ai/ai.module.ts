@@ -6,6 +6,7 @@ import { AiGenerationService } from './ai-generation.service';
 import { AiProviderService } from './ai-provider.service';
 import { AiQualityService } from './ai-quality.service';
 import { AiQuotaService } from './ai-quota.service';
+import { AiEntitlementsService } from './ai-entitlements.service';
 import { AuthModule } from '../auth/auth.module';
 import { PromptsModule } from '../prompts/prompts.module';
 
@@ -17,6 +18,7 @@ import { PromptsModule } from '../prompts/prompts.module';
     AiProviderService,
     AiQualityService,
     AiQuotaService,
+    AiEntitlementsService,
   ],
   exports: [AiGenerationService],
 })

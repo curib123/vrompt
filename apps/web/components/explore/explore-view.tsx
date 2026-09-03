@@ -208,6 +208,8 @@ function RepositoryCard({
         {item.owner.accountType !== 'REAL' ? (
           <Badge>{item.owner.accountType.toLowerCase()}</Badge>
         ) : null}
+        {item.origin === 'AI_GENERATED' ? <Badge>AI-generated</Badge> : null}
+        {item.origin === 'IMPORTED' ? <Badge>Imported</Badge> : null}
         <Badge>
           {value}{' '}
           {metric === 'copies'

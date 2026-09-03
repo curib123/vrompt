@@ -17,6 +17,7 @@ import { PromptsService } from '../prompts/prompts.service';
 import { AiProviderService } from './ai-provider.service';
 import { AiQualityService } from './ai-quality.service';
 import { AiQuotaService } from './ai-quota.service';
+import { AiEntitlementsService } from './ai-entitlements.service';
 import type { AiGenerationInput, AiPromptDraft } from './ai.types';
 import type { SaveGenerationDto } from './dto/save-generation.dto';
 
@@ -29,6 +30,7 @@ export class AiGenerationService {
     private readonly quality: AiQualityService,
     private readonly quota: AiQuotaService,
     private readonly promptsService: PromptsService,
+    private readonly entitlements: AiEntitlementsService,
   ) {}
 
   async generatePublic(
@@ -308,7 +310,7 @@ export class AiGenerationService {
       input: normalized,
       subjectKey: `internal:${user.id}`,
       userId: user.id,
-      limit: this.configService.get<number>('AI_INTERNAL_DAILY_LIMIT', 50),
+      limit: this.entitlements.internalDailyLimit(),
     });
   }
 
@@ -434,18 +436,7 @@ export class AiGenerationService {
   }
 
   private async publicLimit(userId?: string) {
-    if (!userId)
-      return this.configService.get<number>('AI_PUBLIC_GUEST_DAILY_LIMIT', 3);
-    const user = await this.prismaService.user.findUnique({
-      where: { id: userId },
-      select: { plan: true, accountType: true },
-    });
-    if (user?.plan === 'PREMIUM')
-      return this.configService.get<number>(
-        'AI_PUBLIC_PREMIUM_DAILY_LIMIT',
-        100,
-      );
-    return this.configService.get<number>('AI_PUBLIC_FREE_DAILY_LIMIT', 10);
+    return (await this.entitlements.forUser(userId)).dailyGenerationLimit;
   }
 
   private normalizeInput(input: AiGenerationInput): AiGenerationInput {
