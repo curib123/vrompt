@@ -19,11 +19,11 @@ describe('Landing page', () => {
     expect(
       screen.getByRole('heading', {
         level: 1,
-        name: /the repository for prompts that work/i,
+        name: /structured AI prompts that work.*generate them.*find them.*improve them/i,
       }),
     ).toBeVisible();
     expect(
-      screen.getByText(/Vrompt is a public repository for discovering/i),
+      screen.getByText(/Turn your goal into a structured, effective AI prompt/i),
     ).toBeVisible();
     expect(
       screen.getByRole('link', { name: /explore prompts/i }),

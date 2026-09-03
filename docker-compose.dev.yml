@@ -8,6 +8,7 @@ services:
       WATCHPACK_POLLING: 'true'
       CHOKIDAR_USEPOLLING: 'true'
       CHOKIDAR_INTERVAL: '1000'
+      NEXT_DIST_DIR: .next-docker
 
   vrompt-api:
     build:

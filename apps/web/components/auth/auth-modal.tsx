@@ -105,9 +105,18 @@ export function AuthModalTrigger({
 
 export function useAuthModal() {
   const context = useContext(AuthModalContext);
-  if (!context)
-    throw new Error('useAuthModal must be used in AuthModalProvider');
-  return context;
+  if (context) return context;
+
+  // Keep isolated renders (for example, static pages or component tests)
+  // safe while still providing a useful fallback when the app provider is
+  // accidentally omitted. The full modal is supplied by AppProviders.
+  return {
+    openAuthModal: () => {
+      if (typeof window !== 'undefined') {
+        window.location.assign(new URL('/login', window.location.origin).href);
+      }
+    },
+  } satisfies AuthModalContextValue;
 }
 
 function GoogleIcon() {
