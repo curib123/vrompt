@@ -104,4 +104,25 @@ export const envValidationSchema = Joi.object({
   AI_PUBLIC_FREE_DAILY_LIMIT: Joi.number().integer().min(0).default(10),
   AI_PUBLIC_PREMIUM_DAILY_LIMIT: Joi.number().integer().min(0).default(100),
   AI_INTERNAL_DAILY_LIMIT: Joi.number().integer().min(0).default(50),
+  PAYMONGO_API_BASE_URL: Joi.string()
+    .uri({ scheme: ['https'] })
+    .default('https://api.paymongo.com'),
+  PAYMONGO_SECRET_KEY: Joi.string()
+    .allow('')
+    .default('')
+    .when('NODE_ENV', {
+      is: 'production',
+      then: Joi.string().min(1).required(),
+    }),
+  PAYMONGO_WEBHOOK_SECRET: Joi.string()
+    .allow('')
+    .default('')
+    .when('NODE_ENV', {
+      is: 'production',
+      then: Joi.string().min(1).required(),
+    }),
+  PAYMONGO_MODE: Joi.string().valid('test', 'live').default('test'),
+  PAYMONGO_PAYMENT_METHODS: Joi.string().default('card,gcash,qrph'),
+  PAYMONGO_PRO_PRICE_CENTAVOS: Joi.number().integer().min(100).default(29900),
+  PAYMONGO_PRO_PERIOD_DAYS: Joi.number().integer().min(1).max(366).default(30),
 });

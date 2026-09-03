@@ -4,7 +4,7 @@ import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 
 export type AiEntitlements = {
-  plan: 'GUEST' | 'FREE' | 'PREMIUM';
+  plan: 'GUEST' | 'FREE' | 'PRO';
   dailyGenerationLimit: number;
   advancedTools: boolean;
 };
@@ -31,9 +31,9 @@ export class AiEntitlementsService {
       where: { id: userId },
       select: { plan: true },
     });
-    if (user?.plan === 'PREMIUM') {
+    if (user?.plan === 'PRO') {
       return {
-        plan: 'PREMIUM',
+        plan: 'PRO',
         dailyGenerationLimit: this.configService.get<number>(
           'AI_PUBLIC_PREMIUM_DAILY_LIMIT',
           100,

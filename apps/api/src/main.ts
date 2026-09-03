@@ -11,7 +11,10 @@ import { AppModule } from './app.module';
 import { MetricsService } from './modules/common/metrics.service';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule, { bufferLogs: true });
+  const app = await NestFactory.create(AppModule, {
+    bufferLogs: true,
+    rawBody: true,
+  });
   const configService = app.get(ConfigService);
   const logger = new Logger('Bootstrap');
 

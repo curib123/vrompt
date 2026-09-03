@@ -32,7 +32,38 @@ enum AccountType {
 
 enum MembershipPlan {
   FREE
-  PREMIUM
+  PRO
+}
+
+enum BillingProvider {
+  PAYMONGO
+}
+
+enum BillingPaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  CANCELLED
+  EXPIRED
+  REFUNDED
+  REQUIRES_ACTION
+}
+
+enum BillingSubscriptionStatus {
+  PENDING
+  ACTIVE
+  PAST_DUE
+  UNPAID
+  CANCELLED
+  EXPIRED
+  REFUNDED
+}
+
+enum BillingWebhookStatus {
+  RECEIVED
+  PROCESSED
+  IGNORED
+  FAILED
 }
 
 enum PromptOrigin {
@@ -151,6 +182,9 @@ enum AuditTargetType {
   AUDIENCE
   SETTING
   GENERATION
+  BILLING_PAYMENT
+  BILLING_SUBSCRIPTION
+  BILLING_WEBHOOK
 }
 
 enum AuditActionType {
@@ -171,6 +205,15 @@ enum AuditActionType {
   AI_GENERATION_DRAFTED
   AI_GENERATION_REJECTED
   AI_GENERATION_PUBLISHED
+  BILLING_CHECKOUT_CREATED
+  BILLING_PAYMENT_CONFIRMED
+  BILLING_PAYMENT_FAILED
+  BILLING_PRO_ACTIVATED
+  BILLING_PRO_EXPIRED
+  BILLING_PAYMENT_REFUNDED
+  BILLING_WEBHOOK_REJECTED
+  BILLING_WEBHOOK_DUPLICATE
+  BILLING_PLAN_CHANGED
 }
 
 enum ActivityType {
@@ -217,6 +260,8 @@ model User {
   settingUpdates        SiteSetting[]
   aiGenerations         AiGeneration[]
   aiUsageEvents         AiUsageEvent[]
+  billingSubscriptions  BillingSubscription[]
+  billingPayments       BillingPayment[]
 
   @@index([status, createdAt])
 }
@@ -507,6 +552,70 @@ model AnalyticsEvent {
 
   @@index([name, createdAt])
   @@index([accountType, createdAt])
+}
+
+model BillingSubscription {
+  id                   String                      @id @default(uuid()) @db.Uuid
+  userId               String                      @db.Uuid
+  plan                 MembershipPlan              @default(PRO)
+  provider             BillingProvider
+  status               BillingSubscriptionStatus   @default(PENDING)
+  externalSubscriptionId String?                   @unique @db.VarChar(255)
+  externalCustomerId   String?                     @db.VarChar(255)
+  currentPeriodStart   DateTime
+  currentPeriodEnd     DateTime
+  canceledAt           DateTime?
+  createdAt            DateTime                     @default(now())
+  updatedAt            DateTime                     @updatedAt
+
+  user     User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  payments BillingPayment[]
+
+  @@index([userId, status, currentPeriodEnd])
+  @@index([provider, status, currentPeriodEnd])
+}
+
+model BillingPayment {
+  id                      String                @id @default(uuid()) @db.Uuid
+  userId                  String                @db.Uuid
+  subscriptionId          String?               @db.Uuid
+  provider                BillingProvider
+  plan                    MembershipPlan
+  status                  BillingPaymentStatus  @default(PENDING)
+  amount                  Int
+  currency                String                @db.Char(3)
+  idempotencyKey          String                @unique @db.VarChar(255)
+  externalCheckoutSessionId String?             @unique @db.VarChar(255)
+  externalPaymentIntentId String?               @db.VarChar(255)
+  externalPaymentId       String?               @db.VarChar(255)
+  failureCode             String?               @db.VarChar(100)
+  metadata                Json?
+  createdAt               DateTime              @default(now())
+  updatedAt               DateTime              @updatedAt
+  paidAt                  DateTime?
+
+  user         User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subscription BillingSubscription? @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
+
+  @@index([userId, status, createdAt])
+  @@index([subscriptionId, status])
+  @@index([provider, status, createdAt])
+}
+
+model BillingWebhookEvent {
+  id              String               @id @default(uuid()) @db.Uuid
+  provider        BillingProvider
+  externalEventId String               @unique @db.VarChar(255)
+  eventType       String               @db.VarChar(120)
+  status          BillingWebhookStatus @default(RECEIVED)
+  livemode        Boolean              @default(false)
+  payloadHash     String               @db.VarChar(64)
+  errorCode       String?              @db.VarChar(100)
+  receivedAt      DateTime             @default(now())
+  processedAt     DateTime?
+
+  @@index([provider, eventType, receivedAt])
+  @@index([status, receivedAt])
 }
 
 model AiGeneration {

@@ -1,4 +1,4 @@
-import type { AccountType, UserRole } from '@prisma/client';
+import type { AccountType, MembershipPlan, UserRole } from '@prisma/client';
 import type { Request } from 'express';
 
 export interface AuthenticatedUser {
@@ -7,6 +7,7 @@ export interface AuthenticatedUser {
   username: string;
   role: UserRole;
   accountType: AccountType;
+  plan: MembershipPlan;
   onboardingCompleted: boolean;
 }
 

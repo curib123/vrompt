@@ -9,6 +9,7 @@ import { AnalyticsModule } from './modules/analytics/analytics.module';
 import { AudiencesModule } from './modules/audiences/audiences.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { BookmarksModule } from './modules/bookmarks/bookmarks.module';
+import { BillingModule } from './modules/billing/billing.module';
 import { CategoriesModule } from './modules/categories/categories.module';
 import { CollectionsModule } from './modules/collections/collections.module';
 import { CommentsModule } from './modules/comments/comments.module';
@@ -56,6 +57,7 @@ import { UsersModule } from './modules/users/users.module';
     CategoriesModule,
     TagsModule,
     BookmarksModule,
+    BillingModule,
     LikesModule,
     CommentsModule,
     FollowsModule,

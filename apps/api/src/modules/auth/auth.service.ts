@@ -671,6 +671,7 @@ export class AuthService implements OnModuleInit {
     username: string;
     role: AuthenticatedUser['role'];
     accountType: AuthenticatedUser['accountType'];
+    plan: AuthenticatedUser['plan'];
     onboardingCompleted: boolean;
   }): AuthenticatedUser {
     return {
@@ -679,6 +680,7 @@ export class AuthService implements OnModuleInit {
       username: user.username,
       role: user.role,
       accountType: user.accountType,
+      plan: user.plan,
       onboardingCompleted: user.onboardingCompleted,
     };
   }
@@ -724,6 +726,7 @@ export class AuthService implements OnModuleInit {
     role: true,
     status: true,
     accountType: true,
+    plan: true,
     onboardingCompleted: true,
   } as const;
 }
