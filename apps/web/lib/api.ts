@@ -282,6 +282,22 @@ export interface AdminAiGeneration {
   } | null;
 }
 
+export interface AdminAiUsage {
+  period: string;
+  total: number;
+  public: number;
+  internal: number;
+  succeeded: number;
+  failed: number;
+  rejected: number;
+}
+
+export interface AdminAiGaps {
+  threshold: number;
+  categories: Array<{ name: string; slug: string; promptCount: number }>;
+  audiences: Array<{ name: string; slug: string; promptCount: number }>;
+}
+
 export interface SitemapResponse {
   prompts: Array<{
     id: string;

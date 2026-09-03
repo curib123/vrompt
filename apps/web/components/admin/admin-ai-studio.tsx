@@ -8,7 +8,12 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { apiRequest } from '@/lib/api';
-import type { AdminAiGeneration, AiGenerationResponse } from '@/lib/api';
+import type {
+  AdminAiGeneration,
+  AdminAiGaps,
+  AdminAiUsage,
+  AiGenerationResponse,
+} from '@/lib/api';
 
 export function AdminAiStudio() {
   const { accessToken } = useAuth();
@@ -17,14 +22,19 @@ export function AdminAiStudio() {
   const [items, setItems] = useState<AdminAiGeneration[]>([]);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [usage, setUsage] = useState<AdminAiUsage | null>(null);
+  const [gaps, setGaps] = useState<AdminAiGaps | null>(null);
 
   const load = useCallback(async () => {
     if (!accessToken) return;
-    const result = await apiRequest<AdminAiGeneration[]>(
-      '/admin/ai/generations',
-      { accessToken },
-    );
+    const [result, nextUsage, nextGaps] = await Promise.all([
+      apiRequest<AdminAiGeneration[]>('/admin/ai/generations', { accessToken }),
+      apiRequest<AdminAiUsage>('/admin/ai/usage', { accessToken }),
+      apiRequest<AdminAiGaps>('/admin/ai/gaps', { accessToken }),
+    ]);
     setItems(result);
+    setUsage(nextUsage);
+    setGaps(nextGaps);
   }, [accessToken]);
 
   useEffect(() => {
@@ -111,6 +121,41 @@ export function AdminAiStudio() {
           publishes them.
         </p>
       </header>
+      {usage ? (
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {[
+            ['Requests today', usage.total],
+            ['Public', usage.public],
+            ['Internal', usage.internal],
+            ['Succeeded', usage.succeeded],
+          ].map(([label, value]) => (
+            <Card className="p-4" key={String(label)}>
+              <p className="text-2xl font-semibold">
+                {Number(value).toLocaleString()}
+              </p>
+              <p className="mt-1 text-xs uppercase tracking-[0.14em] text-brand-mid">
+                {label}
+              </p>
+            </Card>
+          ))}
+        </div>
+      ) : null}
+      {gaps && (gaps.categories.length > 0 || gaps.audiences.length > 0) ? (
+        <Card>
+          <h2 className="text-xl font-semibold">Content gaps</h2>
+          <p className="mt-2 text-sm text-brand-mid">
+            Taxonomies below {gaps.threshold} published prompts are candidates
+            for controlled generation.
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {[...gaps.categories, ...gaps.audiences].map((gap) => (
+              <Badge key={gap.slug}>
+                {gap.name} ({gap.promptCount})
+              </Badge>
+            ))}
+          </div>
+        </Card>
+      ) : null}
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>
           <h2 className="text-xl font-semibold">Single generation</h2>

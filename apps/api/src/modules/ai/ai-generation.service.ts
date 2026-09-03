@@ -93,6 +93,90 @@ export class AiGenerationService {
     });
   }
 
+  async usageSummary() {
+    const start = new Date();
+    start.setUTCHours(0, 0, 0, 0);
+    const where = { createdAt: { gte: start } };
+    const [total, publicCount, internalCount, succeeded, failed, rejected] =
+      await Promise.all([
+        this.prismaService.aiUsageEvent.count({ where }),
+        this.prismaService.aiUsageEvent.count({
+          where: { ...where, mode: AiGenerationMode.PUBLIC },
+        }),
+        this.prismaService.aiUsageEvent.count({
+          where: { ...where, mode: AiGenerationMode.INTERNAL },
+        }),
+        this.prismaService.aiUsageEvent.count({
+          where: { ...where, status: AiGenerationStatus.SUCCEEDED },
+        }),
+        this.prismaService.aiUsageEvent.count({
+          where: { ...where, status: AiGenerationStatus.FAILED },
+        }),
+        this.prismaService.aiUsageEvent.count({
+          where: { ...where, status: AiGenerationStatus.REJECTED },
+        }),
+      ]);
+    return {
+      period: 'UTC day',
+      total,
+      public: publicCount,
+      internal: internalCount,
+      succeeded,
+      failed,
+      rejected,
+    };
+  }
+
+  async findContentGaps() {
+    const threshold = this.configService.get<number>(
+      'AI_CONTENT_GAP_THRESHOLD',
+      3,
+    );
+    const publicWhere = {
+      status: 'ACTIVE' as const,
+      visibility: 'PUBLIC' as const,
+      currentVersion: { status: 'PUBLISHED' as const },
+    };
+    const [categories, audiences] = await Promise.all([
+      this.prismaService.category.findMany({
+        orderBy: { name: 'asc' },
+        select: {
+          name: true,
+          slug: true,
+          _count: { select: { repositories: { where: publicWhere } } },
+        },
+      }),
+      this.prismaService.audience.findMany({
+        where: { isActive: true },
+        orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
+        select: {
+          name: true,
+          slug: true,
+          _count: {
+            select: {
+              promptAudiences: { where: { promptRepository: publicWhere } },
+            },
+          },
+        },
+      }),
+    ]);
+    return {
+      threshold,
+      categories: categories
+        .filter((item) => item._count.repositories < threshold)
+        .map(({ _count, ...item }) => ({
+          ...item,
+          promptCount: _count.repositories,
+        })),
+      audiences: audiences
+        .filter((item) => item._count.promptAudiences < threshold)
+        .map(({ _count, ...item }) => ({
+          ...item,
+          promptCount: _count.promptAudiences,
+        })),
+    };
+  }
+
   async reviewInternal(generationId: string, action: 'REJECT' | 'PUBLISH') {
     const generation = await this.prismaService.aiGeneration.findUnique({
       where: { id: generationId },
@@ -110,6 +194,13 @@ export class AiGenerationService {
       await this.prismaService.aiGeneration.update({
         where: { id: generation.id },
         data: { status: AiGenerationStatus.REJECTED, completedAt: new Date() },
+      });
+      await this.prismaService.auditLog.create({
+        data: {
+          action: 'AI_GENERATION_REJECTED',
+          targetType: 'GENERATION',
+          targetId: generation.id,
+        },
       });
       return { id: generation.id, status: AiGenerationStatus.REJECTED };
     }
@@ -134,6 +225,14 @@ export class AiGenerationService {
         data: { visibility: 'PUBLIC', origin: 'AI_GENERATED' },
       }),
     ]);
+    await this.prismaService.auditLog.create({
+      data: {
+        action: 'AI_GENERATION_PUBLISHED',
+        targetType: 'GENERATION',
+        targetId: generation.id,
+        metadata: { repositoryId: repository.id },
+      },
+    });
     return { id: repository.id, status: 'PUBLISHED' };
   }
 
@@ -188,6 +287,17 @@ export class AiGenerationService {
         data: { repositoryId: created.id },
       }),
     ]);
+    if (mode === AiGenerationMode.INTERNAL) {
+      await this.prismaService.auditLog.create({
+        data: {
+          actorId: userId,
+          action: 'AI_GENERATION_DRAFTED',
+          targetType: 'GENERATION',
+          targetId: generation.id,
+          metadata: { repositoryId: created.id },
+        },
+      });
+    }
     return { id: created.id, slug: created.slug, alreadySaved: false };
   }
 
@@ -260,7 +370,10 @@ export class AiGenerationService {
       const draft = this.quality.validateDraft(
         this.parseJson(response.content),
       );
-      const duplicate = await this.quality.findDuplicate(draft);
+      const duplicate = await this.quality.findDuplicate(
+        draft,
+        context.mode === AiGenerationMode.INTERNAL,
+      );
       if (duplicate) {
         await this.finish(
           generation.id,

@@ -333,6 +333,7 @@ export class SearchService {
         where: {
           status: PromptRepositoryStatus.ACTIVE,
           visibility: PromptVisibility.PUBLIC,
+          currentVersion: { status: PromptVersionStatus.PUBLISHED },
         },
         orderBy: { updatedAt: 'desc' },
         select: {

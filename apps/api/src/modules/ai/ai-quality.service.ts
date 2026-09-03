@@ -79,13 +79,14 @@ export class AiQualityService {
     };
   }
 
-  async findDuplicate(draft: AiPromptDraft) {
+  async findDuplicate(draft: AiPromptDraft, includePrivate = false) {
+    const visibility = includePrivate
+      ? undefined
+      : { in: [PromptVisibility.PUBLIC, PromptVisibility.UNLISTED] };
     const exact = await this.prismaService.promptRepository.findFirst({
       where: {
         status: PromptRepositoryStatus.ACTIVE,
-        visibility: {
-          in: [PromptVisibility.PUBLIC, PromptVisibility.UNLISTED],
-        },
+        ...(visibility ? { visibility } : {}),
         OR: [
           { title: { equals: draft.title, mode: 'insensitive' } },
           { currentVersion: { content: { equals: draft.content } } },
@@ -98,9 +99,7 @@ export class AiQualityService {
     const candidates = await this.prismaService.promptRepository.findMany({
       where: {
         status: PromptRepositoryStatus.ACTIVE,
-        visibility: {
-          in: [PromptVisibility.PUBLIC, PromptVisibility.UNLISTED],
-        },
+        ...(visibility ? { visibility } : {}),
       },
       take: 250,
       orderBy: { updatedAt: 'desc' },

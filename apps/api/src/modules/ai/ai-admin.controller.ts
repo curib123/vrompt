@@ -9,6 +9,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { UserRole } from '@prisma/client';
+import { randomUUID } from 'node:crypto';
 
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '../auth/auth.types';
@@ -29,6 +30,16 @@ export class AiAdminController {
   @Get('generations')
   list() {
     return this.aiGenerationService.listInternal();
+  }
+
+  @Get('usage')
+  usage() {
+    return this.aiGenerationService.usageSummary();
+  }
+
+  @Get('gaps')
+  gaps() {
+    return this.aiGenerationService.findContentGaps();
   }
 
   @Post('generate')
@@ -53,7 +64,7 @@ export class AiAdminController {
               goal,
               categorySlug: input.categorySlug,
               audienceSlug: input.audienceSlug,
-              requestId: crypto.randomUUID(),
+              requestId: randomUUID(),
             },
             user,
           ),

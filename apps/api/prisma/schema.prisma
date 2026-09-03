@@ -150,6 +150,7 @@ enum AuditTargetType {
   ROLE
   AUDIENCE
   SETTING
+  GENERATION
 }
 
 enum AuditActionType {
@@ -167,6 +168,9 @@ enum AuditActionType {
   AUDIENCE_REORDERED
   SETTING_UPDATED
   SETTING_RESET
+  AI_GENERATION_DRAFTED
+  AI_GENERATION_REJECTED
+  AI_GENERATION_PUBLISHED
 }
 
 enum ActivityType {
