@@ -19,6 +19,19 @@ import type { ModerationActionDto } from './dto/moderation-action.dto';
 export class ModerationService {
   constructor(private readonly prismaService: PrismaService) {}
 
+  async summary() {
+    const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const [openReports, reportsToday, actionsToday, hiddenPrompts, hiddenComments] =
+      await Promise.all([
+        this.prismaService.report.count({ where: { status: ReportStatus.OPEN } }),
+        this.prismaService.report.count({ where: { createdAt: { gte: since } } }),
+        this.prismaService.moderationAction.count({ where: { createdAt: { gte: since } } }),
+        this.prismaService.promptRepository.count({ where: { status: PromptRepositoryStatus.HIDDEN } }),
+        this.prismaService.comment.count({ where: { status: CommentStatus.HIDDEN } }),
+      ]);
+    return { openReports, reportsToday, actionsToday, hiddenPrompts, hiddenComments };
+  }
+
   async queue(status?: ReportStatus) {
     return this.prismaService.report.findMany({
       where: { status: status ?? ReportStatus.OPEN },

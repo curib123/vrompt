@@ -608,6 +608,14 @@ export interface ModerationReport {
   reporter: { username: string };
 }
 
+export interface ModerationSummary {
+  openReports: number;
+  reportsToday: number;
+  actionsToday: number;
+  hiddenPrompts: number;
+  hiddenComments: number;
+}
+
 export interface AuditResponse {
   items: Array<{
     id: string;

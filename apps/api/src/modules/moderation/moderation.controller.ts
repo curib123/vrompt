@@ -23,6 +23,11 @@ import { ModerationService } from './moderation.service';
 export class ModerationController {
   constructor(private readonly moderationService: ModerationService) {}
 
+  @Get('summary')
+  summary() {
+    return this.moderationService.summary();
+  }
+
   @Get('reports')
   queue(@Query('status') status?: ReportStatus) {
     return this.moderationService.queue(status);

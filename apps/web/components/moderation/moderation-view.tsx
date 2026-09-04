@@ -9,11 +9,12 @@ import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Input } from '@/components/ui/input';
 import { apiRequest } from '@/lib/api';
-import type { ModerationReport } from '@/lib/api';
+import type { ModerationReport, ModerationSummary } from '@/lib/api';
 
 export function ModerationView() {
   const { accessToken, isLoading, user } = useAuth();
   const [reports, setReports] = useState<ModerationReport[] | null>(null);
+  const [summary, setSummary] = useState<ModerationSummary | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [reasons, setReasons] = useState<Record<string, string>>({});
 
@@ -26,11 +27,12 @@ export function ModerationView() {
     )
       return;
     let active = true;
-    void apiRequest<ModerationReport[]>('/admin/moderation/reports', {
-      accessToken,
-    })
-      .then((response) => {
-        if (active) setReports(response);
+    void Promise.all([
+      apiRequest<ModerationReport[]>('/admin/moderation/reports', { accessToken }),
+      apiRequest<ModerationSummary>('/admin/moderation/summary', { accessToken }),
+    ])
+      .then(([response, metrics]) => {
+        if (active) { setReports(response); setSummary(metrics); }
       })
       .catch(() => {
         if (active) setError('Moderation queue could not be loaded.');
@@ -125,6 +127,15 @@ export function ModerationView() {
           </p>
         </div>
       </Card>
+      {summary ? (
+        <div className="grid grid-cols-2 gap-3 xl:grid-cols-5">
+          <SummaryCard label="Open reports" value={summary.openReports} />
+          <SummaryCard label="Reports today" value={summary.reportsToday} />
+          <SummaryCard label="Actions today" value={summary.actionsToday} />
+          <SummaryCard label="Hidden prompts" value={summary.hiddenPrompts} />
+          <SummaryCard label="Hidden comments" value={summary.hiddenComments} />
+        </div>
+      ) : null}
       {reports.length === 0 ? (
         <EmptyState
           description="New reports will appear here for review."
@@ -199,4 +210,8 @@ export function ModerationView() {
       )}
     </div>
   );
+}
+
+function SummaryCard({ label, value }: { label: string; value: number }) {
+  return <Card className="p-5"><p className="text-3xl font-semibold">{value.toLocaleString()}</p><p className="mt-2 text-xs uppercase tracking-[0.12em] text-brand-mid">{label}</p></Card>;
 }
