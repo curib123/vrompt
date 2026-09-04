@@ -76,7 +76,7 @@ services:
       PORT: 4000
       API_PREFIX: api/v1
       SWAGGER_ENABLED: 'false'
-      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@vrompt-postgres:5432/vrompt
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@vrompt-postgres:5432/${POSTGRES_DB:-vrompt}
       REDIS_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD is required}@vrompt-redis:6379
       WEB_ORIGIN: ${WEB_ORIGIN:?WEB_ORIGIN is required}
       AI_API_KEY: ${AI_API_KEY:?AI_API_KEY is required}

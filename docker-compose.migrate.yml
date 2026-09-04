@@ -9,7 +9,7 @@ services:
       - migration
     environment:
       NODE_ENV: production
-      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@vrompt-postgres:5432/vrompt
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@vrompt-postgres:5432/${POSTGRES_DB:-vrompt}
     depends_on:
       vrompt-postgres:
         condition: service_healthy
