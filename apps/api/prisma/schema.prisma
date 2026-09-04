@@ -66,6 +66,29 @@ enum BillingWebhookStatus {
   FAILED
 }
 
+enum BillingInterval {
+  DAY
+  WEEK
+  MONTH
+  YEAR
+  ONE_TIME
+}
+
+enum UsageResetPeriod {
+  DAILY
+  MONTHLY
+}
+
+enum DiscountType {
+  PERCENTAGE
+  FIXED_AMOUNT
+}
+
+enum PromotionMode {
+  AUTOMATIC
+  CODE
+}
+
 enum PromptOrigin {
   COMMUNITY
   AI_GENERATED
@@ -224,32 +247,32 @@ enum ActivityType {
 }
 
 model User {
-  id                  String      @id @default(uuid()) @db.Uuid
-  email               String      @unique @db.VarChar(320)
-  username            String      @unique @db.VarChar(32)
-  role                UserRole    @default(USER)
-  status              UserStatus  @default(ACTIVE)
-  accountType         AccountType @default(REAL)
+  id                  String         @id @default(uuid()) @db.Uuid
+  email               String         @unique @db.VarChar(320)
+  username            String         @unique @db.VarChar(32)
+  role                UserRole       @default(USER)
+  status              UserStatus     @default(ACTIVE)
+  accountType         AccountType    @default(REAL)
   plan                MembershipPlan @default(FREE)
-  onboardingCompleted Boolean     @default(true)
-  createdAt           DateTime    @default(now())
-  updatedAt           DateTime    @updatedAt
+  onboardingCompleted Boolean        @default(true)
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
   deletedAt           DateTime?
 
   profile               Profile?
   identities            UserIdentity[]
   staffCredential       StaffCredential?
   refreshTokens         RefreshToken[]
-  ownedRepositories     PromptRepository[] @relation("RepositoryOwner")
-  authoredVersions      PromptVersion[]    @relation("VersionAuthor")
+  ownedRepositories     PromptRepository[]    @relation("RepositoryOwner")
+  authoredVersions      PromptVersion[]       @relation("VersionAuthor")
   bookmarks             Bookmark[]
   likes                 Like[]
   comments              Comment[]
-  followers             Follow[]           @relation("Following")
-  following             Follow[]           @relation("Follower")
+  followers             Follow[]              @relation("Following")
+  following             Follow[]              @relation("Follower")
   collections           Collection[]
-  receivedNotifications Notification[]     @relation("NotificationRecipient")
-  sentNotifications     Notification[]     @relation("NotificationActor")
+  receivedNotifications Notification[]        @relation("NotificationRecipient")
+  sentNotifications     Notification[]        @relation("NotificationActor")
   reports               Report[]
   moderationActions     ModerationAction[]
   auditLogs             AuditLog[]
@@ -262,6 +285,9 @@ model User {
   aiUsageEvents         AiUsageEvent[]
   billingSubscriptions  BillingSubscription[]
   billingPayments       BillingPayment[]
+  usageBuckets          FeatureUsageBucket[]
+  usageEvents           FeatureUsageEvent[]
+  promotionRedemptions  PromotionRedemption[]
 
   @@index([status, createdAt])
 }
@@ -555,51 +581,241 @@ model AnalyticsEvent {
 }
 
 model BillingSubscription {
-  id                   String                      @id @default(uuid()) @db.Uuid
-  userId               String                      @db.Uuid
-  plan                 MembershipPlan              @default(PRO)
-  provider             BillingProvider
-  status               BillingSubscriptionStatus   @default(PENDING)
+  id                     String                    @id @default(uuid()) @db.Uuid
+  userId                 String                    @db.Uuid
+  plan                   MembershipPlan            @default(PRO)
+  planConfigId           String?                   @db.Uuid
+  provider               BillingProvider
+  status                 BillingSubscriptionStatus @default(PENDING)
   externalSubscriptionId String?                   @unique @db.VarChar(255)
-  externalCustomerId   String?                     @db.VarChar(255)
-  currentPeriodStart   DateTime
-  currentPeriodEnd     DateTime
-  canceledAt           DateTime?
-  createdAt            DateTime                     @default(now())
-  updatedAt            DateTime                     @updatedAt
+  externalCustomerId     String?                   @db.VarChar(255)
+  currentPeriodStart     DateTime
+  currentPeriodEnd       DateTime
+  canceledAt             DateTime?
+  createdAt              DateTime                  @default(now())
+  updatedAt              DateTime                  @updatedAt
 
-  user     User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  payments BillingPayment[]
+  user       User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  planConfig BillingPlan?     @relation(fields: [planConfigId], references: [id], onDelete: Restrict)
+  payments   BillingPayment[]
 
   @@index([userId, status, currentPeriodEnd])
   @@index([provider, status, currentPeriodEnd])
 }
 
 model BillingPayment {
-  id                      String                @id @default(uuid()) @db.Uuid
-  userId                  String                @db.Uuid
-  subscriptionId          String?               @db.Uuid
-  provider                BillingProvider
-  plan                    MembershipPlan
-  status                  BillingPaymentStatus  @default(PENDING)
-  amount                  Int
-  currency                String                @db.Char(3)
-  idempotencyKey          String                @unique @db.VarChar(255)
-  externalCheckoutSessionId String?             @unique @db.VarChar(255)
-  externalPaymentIntentId String?               @unique @db.VarChar(255)
-  externalPaymentId       String?               @unique @db.VarChar(255)
-  failureCode             String?               @db.VarChar(100)
-  metadata                Json?
-  createdAt               DateTime              @default(now())
-  updatedAt               DateTime              @updatedAt
-  paidAt                  DateTime?
+  id                        String               @id @default(uuid()) @db.Uuid
+  userId                    String               @db.Uuid
+  subscriptionId            String?              @db.Uuid
+  provider                  BillingProvider
+  plan                      MembershipPlan
+  planConfigId              String?              @db.Uuid
+  promotionId               String?              @db.Uuid
+  status                    BillingPaymentStatus @default(PENDING)
+  amount                    Int
+  originalAmount            Int                  @default(0)
+  discountAmount            Int                  @default(0)
+  currency                  String               @db.Char(3)
+  discountCodeId            String?              @db.Uuid
+  idempotencyKey            String               @unique @db.VarChar(255)
+  externalCheckoutSessionId String?              @unique @db.VarChar(255)
+  externalPaymentIntentId   String?              @unique @db.VarChar(255)
+  externalPaymentId         String?              @unique @db.VarChar(255)
+  failureCode               String?              @db.VarChar(100)
+  metadata                  Json?
+  createdAt                 DateTime             @default(now())
+  updatedAt                 DateTime             @updatedAt
+  paidAt                    DateTime?
 
   user         User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
   subscription BillingSubscription? @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
+  planConfig   BillingPlan?         @relation(fields: [planConfigId], references: [id], onDelete: Restrict)
+  promotion    Promotion?           @relation(fields: [promotionId], references: [id], onDelete: SetNull)
+  redemption   PromotionRedemption?
+  discountCode DiscountCode?        @relation(fields: [discountCodeId], references: [id], onDelete: SetNull)
 
   @@index([userId, status, createdAt])
   @@index([subscriptionId, status])
   @@index([provider, status, createdAt])
+  @@index([discountCodeId, status, createdAt])
+}
+
+model BillingPlan {
+  id              String          @id @default(uuid()) @db.Uuid
+  code            String          @unique @db.VarChar(50)
+  legacyPlan      MembershipPlan?
+  name            String          @db.VarChar(100)
+  description     String          @db.Text
+  originalPrice   Int
+  currency        String          @default("PHP") @db.Char(3)
+  billingInterval BillingInterval
+  intervalCount   Int             @default(1)
+  isActive        Boolean         @default(true)
+  displayOrder    Int             @default(0)
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  limits        PlanFeatureLimit[]
+  promotions    PromotionPlan[]
+  subscriptions BillingSubscription[]
+  payments      BillingPayment[]
+  priceHistory  PricingHistory[]
+
+  @@index([isActive, displayOrder])
+}
+
+model FeatureDefinition {
+  id          String   @id @default(uuid()) @db.Uuid
+  key         String   @unique @db.VarChar(80)
+  name        String   @db.VarChar(120)
+  description String?  @db.Text
+  unitLabel   String   @default("uses") @db.VarChar(40)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  limits  PlanFeatureLimit[]
+  buckets FeatureUsageBucket[]
+  events  FeatureUsageEvent[]
+}
+
+model PlanFeatureLimit {
+  id          String           @id @default(uuid()) @db.Uuid
+  planId      String           @db.Uuid
+  featureId   String           @db.Uuid
+  resetPeriod UsageResetPeriod
+  limit       Int?
+  warningAt   Int              @default(80)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  plan    BillingPlan       @relation(fields: [planId], references: [id], onDelete: Cascade)
+  feature FeatureDefinition @relation(fields: [featureId], references: [id], onDelete: Cascade)
+
+  @@unique([planId, featureId, resetPeriod])
+  @@index([featureId, planId])
+}
+
+model Promotion {
+  id                     String        @id @default(uuid()) @db.Uuid
+  name                   String        @db.VarChar(120)
+  code                   String?       @unique @db.VarChar(80)
+  description            String?       @db.Text
+  discountType           DiscountType
+  discountValue          Int
+  startsAt               DateTime
+  endsAt                 DateTime
+  timezone               String        @default("UTC") @db.VarChar(64)
+  isActive               Boolean       @default(true)
+  mode                   PromotionMode @default(AUTOMATIC)
+  maximumRedemptions     Int?
+  redemptionCount        Int           @default(0)
+  perUserRedemptionLimit Int?
+  newUsersOnly           Boolean       @default(false)
+  minimumPurchase        Int?
+  createdAt              DateTime      @default(now())
+  updatedAt              DateTime      @updatedAt
+
+  plans        PromotionPlan[]
+  redemptions  PromotionRedemption[]
+  payments     BillingPayment[]
+  priceHistory PricingHistory[]
+
+  @@index([isActive, mode, startsAt, endsAt])
+}
+
+model PromotionPlan {
+  promotionId String      @db.Uuid
+  planId      String      @db.Uuid
+  promotion   Promotion   @relation(fields: [promotionId], references: [id], onDelete: Cascade)
+  plan        BillingPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+
+  @@id([promotionId, planId])
+}
+
+model PromotionRedemption {
+  id          String         @id @default(uuid()) @db.Uuid
+  promotionId String         @db.Uuid
+  userId      String         @db.Uuid
+  paymentId   String         @unique @db.Uuid
+  amount      Int
+  createdAt   DateTime       @default(now())
+  promotion   Promotion      @relation(fields: [promotionId], references: [id], onDelete: Restrict)
+  user        User           @relation(fields: [userId], references: [id], onDelete: Restrict)
+  payment     BillingPayment @relation(fields: [paymentId], references: [id], onDelete: Restrict)
+
+  @@index([promotionId, userId, createdAt])
+}
+
+model FeatureUsageBucket {
+  id          String              @id @default(uuid()) @db.Uuid
+  userId      String              @db.Uuid
+  featureId   String              @db.Uuid
+  resetPeriod UsageResetPeriod
+  periodStart DateTime
+  periodEnd   DateTime
+  used        Int                 @default(0)
+  updatedAt   DateTime            @updatedAt
+  user        User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  feature     FeatureDefinition   @relation(fields: [featureId], references: [id], onDelete: Cascade)
+  events      FeatureUsageEvent[]
+
+  @@unique([userId, featureId, resetPeriod, periodStart])
+  @@index([userId, periodEnd])
+}
+
+model FeatureUsageEvent {
+  id         String             @id @default(uuid()) @db.Uuid
+  userId     String             @db.Uuid
+  featureId  String             @db.Uuid
+  bucketId   String             @db.Uuid
+  requestKey String             @unique @db.VarChar(255)
+  units      Int                @default(1)
+  metadata   Json?
+  createdAt  DateTime           @default(now())
+  user       User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  feature    FeatureDefinition  @relation(fields: [featureId], references: [id], onDelete: Restrict)
+  bucket     FeatureUsageBucket @relation(fields: [bucketId], references: [id], onDelete: Cascade)
+
+  @@index([userId, featureId, createdAt])
+}
+
+model PricingHistory {
+  id          String       @id @default(uuid()) @db.Uuid
+  planId      String?      @db.Uuid
+  promotionId String?      @db.Uuid
+  actorId     String?      @db.Uuid
+  changeType  String       @db.VarChar(80)
+  before      Json?
+  after       Json
+  createdAt   DateTime     @default(now())
+  plan        BillingPlan? @relation(fields: [planId], references: [id], onDelete: SetNull)
+  promotion   Promotion?   @relation(fields: [promotionId], references: [id], onDelete: SetNull)
+
+  @@index([planId, createdAt])
+  @@index([promotionId, createdAt])
+}
+
+model DiscountCode {
+  id                    String       @id @default(uuid()) @db.Uuid
+  code                  String       @unique @db.VarChar(64)
+  name                  String       @db.VarChar(120)
+  description           String?      @db.VarChar(500)
+  type                  DiscountType
+  value                 Int
+  maxDiscountAmount     Int?
+  startsAt              DateTime
+  endsAt                DateTime
+  isActive              Boolean      @default(true)
+  maxRedemptions        Int?
+  maxRedemptionsPerUser Int          @default(1)
+  redemptionCount       Int          @default(0)
+  createdAt             DateTime     @default(now())
+  updatedAt             DateTime     @updatedAt
+
+  payments BillingPayment[]
+
+  @@index([isActive, startsAt, endsAt])
 }
 
 model BillingWebhookEvent {
@@ -619,31 +835,31 @@ model BillingWebhookEvent {
 }
 
 model AiGeneration {
-  id            String                @id @default(uuid()) @db.Uuid
-  requesterId   String?               @db.Uuid
-  repositoryId  String?               @db.Uuid
-  mode          AiGenerationMode
-  operation     AiGenerationOperation
-  status        AiGenerationStatus    @default(REQUESTED)
-  goal          String                @db.Text
-  categorySlug  String?               @db.VarChar(100)
-  audienceSlug  String?               @db.VarChar(100)
-  input         Json
-  output        Json?
-  providerModel String?               @db.VarChar(120)
-  providerResponseId String?          @unique @db.VarChar(255)
-  guestSaveTokenHash String?          @db.VarChar(64)
-  inputTokens   Int?
-  outputTokens  Int?
-  totalTokens   Int?
-  reviewDecision String?              @db.VarChar(20)
-  reviewedAt    DateTime?
-  errorCode     String?               @db.VarChar(80)
-  createdAt     DateTime              @default(now())
-  completedAt   DateTime?
+  id                 String                @id @default(uuid()) @db.Uuid
+  requesterId        String?               @db.Uuid
+  repositoryId       String?               @db.Uuid
+  mode               AiGenerationMode
+  operation          AiGenerationOperation
+  status             AiGenerationStatus    @default(REQUESTED)
+  goal               String                @db.Text
+  categorySlug       String?               @db.VarChar(100)
+  audienceSlug       String?               @db.VarChar(100)
+  input              Json
+  output             Json?
+  providerModel      String?               @db.VarChar(120)
+  providerResponseId String?               @unique @db.VarChar(255)
+  guestSaveTokenHash String?               @db.VarChar(64)
+  inputTokens        Int?
+  outputTokens       Int?
+  totalTokens        Int?
+  reviewDecision     String?               @db.VarChar(20)
+  reviewedAt         DateTime?
+  errorCode          String?               @db.VarChar(80)
+  createdAt          DateTime              @default(now())
+  completedAt        DateTime?
 
-  requester   User?              @relation(fields: [requesterId], references: [id], onDelete: SetNull)
-  repository  PromptRepository?  @relation(fields: [repositoryId], references: [id], onDelete: SetNull)
+  requester   User?             @relation(fields: [requesterId], references: [id], onDelete: SetNull)
+  repository  PromptRepository? @relation(fields: [repositoryId], references: [id], onDelete: SetNull)
   usageEvents AiUsageEvent[]
 
   @@index([requesterId, createdAt])
