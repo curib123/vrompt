@@ -8,6 +8,7 @@ import {
 import { Prisma, PromotionMode, UsageResetPeriod } from '@prisma/client';
 
 import { PrismaService } from '../prisma/prisma.service';
+import type { UpsertPlanDto, UpsertPromotionDto } from './dto/monetization-admin.dto';
 
 @Injectable()
 export class MonetizationService {
@@ -193,6 +194,124 @@ export class MonetizationService {
       }
       throw error;
     }
+  }
+
+  adminConfiguration() {
+    return Promise.all([
+      this.prisma.billingPlan.findMany({
+        orderBy: { displayOrder: 'asc' },
+        include: { limits: { include: { feature: true } } },
+      }),
+      this.prisma.promotion.findMany({
+        orderBy: { createdAt: 'desc' },
+        include: { plans: true },
+      }),
+    ]).then(([plans, promotions]) => ({ plans, promotions }));
+  }
+
+  async createPlan(input: UpsertPlanDto, actorId: string) {
+    return this.prisma.$transaction(async (tx) => {
+      const plan = await tx.billingPlan.create({
+        data: {
+          code: input.code.trim().toUpperCase(),
+          name: input.name.trim(), description: input.description.trim(),
+          originalPrice: input.originalPrice, currency: input.currency.toUpperCase(),
+          billingInterval: input.billingInterval, intervalCount: input.intervalCount,
+          isActive: input.isActive ?? true, displayOrder: input.displayOrder,
+        },
+      });
+      await this.replaceLimits(tx, plan.id, input.limits);
+      await tx.pricingHistory.create({
+        data: { planId: plan.id, actorId, changeType: 'PLAN_CREATED', after: input as unknown as Prisma.InputJsonValue },
+      });
+      return plan;
+    });
+  }
+
+  async updatePlan(id: string, input: UpsertPlanDto, actorId: string) {
+    return this.prisma.$transaction(async (tx) => {
+      const before = await tx.billingPlan.findUnique({ where: { id }, include: { limits: true } });
+      if (!before) throw new NotFoundException('Plan not found.');
+      const plan = await tx.billingPlan.update({
+        where: { id },
+        data: {
+          code: input.code.trim().toUpperCase(), name: input.name.trim(),
+          description: input.description.trim(), originalPrice: input.originalPrice,
+          currency: input.currency.toUpperCase(), billingInterval: input.billingInterval,
+          intervalCount: input.intervalCount, isActive: input.isActive ?? true,
+          displayOrder: input.displayOrder,
+        },
+      });
+      await tx.planFeatureLimit.deleteMany({ where: { planId: id } });
+      await this.replaceLimits(tx, id, input.limits);
+      await tx.pricingHistory.create({
+        data: { planId: id, actorId, changeType: 'PLAN_UPDATED', before: before as unknown as Prisma.InputJsonValue, after: input as unknown as Prisma.InputJsonValue },
+      });
+      return plan;
+    });
+  }
+
+  async createPromotion(input: UpsertPromotionDto, actorId: string) {
+    const data = this.promotionData(input);
+    return this.prisma.$transaction(async (tx) => {
+      const promotion = await tx.promotion.create({
+        data: { ...data, plans: { create: input.planIds.map((planId) => ({ planId })) } },
+      });
+      await tx.pricingHistory.create({
+        data: { promotionId: promotion.id, actorId, changeType: 'PROMOTION_CREATED', after: input as unknown as Prisma.InputJsonValue },
+      });
+      return promotion;
+    });
+  }
+
+  async updatePromotion(id: string, input: UpsertPromotionDto, actorId: string) {
+    const data = this.promotionData(input);
+    return this.prisma.$transaction(async (tx) => {
+      const before = await tx.promotion.findUnique({ where: { id }, include: { plans: true } });
+      if (!before) throw new NotFoundException('Promotion not found.');
+      const promotion = await tx.promotion.update({ where: { id }, data });
+      await tx.promotionPlan.deleteMany({ where: { promotionId: id } });
+      await tx.promotionPlan.createMany({ data: input.planIds.map((planId) => ({ promotionId: id, planId })) });
+      await tx.pricingHistory.create({
+        data: { promotionId: id, actorId, changeType: 'PROMOTION_UPDATED', before: before as unknown as Prisma.InputJsonValue, after: input as unknown as Prisma.InputJsonValue },
+      });
+      return promotion;
+    });
+  }
+
+  private async replaceLimits(tx: Prisma.TransactionClient, planId: string, limits: UpsertPlanDto['limits']) {
+    for (const item of limits) {
+      const feature = await tx.featureDefinition.upsert({
+        where: { key: item.featureKey.trim().toLowerCase() },
+        create: { key: item.featureKey.trim().toLowerCase(), name: item.featureName.trim(), description: item.description?.trim(), unitLabel: item.unitLabel?.trim() || 'uses' },
+        update: { name: item.featureName.trim(), description: item.description?.trim(), unitLabel: item.unitLabel?.trim() || 'uses' },
+      });
+      await tx.planFeatureLimit.create({
+        data: { planId, featureId: feature.id, resetPeriod: item.resetPeriod, limit: item.limit ?? null, warningAt: item.warningAt ?? 80 },
+      });
+    }
+  }
+
+  private promotionData(input: UpsertPromotionDto) {
+    const startsAt = new Date(input.startsAt);
+    const endsAt = new Date(input.endsAt);
+    try { new Intl.DateTimeFormat('en', { timeZone: input.timezone }).format(); }
+    catch { throw new ConflictException('Promotion timezone is invalid.'); }
+    if (!Number.isFinite(startsAt.getTime()) || !Number.isFinite(endsAt.getTime()) || endsAt <= startsAt)
+      throw new ConflictException('Promotion end must be after its start.');
+    if (input.discountType === 'PERCENTAGE' && input.discountValue > 100)
+      throw new ConflictException('Percentage discounts cannot exceed 100%.');
+    if (input.mode === 'CODE' && !input.code?.trim())
+      throw new ConflictException('Code promotions require a code.');
+    return {
+      name: input.name.trim(), code: input.code?.trim().toUpperCase() || null,
+      description: input.description?.trim() || null, discountType: input.discountType,
+      discountValue: input.discountValue, startsAt, endsAt, timezone: input.timezone,
+      isActive: input.isActive ?? true, mode: input.mode,
+      maximumRedemptions: input.maximumRedemptions ?? null,
+      perUserRedemptionLimit: input.perUserRedemptionLimit ?? null,
+      newUsersOnly: input.newUsersOnly ?? false, minimumPurchase: input.minimumPurchase ?? null,
+    };
   }
 
   private async activePlan(userId: string, now: Date, client: Prisma.TransactionClient | PrismaService = this.prisma) {

@@ -47,6 +47,7 @@ export class BillingController {
       user,
       idempotencyKey,
       input.discountCode,
+      input.planCode,
     );
   }
 

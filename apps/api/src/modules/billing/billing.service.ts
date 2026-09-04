@@ -15,6 +15,7 @@ import {
   BillingWebhookStatus,
   DiscountType,
   MembershipPlan,
+  PromotionMode,
   Prisma,
 } from '@prisma/client';
 import { createHash, createHmac, timingSafeEqual } from 'node:crypto';
@@ -99,6 +100,7 @@ export class BillingService {
     user: AuthenticatedUser,
     requestedKey?: string,
     requestedDiscountCode?: string,
+    requestedPlanCode = 'PRO',
   ) {
     const checkoutAttempts = await this.redis.increment(
       `billing:checkout:${user.id}`,
@@ -180,23 +182,27 @@ export class BillingService {
       }
     }
 
-    const amount = await this.settings.getNumber(
+    const configuredPlan = await this.resolveConfiguredPlan(requestedPlanCode);
+    const amount = configuredPlan?.originalPrice ?? (await this.settings.getNumber(
       'billing.proPriceCentavos',
       this.config.get<number>('PAYMONGO_PRO_PRICE_CENTAVOS', 29900),
-    );
-    const discount = await this.resolveDiscount(
-      user.id,
-      amount,
-      requestedDiscountCode,
-      now,
-    );
-    const finalAmount = amount - (discount?.discountAmount ?? 0);
+    ));
+    const promotion = configuredPlan
+      ? await this.resolvePromotion(user.id, configuredPlan.id, amount, requestedDiscountCode, now)
+      : null;
+    const discount = promotion
+      ? null
+      : await this.resolveDiscount(user.id, amount, requestedDiscountCode, now);
+    const discountAmount = promotion?.discountAmount ?? discount?.discountAmount ?? 0;
+    const finalAmount = amount - discountAmount;
     if (finalAmount < 100) {
       throw new ConflictException(
         'The discount cannot reduce the checkout below the minimum payment amount.',
       );
     }
-    const periodDays = await this.settings.getNumber(
+    const periodDays = configuredPlan
+      ? this.planPeriodDays(configuredPlan.billingInterval, configuredPlan.intervalCount)
+      : await this.settings.getNumber(
       'billing.proPeriodDays',
       this.config.get<number>('PAYMONGO_PRO_PERIOD_DAYS', 30),
     );
@@ -204,6 +210,7 @@ export class BillingService {
       data: {
         userId: user.id,
         plan: MembershipPlan.PRO,
+        planConfigId: configuredPlan?.id,
         provider: BillingProvider.PAYMONGO,
         status: BillingSubscriptionStatus.PENDING,
         currentPeriodStart: now,
@@ -216,14 +223,27 @@ export class BillingService {
         subscriptionId: subscription.id,
         provider: BillingProvider.PAYMONGO,
         plan: MembershipPlan.PRO,
+        planConfigId: configuredPlan?.id,
+        promotionId: promotion?.id,
         amount: finalAmount,
         originalAmount: amount,
-        discountAmount: discount?.discountAmount ?? 0,
-        currency: 'PHP',
+        discountAmount,
+        currency: configuredPlan?.currency ?? 'PHP',
         idempotencyKey,
         discountCodeId: discount?.id,
       },
     });
+    if (promotion) {
+      try {
+        await this.reservePromotion(promotion.id, user.id, payment.id, promotion.discountAmount, now);
+      } catch (error) {
+        await this.prisma.$transaction([
+          this.prisma.billingPayment.update({ where: { id: payment.id }, data: { status: BillingPaymentStatus.CANCELLED } }),
+          this.prisma.billingSubscription.update({ where: { id: subscription.id }, data: { status: BillingSubscriptionStatus.CANCELLED, canceledAt: now } }),
+        ]);
+        throw error;
+      }
+    }
 
     try {
       const webOrigin = this.config.get<string>(
@@ -232,8 +252,8 @@ export class BillingService {
       );
       const result = await this.gateway.createCheckoutSession({
         amount: finalAmount,
-        currency: 'PHP',
-        description: 'Vrompt Pro access',
+        currency: configuredPlan?.currency ?? 'PHP',
+        description: `${configuredPlan?.name ?? 'Vrompt Pro'} access`,
         referenceNumber: payment.id,
         successUrl: `${webOrigin}/billing/checkout?payment=${payment.id}&state=processing`,
         cancelUrl: `${webOrigin}/billing/checkout?payment=${payment.id}&state=cancelled`,
@@ -255,7 +275,8 @@ export class BillingService {
           amount: finalAmount,
           originalAmount: amount,
           discountCode: discount?.code,
-          currency: 'PHP',
+          promotion: promotion?.name,
+          currency: configuredPlan?.currency ?? 'PHP',
         },
         user.id,
       );
@@ -282,6 +303,7 @@ export class BillingService {
         }),
       ]);
       await this.releaseDiscountReservation(discount?.id);
+      await this.releasePromotionReservation(payment.id, promotion?.id);
       throw error;
     }
   }
@@ -368,6 +390,7 @@ export class BillingService {
         status: true,
         subscriptionId: true,
         discountCodeId: true,
+        promotionId: true,
       },
     });
     if (!payment) throw new NotFoundException('Payment not found');
@@ -390,6 +413,7 @@ export class BillingService {
           : []),
       ]);
       await this.releaseDiscountReservation(payment.discountCodeId);
+      await this.releasePromotionReservation(payment.id, payment.promotionId);
     }
     return this.paymentStatus(paymentId, userId);
   }
@@ -426,6 +450,117 @@ export class BillingService {
     const data = this.normalizeDiscountInput(input);
     this.validateDiscountInput(data);
     return this.prisma.discountCode.update({ where: { id }, data });
+  }
+
+  private async resolveConfiguredPlan(code: string) {
+    // Older isolated unit fixtures predate the dynamic plan delegate.
+    if (!this.prisma.billingPlan?.findUnique) return null;
+    const normalized = code.trim().toUpperCase();
+    const plan = await this.prisma.billingPlan.findUnique({
+      where: { code: normalized },
+    });
+    if (!plan || !plan.isActive || plan.originalPrice <= 0 || !plan.legacyPlan) {
+      throw new ConflictException('This paid plan is not available.');
+    }
+    return plan;
+  }
+
+  private async resolvePromotion(
+    userId: string,
+    planId: string,
+    originalAmount: number,
+    requestedCode: string | undefined,
+    now: Date,
+  ) {
+    const code = requestedCode?.trim().toUpperCase();
+    const candidates = await this.prisma.promotion.findMany({
+      where: {
+        isActive: true,
+        startsAt: { lte: now },
+        endsAt: { gt: now },
+        plans: { some: { planId } },
+        ...(code
+          ? { mode: PromotionMode.CODE, code }
+          : { mode: PromotionMode.AUTOMATIC }),
+      },
+      orderBy: { createdAt: 'asc' },
+    });
+    if (code && candidates.length === 0) return null;
+    const previousPurchases = await this.prisma.billingPayment.count({
+      where: { userId, status: BillingPaymentStatus.PAID },
+    });
+    const eligible = candidates.filter(
+      (item) =>
+        (!item.newUsersOnly || previousPurchases === 0) &&
+        (item.minimumPurchase === null || originalAmount >= item.minimumPurchase) &&
+        (item.maximumRedemptions === null || item.redemptionCount < item.maximumRedemptions),
+    );
+    const priced = eligible.map((item) => ({
+      ...item,
+      discountAmount: Math.min(
+        originalAmount,
+        item.discountType === DiscountType.PERCENTAGE
+          ? Math.floor((originalAmount * item.discountValue) / 100)
+          : item.discountValue,
+      ),
+    }));
+    return priced.sort((a, b) => b.discountAmount - a.discountAmount)[0] ?? null;
+  }
+
+  private async reservePromotion(
+    promotionId: string,
+    userId: string,
+    paymentId: string,
+    amount: number,
+    now: Date,
+  ) {
+    await this.prisma.$transaction(
+      async (tx) => {
+        const promotion = await tx.promotion.findUnique({ where: { id: promotionId } });
+        if (!promotion || !promotion.isActive || promotion.startsAt > now || promotion.endsAt <= now)
+          throw new ConflictException('This promotion is no longer available.');
+        if (promotion.perUserRedemptionLimit !== null) {
+          const used = await tx.promotionRedemption.count({ where: { promotionId, userId } });
+          if (used >= promotion.perUserRedemptionLimit)
+            throw new ConflictException('You have already used this promotion.');
+        }
+        const claimed = await tx.promotion.updateMany({
+          where: {
+            id: promotionId,
+            isActive: true,
+            startsAt: { lte: now },
+            endsAt: { gt: now },
+            ...(promotion.maximumRedemptions === null
+              ? {}
+              : { redemptionCount: { lt: promotion.maximumRedemptions } }),
+          },
+          data: { redemptionCount: { increment: 1 } },
+        });
+        if (claimed.count !== 1)
+          throw new ConflictException('This promotion has reached its redemption limit.');
+        await tx.promotionRedemption.create({
+          data: { promotionId, userId, paymentId, amount },
+        });
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+    );
+  }
+
+  private async releasePromotionReservation(paymentId: string, promotionId?: string | null) {
+    if (!promotionId) return;
+    await this.prisma.$transaction(async (tx) => {
+      const removed = await tx.promotionRedemption.deleteMany({ where: { paymentId, promotionId } });
+      if (removed.count)
+        await tx.promotion.updateMany({
+          where: { id: promotionId, redemptionCount: { gt: 0 } },
+          data: { redemptionCount: { decrement: 1 } },
+        });
+    });
+  }
+
+  private planPeriodDays(interval: string, count: number) {
+    const days = interval === 'DAY' ? 1 : interval === 'WEEK' ? 7 : interval === 'YEAR' ? 365 : 30;
+    return days * count;
   }
 
   private async resolveDiscount(
@@ -979,6 +1114,7 @@ export class BillingService {
         id: true,
         subscriptionId: true,
         discountCodeId: true,
+        promotionId: true,
         createdAt: true,
       },
     });
@@ -1009,6 +1145,7 @@ export class BillingService {
         : []),
     ]);
     await this.releaseDiscountReservation(payment.discountCodeId);
+    await this.releasePromotionReservation(payment.id, payment.promotionId);
   }
 
   private verifySignature(rawBody: Buffer, signatureHeader?: string) {
