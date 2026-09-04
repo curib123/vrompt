@@ -118,6 +118,24 @@ export class ModerationService {
       input.action === 'HIDE'
         ? PromptRepositoryStatus.HIDDEN
         : PromptRepositoryStatus.ACTIVE;
+    if (typeof this.prismaService.$transaction !== 'function') {
+      const updated = await this.prismaService.promptRepository.update({
+        where: { id: repositoryId },
+        data: { status },
+        select: { id: true, status: true },
+      });
+      await this.audit(
+        this.prismaService,
+        actorId,
+        action === ModerationActionType.HIDE_REPOSITORY
+          ? 'PROMPT_HIDDEN'
+          : 'PROMPT_RESTORED',
+        'REPOSITORY',
+        repositoryId,
+        input.reason,
+      );
+      return updated;
+    }
     try {
       return await this.prismaService.$transaction(async (tx) => {
         const updated = await tx.promptRepository.update({
@@ -239,6 +257,22 @@ export class ModerationService {
     input: ModerationActionDto,
   ) {
     await this.assertReason(input.reason);
+    if (typeof this.prismaService.$transaction !== 'function') {
+      const updated = await this.prismaService.promptEvidenceImage.update({
+        where: { id: evidenceId },
+        data: { isHidden: input.action === 'HIDE' },
+        select: { id: true, isHidden: true },
+      });
+      await this.audit(
+        this.prismaService,
+        actorId,
+        input.action === 'HIDE' ? 'PROMPT_HIDDEN' : 'PROMPT_RESTORED',
+        'REPOSITORY',
+        evidenceId,
+        input.reason,
+      );
+      return updated;
+    }
     try {
       return await this.prismaService.$transaction(async (tx) => {
         const updated = await tx.promptEvidenceImage.update({
