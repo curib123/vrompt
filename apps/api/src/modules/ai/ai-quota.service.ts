@@ -1,4 +1,9 @@
-import { HttpException, HttpStatus, Injectable, Optional } from '@nestjs/common';
+import {
+  HttpException,
+  HttpStatus,
+  Injectable,
+  Optional,
+} from '@nestjs/common';
 import {
   AiGenerationMode,
   AiGenerationOperation,

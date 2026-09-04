@@ -17,7 +17,10 @@ import { BillingService } from './billing.service';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { MonetizationService } from './monetization.service';
-import { UpsertPlanDto, UpsertPromotionDto } from './dto/monetization-admin.dto';
+import {
+  UpsertPlanDto,
+  UpsertPromotionDto,
+} from './dto/monetization-admin.dto';
 import {
   CreateDiscountCodeDto,
   UpdateDiscountCodeDto,
@@ -27,32 +30,51 @@ import {
 @UseGuards(AccessTokenGuard, RolesGuard)
 @Roles(UserRole.MODERATOR, UserRole.ADMIN)
 export class BillingAdminController {
-  constructor(private readonly service: BillingService, private readonly monetization: MonetizationService) {}
+  constructor(
+    private readonly service: BillingService,
+    private readonly monetization: MonetizationService,
+  ) {}
 
   @Get('configuration')
-  configuration() { return this.monetization.adminConfiguration(); }
+  configuration() {
+    return this.monetization.adminConfiguration();
+  }
 
   @Post('plans')
   @Roles(UserRole.ADMIN)
-  createPlan(@Body() input: UpsertPlanDto, @CurrentUser() user: AuthenticatedUser) {
+  createPlan(
+    @Body() input: UpsertPlanDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
     return this.monetization.createPlan(input, user.id);
   }
 
   @Patch('plans/:id')
   @Roles(UserRole.ADMIN)
-  updatePlan(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string, @Body() input: UpsertPlanDto, @CurrentUser() user: AuthenticatedUser) {
+  updatePlan(
+    @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+    @Body() input: UpsertPlanDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
     return this.monetization.updatePlan(id, input, user.id);
   }
 
   @Post('promotions')
   @Roles(UserRole.ADMIN)
-  createPromotion(@Body() input: UpsertPromotionDto, @CurrentUser() user: AuthenticatedUser) {
+  createPromotion(
+    @Body() input: UpsertPromotionDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
     return this.monetization.createPromotion(input, user.id);
   }
 
   @Patch('promotions/:id')
   @Roles(UserRole.ADMIN)
-  updatePromotion(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string, @Body() input: UpsertPromotionDto, @CurrentUser() user: AuthenticatedUser) {
+  updatePromotion(
+    @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+    @Body() input: UpsertPromotionDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
     return this.monetization.updatePromotion(id, input, user.id);
   }
 

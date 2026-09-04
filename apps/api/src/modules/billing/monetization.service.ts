@@ -8,7 +8,10 @@ import {
 import { Prisma, PromotionMode, UsageResetPeriod } from '@prisma/client';
 
 import { PrismaService } from '../prisma/prisma.service';
-import type { UpsertPlanDto, UpsertPromotionDto } from './dto/monetization-admin.dto';
+import type {
+  UpsertPlanDto,
+  UpsertPromotionDto,
+} from './dto/monetization-admin.dto';
 
 @Injectable()
 export class MonetizationService {
@@ -43,7 +46,11 @@ export class MonetizationService {
               item.maximumRedemptions === null ||
               item.redemptionCount < item.maximumRedemptions,
           )
-          .sort((a, b) => this.discountFor(plan.originalPrice, b) - this.discountFor(plan.originalPrice, a))[0];
+          .sort(
+            (a, b) =>
+              this.discountFor(plan.originalPrice, b) -
+              this.discountFor(plan.originalPrice, a),
+          )[0];
         const discountAmount = promotion
           ? this.discountFor(plan.originalPrice, promotion)
           : 0;
@@ -56,7 +63,10 @@ export class MonetizationService {
           currency: plan.currency,
           billingInterval: plan.billingInterval,
           intervalCount: plan.intervalCount,
-          billingPeriod: this.billingLabel(plan.billingInterval, plan.intervalCount),
+          billingPeriod: this.billingLabel(
+            plan.billingInterval,
+            plan.intervalCount,
+          ),
           features: plan.limits.map((item) => ({
             key: item.feature.key,
             name: item.feature.name,
@@ -108,8 +118,10 @@ export class MonetizationService {
           resetPeriod: item.resetPeriod,
           used,
           limit: item.limit,
-          remaining: item.limit === null ? null : Math.max(item.limit - used, 0),
-          warning: item.limit !== null && used * 100 >= item.limit * item.warningAt,
+          remaining:
+            item.limit === null ? null : Math.max(item.limit - used, 0),
+          warning:
+            item.limit !== null && used * 100 >= item.limit * item.warningAt,
           reached: item.limit !== null && used >= item.limit,
           resetAt: period.end.toISOString(),
         };
@@ -137,10 +149,14 @@ export class MonetizationService {
             ({ feature }) => feature.key === input.featureKey,
           );
           if (!limits.length)
-            throw new NotFoundException('Feature is not configured for this plan.');
+            throw new NotFoundException(
+              'Feature is not configured for this plan.',
+            );
           for (const limit of limits) {
             const requestKey = `${input.requestKey}:${limit.resetPeriod}`;
-            const previous = await tx.featureUsageEvent.findUnique({ where: { requestKey } });
+            const previous = await tx.featureUsageEvent.findUnique({
+              where: { requestKey },
+            });
             if (previous) continue;
             const period = this.period(limit.resetPeriod, now);
             const bucket = await tx.featureUsageBucket.upsert({
@@ -164,7 +180,9 @@ export class MonetizationService {
             const updated = await tx.featureUsageBucket.updateMany({
               where: {
                 id: bucket.id,
-                ...(limit.limit === null ? {} : { used: { lte: limit.limit - units } }),
+                ...(limit.limit === null
+                  ? {}
+                  : { used: { lte: limit.limit - units } }),
               },
               data: { used: { increment: units } },
             });
@@ -189,8 +207,13 @@ export class MonetizationService {
         { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
       );
     } catch (error) {
-      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2034') {
-        throw new ConflictException('Usage changed concurrently. Please retry.');
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2034'
+      ) {
+        throw new ConflictException(
+          'Usage changed concurrently. Please retry.',
+        );
       }
       throw error;
     }
@@ -214,15 +237,24 @@ export class MonetizationService {
       const plan = await tx.billingPlan.create({
         data: {
           code: input.code.trim().toUpperCase(),
-          name: input.name.trim(), description: input.description.trim(),
-          originalPrice: input.originalPrice, currency: input.currency.toUpperCase(),
-          billingInterval: input.billingInterval, intervalCount: input.intervalCount,
-          isActive: input.isActive ?? true, displayOrder: input.displayOrder,
+          name: input.name.trim(),
+          description: input.description.trim(),
+          originalPrice: input.originalPrice,
+          currency: input.currency.toUpperCase(),
+          billingInterval: input.billingInterval,
+          intervalCount: input.intervalCount,
+          isActive: input.isActive ?? true,
+          displayOrder: input.displayOrder,
         },
       });
       await this.replaceLimits(tx, plan.id, input.limits);
       await tx.pricingHistory.create({
-        data: { planId: plan.id, actorId, changeType: 'PLAN_CREATED', after: input as unknown as Prisma.InputJsonValue },
+        data: {
+          planId: plan.id,
+          actorId,
+          changeType: 'PLAN_CREATED',
+          after: input as unknown as Prisma.InputJsonValue,
+        },
       });
       return plan;
     });
@@ -230,22 +262,35 @@ export class MonetizationService {
 
   async updatePlan(id: string, input: UpsertPlanDto, actorId: string) {
     return this.prisma.$transaction(async (tx) => {
-      const before = await tx.billingPlan.findUnique({ where: { id }, include: { limits: true } });
+      const before = await tx.billingPlan.findUnique({
+        where: { id },
+        include: { limits: true },
+      });
       if (!before) throw new NotFoundException('Plan not found.');
       const plan = await tx.billingPlan.update({
         where: { id },
         data: {
-          code: input.code.trim().toUpperCase(), name: input.name.trim(),
-          description: input.description.trim(), originalPrice: input.originalPrice,
-          currency: input.currency.toUpperCase(), billingInterval: input.billingInterval,
-          intervalCount: input.intervalCount, isActive: input.isActive ?? true,
+          code: input.code.trim().toUpperCase(),
+          name: input.name.trim(),
+          description: input.description.trim(),
+          originalPrice: input.originalPrice,
+          currency: input.currency.toUpperCase(),
+          billingInterval: input.billingInterval,
+          intervalCount: input.intervalCount,
+          isActive: input.isActive ?? true,
           displayOrder: input.displayOrder,
         },
       });
       await tx.planFeatureLimit.deleteMany({ where: { planId: id } });
       await this.replaceLimits(tx, id, input.limits);
       await tx.pricingHistory.create({
-        data: { planId: id, actorId, changeType: 'PLAN_UPDATED', before: before as unknown as Prisma.InputJsonValue, after: input as unknown as Prisma.InputJsonValue },
+        data: {
+          planId: id,
+          actorId,
+          changeType: 'PLAN_UPDATED',
+          before: before as unknown as Prisma.InputJsonValue,
+          after: input as unknown as Prisma.InputJsonValue,
+        },
       });
       return plan;
     });
@@ -255,39 +300,81 @@ export class MonetizationService {
     const data = this.promotionData(input);
     return this.prisma.$transaction(async (tx) => {
       const promotion = await tx.promotion.create({
-        data: { ...data, plans: { create: input.planIds.map((planId) => ({ planId })) } },
+        data: {
+          ...data,
+          plans: { create: input.planIds.map((planId) => ({ planId })) },
+        },
       });
       await tx.pricingHistory.create({
-        data: { promotionId: promotion.id, actorId, changeType: 'PROMOTION_CREATED', after: input as unknown as Prisma.InputJsonValue },
+        data: {
+          promotionId: promotion.id,
+          actorId,
+          changeType: 'PROMOTION_CREATED',
+          after: input as unknown as Prisma.InputJsonValue,
+        },
       });
       return promotion;
     });
   }
 
-  async updatePromotion(id: string, input: UpsertPromotionDto, actorId: string) {
+  async updatePromotion(
+    id: string,
+    input: UpsertPromotionDto,
+    actorId: string,
+  ) {
     const data = this.promotionData(input);
     return this.prisma.$transaction(async (tx) => {
-      const before = await tx.promotion.findUnique({ where: { id }, include: { plans: true } });
+      const before = await tx.promotion.findUnique({
+        where: { id },
+        include: { plans: true },
+      });
       if (!before) throw new NotFoundException('Promotion not found.');
       const promotion = await tx.promotion.update({ where: { id }, data });
       await tx.promotionPlan.deleteMany({ where: { promotionId: id } });
-      await tx.promotionPlan.createMany({ data: input.planIds.map((planId) => ({ promotionId: id, planId })) });
+      await tx.promotionPlan.createMany({
+        data: input.planIds.map((planId) => ({ promotionId: id, planId })),
+      });
       await tx.pricingHistory.create({
-        data: { promotionId: id, actorId, changeType: 'PROMOTION_UPDATED', before: before as unknown as Prisma.InputJsonValue, after: input as unknown as Prisma.InputJsonValue },
+        data: {
+          promotionId: id,
+          actorId,
+          changeType: 'PROMOTION_UPDATED',
+          before: before as unknown as Prisma.InputJsonValue,
+          after: input as unknown as Prisma.InputJsonValue,
+        },
       });
       return promotion;
     });
   }
 
-  private async replaceLimits(tx: Prisma.TransactionClient, planId: string, limits: UpsertPlanDto['limits']) {
+  private async replaceLimits(
+    tx: Prisma.TransactionClient,
+    planId: string,
+    limits: UpsertPlanDto['limits'],
+  ) {
     for (const item of limits) {
       const feature = await tx.featureDefinition.upsert({
         where: { key: item.featureKey.trim().toLowerCase() },
-        create: { key: item.featureKey.trim().toLowerCase(), name: item.featureName.trim(), description: item.description?.trim(), unitLabel: item.unitLabel?.trim() || 'uses' },
-        update: { name: item.featureName.trim(), description: item.description?.trim(), unitLabel: item.unitLabel?.trim() || 'uses' },
+        create: {
+          key: item.featureKey.trim().toLowerCase(),
+          name: item.featureName.trim(),
+          description: item.description?.trim(),
+          unitLabel: item.unitLabel?.trim() || 'uses',
+        },
+        update: {
+          name: item.featureName.trim(),
+          description: item.description?.trim(),
+          unitLabel: item.unitLabel?.trim() || 'uses',
+        },
       });
       await tx.planFeatureLimit.create({
-        data: { planId, featureId: feature.id, resetPeriod: item.resetPeriod, limit: item.limit ?? null, warningAt: item.warningAt ?? 80 },
+        data: {
+          planId,
+          featureId: feature.id,
+          resetPeriod: item.resetPeriod,
+          limit: item.limit ?? null,
+          warningAt: item.warningAt ?? 80,
+        },
       });
     }
   }
@@ -295,30 +382,55 @@ export class MonetizationService {
   private promotionData(input: UpsertPromotionDto) {
     const startsAt = new Date(input.startsAt);
     const endsAt = new Date(input.endsAt);
-    try { new Intl.DateTimeFormat('en', { timeZone: input.timezone }).format(); }
-    catch { throw new ConflictException('Promotion timezone is invalid.'); }
-    if (!Number.isFinite(startsAt.getTime()) || !Number.isFinite(endsAt.getTime()) || endsAt <= startsAt)
+    try {
+      new Intl.DateTimeFormat('en', { timeZone: input.timezone }).format();
+    } catch {
+      throw new ConflictException('Promotion timezone is invalid.');
+    }
+    if (
+      !Number.isFinite(startsAt.getTime()) ||
+      !Number.isFinite(endsAt.getTime()) ||
+      endsAt <= startsAt
+    )
       throw new ConflictException('Promotion end must be after its start.');
     if (input.discountType === 'PERCENTAGE' && input.discountValue > 100)
       throw new ConflictException('Percentage discounts cannot exceed 100%.');
     if (input.mode === 'CODE' && !input.code?.trim())
       throw new ConflictException('Code promotions require a code.');
     return {
-      name: input.name.trim(), code: input.code?.trim().toUpperCase() || null,
-      description: input.description?.trim() || null, discountType: input.discountType,
-      discountValue: input.discountValue, startsAt, endsAt, timezone: input.timezone,
-      isActive: input.isActive ?? true, mode: input.mode,
+      name: input.name.trim(),
+      code: input.code?.trim().toUpperCase() || null,
+      description: input.description?.trim() || null,
+      discountType: input.discountType,
+      discountValue: input.discountValue,
+      startsAt,
+      endsAt,
+      timezone: input.timezone,
+      isActive: input.isActive ?? true,
+      mode: input.mode,
       maximumRedemptions: input.maximumRedemptions ?? null,
       perUserRedemptionLimit: input.perUserRedemptionLimit ?? null,
-      newUsersOnly: input.newUsersOnly ?? false, minimumPurchase: input.minimumPurchase ?? null,
+      newUsersOnly: input.newUsersOnly ?? false,
+      minimumPurchase: input.minimumPurchase ?? null,
     };
   }
 
-  private async activePlan(userId: string, now: Date, client: Prisma.TransactionClient | PrismaService = this.prisma) {
+  private async activePlan(
+    userId: string,
+    now: Date,
+    client: Prisma.TransactionClient | PrismaService = this.prisma,
+  ) {
     const subscription = await client.billingSubscription.findFirst({
-      where: { userId, status: 'ACTIVE', currentPeriodEnd: { gt: now }, planConfigId: { not: null } },
+      where: {
+        userId,
+        status: 'ACTIVE',
+        currentPeriodEnd: { gt: now },
+        planConfigId: { not: null },
+      },
       orderBy: { currentPeriodEnd: 'desc' },
-      include: { planConfig: { include: { limits: { include: { feature: true } } } } },
+      include: {
+        planConfig: { include: { limits: { include: { feature: true } } } },
+      },
     });
     if (subscription?.planConfig?.isActive) return subscription.planConfig;
     const free = await client.billingPlan.findUnique({
@@ -329,8 +441,16 @@ export class MonetizationService {
     return free;
   }
 
-  private discountFor(price: number, promotion: { discountType: string; discountValue: number; minimumPurchase: number | null }) {
-    if (promotion.minimumPurchase !== null && price < promotion.minimumPurchase) return 0;
+  private discountFor(
+    price: number,
+    promotion: {
+      discountType: string;
+      discountValue: number;
+      minimumPurchase: number | null;
+    },
+  ) {
+    if (promotion.minimumPurchase !== null && price < promotion.minimumPurchase)
+      return 0;
     return Math.min(
       price,
       promotion.discountType === 'PERCENTAGE'
@@ -342,7 +462,10 @@ export class MonetizationService {
   private period(reset: UsageResetPeriod, now: Date) {
     const start = new Date(now);
     if (reset === UsageResetPeriod.DAILY) start.setUTCHours(0, 0, 0, 0);
-    else start.setUTCDate(1), start.setUTCHours(0, 0, 0, 0);
+    else {
+      start.setUTCDate(1);
+      start.setUTCHours(0, 0, 0, 0);
+    }
     const end = new Date(start);
     if (reset === UsageResetPeriod.DAILY) end.setUTCDate(end.getUTCDate() + 1);
     else end.setUTCMonth(end.getUTCMonth() + 1);

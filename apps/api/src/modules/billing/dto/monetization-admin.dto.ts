@@ -1,8 +1,23 @@
-import { BillingInterval, DiscountType, PromotionMode, UsageResetPeriod } from '@prisma/client';
+import {
+  BillingInterval,
+  DiscountType,
+  PromotionMode,
+  UsageResetPeriod,
+} from '@prisma/client';
 import { Type } from 'class-transformer';
 import {
-  IsArray, IsBoolean, IsEnum, IsInt, IsOptional, IsString, IsUUID,
-  Max, MaxLength, Min, MinLength, ValidateNested,
+  IsArray,
+  IsBoolean,
+  IsEnum,
+  IsInt,
+  IsOptional,
+  IsString,
+  IsUUID,
+  Max,
+  MaxLength,
+  Min,
+  MinLength,
+  ValidateNested,
 } from 'class-validator';
 
 export class PlanLimitDto {
@@ -25,7 +40,10 @@ export class UpsertPlanDto {
   @IsInt() @Min(1) intervalCount!: number;
   @IsOptional() @IsBoolean() isActive?: boolean;
   @IsInt() displayOrder!: number;
-  @IsArray() @ValidateNested({ each: true }) @Type(() => PlanLimitDto) limits!: PlanLimitDto[];
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => PlanLimitDto)
+  limits!: PlanLimitDto[];
 }
 
 export class UpsertPromotionDto {
