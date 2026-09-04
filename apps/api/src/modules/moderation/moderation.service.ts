@@ -10,6 +10,7 @@ import {
   ReportStatus,
   UserStatus,
 } from '@prisma/client';
+import type { Prisma } from '@prisma/client';
 
 import { PrismaService } from '../prisma/prisma.service';
 import type { ModerationActionDto } from './dto/moderation-action.dto';
@@ -55,19 +56,15 @@ export class ModerationService {
           : undefined;
     if (!status)
       throw new ForbiddenException('Use dismiss or resolve for reports');
-    const updated = await this.prismaService.report.update({
-      where: { id: reportId },
-      data: { status, resolvedAt: new Date() },
-      select: { id: true, status: true },
+    return this.prismaService.$transaction(async (tx) => {
+      const updated = await tx.report.update({
+        where: { id: reportId },
+        data: { status, resolvedAt: new Date() },
+        select: { id: true, status: true },
+      });
+      await this.audit(tx, actorId, 'REPORT_RESOLVED', 'REPORT', reportId, input.reason);
+      return updated;
     });
-    await this.audit(
-      actorId,
-      'REPORT_RESOLVED',
-      'REPORT',
-      reportId,
-      input.reason,
-    );
-    return updated;
   }
 
   async repository(
@@ -84,25 +81,16 @@ export class ModerationService {
       input.action === 'HIDE'
         ? PromptRepositoryStatus.HIDDEN
         : PromptRepositoryStatus.ACTIVE;
-    const updated = await this.prismaService.promptRepository
-      .update({
-        where: { id: repositoryId },
-        data: { status },
-        select: { id: true, status: true },
-      })
-      .catch(() => {
-        throw new NotFoundException('Repository not found');
+    try {
+      return await this.prismaService.$transaction(async (tx) => {
+        const updated = await tx.promptRepository.update({
+          where: { id: repositoryId }, data: { status }, select: { id: true, status: true },
+        });
+        await tx.moderationAction.create({ data: { actorId, targetType: 'REPOSITORY', targetId: repositoryId, action, reason: input.reason } });
+        await this.audit(tx, actorId, action === ModerationActionType.HIDE_REPOSITORY ? 'PROMPT_HIDDEN' : 'PROMPT_RESTORED', 'REPOSITORY', repositoryId, input.reason);
+        return updated;
       });
-    await this.audit(
-      actorId,
-      action === ModerationActionType.HIDE_REPOSITORY
-        ? 'PROMPT_HIDDEN'
-        : 'PROMPT_RESTORED',
-      'REPOSITORY',
-      repositoryId,
-      input.reason,
-    );
-    return updated;
+    } catch { throw new NotFoundException('Repository not found'); }
   }
 
   async comment(
@@ -113,46 +101,30 @@ export class ModerationService {
     await this.assertReason(input.reason);
     const status =
       input.action === 'HIDE' ? CommentStatus.HIDDEN : CommentStatus.VISIBLE;
-    const updated = await this.prismaService.comment
-      .update({
-        where: { id: commentId },
-        data: { status },
-        select: { id: true, status: true },
-      })
-      .catch(() => {
-        throw new NotFoundException('Comment not found');
+    try {
+      return await this.prismaService.$transaction(async (tx) => {
+        const updated = await tx.comment.update({ where: { id: commentId }, data: { status }, select: { id: true, status: true } });
+        const moderationAction = input.action === 'HIDE' ? ModerationActionType.HIDE_COMMENT : ModerationActionType.RESTORE_COMMENT;
+        await tx.moderationAction.create({ data: { actorId, targetType: 'COMMENT', targetId: commentId, action: moderationAction, reason: input.reason } });
+        await this.audit(tx, actorId, input.action === 'HIDE' ? 'COMMENT_HIDDEN' : 'COMMENT_HIDDEN', 'COMMENT', commentId, input.reason);
+        return updated;
       });
-    await this.audit(
-      actorId,
-      'COMMENT_HIDDEN',
-      'COMMENT',
-      commentId,
-      input.reason,
-    );
-    return updated;
+    } catch { throw new NotFoundException('Comment not found'); }
   }
 
   async user(actorId: string, userId: string, input: ModerationActionDto) {
     await this.assertReason(input.reason);
     const status =
       input.action === 'SUSPEND' ? UserStatus.SUSPENDED : UserStatus.ACTIVE;
-    const updated = await this.prismaService.user
-      .update({
-        where: { id: userId },
-        data: { status },
-        select: { id: true, status: true },
-      })
-      .catch(() => {
-        throw new NotFoundException('User not found');
+    try {
+      return await this.prismaService.$transaction(async (tx) => {
+        const updated = await tx.user.update({ where: { id: userId }, data: { status }, select: { id: true, status: true } });
+        const moderationAction = input.action === 'SUSPEND' ? ModerationActionType.SUSPEND_USER : ModerationActionType.RESTORE_USER;
+        await tx.moderationAction.create({ data: { actorId, targetType: 'USER', targetId: userId, action: moderationAction, reason: input.reason } });
+        await this.audit(tx, actorId, input.action === 'SUSPEND' ? 'USER_SUSPENDED' : 'USER_RESTORED', 'USER', userId, input.reason);
+        return updated;
       });
-    await this.audit(
-      actorId,
-      input.action === 'SUSPEND' ? 'USER_SUSPENDED' : 'USER_RESTORED',
-      'USER',
-      userId,
-      input.reason,
-    );
-    return updated;
+    } catch { throw new NotFoundException('User not found'); }
   }
 
   async evidence(
@@ -161,26 +133,19 @@ export class ModerationService {
     input: ModerationActionDto,
   ) {
     await this.assertReason(input.reason);
-    const updated = await this.prismaService.promptEvidenceImage
-      .update({
-        where: { id: evidenceId },
-        data: { isHidden: input.action === 'HIDE' },
-        select: { id: true, isHidden: true },
-      })
-      .catch(() => {
-        throw new NotFoundException('Evidence image not found');
+    try {
+      return await this.prismaService.$transaction(async (tx) => {
+        const updated = await tx.promptEvidenceImage.update({ where: { id: evidenceId }, data: { isHidden: input.action === 'HIDE' }, select: { id: true, isHidden: true } });
+        const action = input.action === 'HIDE' ? ModerationActionType.HIDE_REPOSITORY : ModerationActionType.RESTORE_REPOSITORY;
+        await tx.moderationAction.create({ data: { actorId, targetType: 'REPOSITORY', targetId: evidenceId, action, reason: input.reason, metadata: { evidenceId: true } } });
+        await this.audit(tx, actorId, input.action === 'HIDE' ? 'PROMPT_HIDDEN' : 'PROMPT_RESTORED', 'REPOSITORY', evidenceId, input.reason);
+        return updated;
       });
-    await this.audit(
-      actorId,
-      input.action === 'HIDE' ? 'PROMPT_HIDDEN' : 'PROMPT_RESTORED',
-      'REPOSITORY',
-      evidenceId,
-      input.reason,
-    );
-    return updated;
+    } catch { throw new NotFoundException('Evidence image not found'); }
   }
 
   private audit(
+    client: Prisma.TransactionClient | PrismaService,
     actorId: string,
     action:
       | 'PROMPT_HIDDEN'
@@ -193,7 +158,7 @@ export class ModerationService {
     targetId: string,
     reason?: string,
   ) {
-    return this.prismaService.auditLog.create({
+    return client.auditLog.create({
       data: {
         actorId,
         action,
