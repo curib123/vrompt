@@ -20,7 +20,7 @@ export default function AuthCallbackPage() {
       trackAnalyticsEvent('auth_completed', { source: 'oauth' });
       router.replace(
         (nextUser.onboardingCompleted
-          ? consumeOAuthReturnPath() || '/search'
+          ? consumeOAuthReturnPath() || '/dashboard'
           : '/onboarding/audience') as Route,
       );
     } catch {

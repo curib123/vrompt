@@ -384,6 +384,7 @@ export class AiGenerationService {
       }
       const draft = this.quality.validateDraft({
         ...(generation.output as object),
+        ...(input?.title !== undefined ? { title: input.title.trim() } : {}),
         ...(input?.content !== undefined ? { content: input.content } : {}),
       });
       const audience = draft.audienceSlug

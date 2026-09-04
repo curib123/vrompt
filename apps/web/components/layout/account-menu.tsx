@@ -116,6 +116,11 @@ export function AccountMenu() {
               onSelect={() => setOpen(false)}
             />
             <MenuLink
+              href={'/dashboard' as Route}
+              label="Today"
+              onSelect={() => setOpen(false)}
+            />
+            <MenuLink
               href={`${profileHref}?tab=saved` as Route}
               label="Saved prompts"
               onSelect={() => setOpen(false)}
@@ -156,7 +161,7 @@ export function AccountMenu() {
 
       <ConfirmationModal
         confirmLabel="Log out"
-        description="You will need to sign in again to access your saved prompts, collections, and drafts."
+        description="You will need to sign in again to access your saved prompts, projects, and drafts."
         destructive
         isConfirming={loggingOut}
         onCancel={() => setConfirmLogout(false)}

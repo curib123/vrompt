@@ -21,6 +21,7 @@ import type {
 } from '@/lib/api';
 import { ApiError, fetchAiUsage } from '@/lib/api';
 import { copyToClipboard } from '@/lib/clipboard';
+import { trackAnalyticsEvent } from '@/lib/analytics';
 
 type Operation = 'GENERATE' | 'REGENERATE' | 'IMPROVE' | 'EXPAND' | 'SHORTEN';
 
@@ -34,6 +35,7 @@ export function GeneratorView() {
   const [draft, setDraft] = useState<AiPromptDraft | null>(null);
   const [generationId, setGenerationId] = useState<string | null>(null);
   const [content, setContent] = useState('');
+  const [promptName, setPromptName] = useState('');
   const [busy, setBusy] = useState<Operation | null>(null);
   const [copyState, setCopyState] = useState<'idle' | 'copied' | 'failed'>(
     'idle',
@@ -109,6 +111,7 @@ export function GeneratorView() {
       });
       if (!response.output) throw new Error('No prompt was returned.');
       setDraft(response.output);
+      trackAnalyticsEvent('prompt_generated', undefined, accessToken);
       setGenerationId(response.id);
       setContent(response.output.content);
       if (!accessToken && response.saveToken) {
@@ -157,6 +160,7 @@ export function GeneratorView() {
         accessToken,
         body: JSON.stringify({
           content,
+          title: promptName.trim() || undefined,
           saveToken: window.sessionStorage.getItem(guestDraftStorageKey)
             ? JSON.parse(
                 window.sessionStorage.getItem(guestDraftStorageKey) as string,
@@ -194,8 +198,8 @@ export function GeneratorView() {
           {!user && !isLoading ? (
             <p className="max-w-2xl rounded-2xl border border-zinc-200 bg-white/70 p-4 text-sm leading-6 text-brand-mid dark:border-zinc-800 dark:bg-zinc-950/60">
               <strong className="text-foreground">Guest trial:</strong> generate
-              and copy up to three prompts today. Sign in to save prompts,
-              create Versions, or build Variants.
+              and copy up to three prompts today. Sign in to save prompts, keep
+              history, and adapt them later.
             </p>
           ) : null}
           {usage ? (
@@ -271,46 +275,51 @@ export function GeneratorView() {
             </span>
           </label>
           {user ? (
-            <div className="grid gap-3 sm:grid-cols-2">
-              <label
-                className="grid gap-2 text-sm font-semibold"
-                htmlFor="generation-category"
-              >
-                Category
-                <select
-                  className="min-h-11 rounded-2xl border border-zinc-300 bg-white px-4 text-sm font-normal dark:border-zinc-700 dark:bg-zinc-950"
-                  id="generation-category"
-                  onChange={(event) => setCategory(event.target.value)}
-                  value={category}
+            <details className="rounded-2xl border border-zinc-200 px-4 py-3 dark:border-zinc-800">
+              <summary className="cursor-pointer text-sm font-semibold">
+                More options
+              </summary>
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                <label
+                  className="grid gap-2 text-sm font-semibold"
+                  htmlFor="generation-category"
                 >
-                  <option value="">Choose later</option>
-                  {categories.map((item) => (
-                    <option key={item.id} value={item.slug}>
-                      {item.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label
-                className="grid gap-2 text-sm font-semibold"
-                htmlFor="generation-audience"
-              >
-                Audience
-                <select
-                  className="min-h-11 rounded-2xl border border-zinc-300 bg-white px-4 text-sm font-normal dark:border-zinc-700 dark:bg-zinc-950"
-                  id="generation-audience"
-                  onChange={(event) => setAudience(event.target.value)}
-                  value={audience}
+                  Category
+                  <select
+                    className="min-h-11 rounded-2xl border border-zinc-300 bg-white px-4 text-sm font-normal dark:border-zinc-700 dark:bg-zinc-950"
+                    id="generation-category"
+                    onChange={(event) => setCategory(event.target.value)}
+                    value={category}
+                  >
+                    <option value="">Choose later</option>
+                    {categories.map((item) => (
+                      <option key={item.id} value={item.slug}>
+                        {item.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label
+                  className="grid gap-2 text-sm font-semibold"
+                  htmlFor="generation-audience"
                 >
-                  <option value="">Choose later</option>
-                  {audiences.map((item) => (
-                    <option key={item.id} value={item.slug}>
-                      {item.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </div>
+                  Audience
+                  <select
+                    className="min-h-11 rounded-2xl border border-zinc-300 bg-white px-4 text-sm font-normal dark:border-zinc-700 dark:bg-zinc-950"
+                    id="generation-audience"
+                    onChange={(event) => setAudience(event.target.value)}
+                    value={audience}
+                  >
+                    <option value="">Choose later</option>
+                    {audiences.map((item) => (
+                      <option key={item.id} value={item.slug}>
+                        {item.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+            </details>
           ) : null}
           <Button
             disabled={
@@ -365,6 +374,20 @@ export function GeneratorView() {
             className="grid gap-2 text-sm font-semibold"
             htmlFor="generated-content"
           >
+            <span>Give it a name (optional)</span>
+            <input
+              className="min-h-11 rounded-2xl border border-zinc-300 bg-white px-4 text-sm font-normal dark:border-zinc-700 dark:bg-zinc-950"
+              maxLength={160}
+              minLength={5}
+              onChange={(event) => setPromptName(event.target.value)}
+              placeholder="e.g. Weekly launch risk review"
+              value={promptName}
+            />
+            {promptName.trim().length > 0 && promptName.trim().length < 5 ? (
+              <span className="text-xs font-normal text-amber-700 dark:text-amber-300">
+                Use at least 5 characters, or leave the name blank.
+              </span>
+            ) : null}
             Review and edit your prompt
             <textarea
               className="min-h-80 w-full rounded-3xl border border-zinc-300 bg-white px-4 py-3 font-mono text-sm leading-7 text-foreground outline-none focus:border-black dark:border-zinc-700 dark:bg-zinc-950 dark:focus:border-white"
@@ -394,6 +417,9 @@ export function GeneratorView() {
             </Button>
             {user ? (
               <Button
+                disabled={
+                  promptName.trim().length > 0 && promptName.trim().length < 5
+                }
                 onClick={() => void savePrompt()}
                 type="button"
                 variant="secondary"

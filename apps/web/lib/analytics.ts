@@ -29,7 +29,18 @@ export type AnalyticsEventName =
   | 'prompt_share_facebook'
   | 'prompt_share_linkedin'
   | 'prompt_share_reddit'
-  | 'shared_prompt_opened';
+  | 'shared_prompt_opened'
+  | 'prompt_generated'
+  | 'prompt_reused'
+  | 'prompt_favorited'
+  | 'prompt_unfavorited'
+  | 'prompt_pinned'
+  | 'prompt_unpinned'
+  | 'prompt_adapted'
+  | 'prompt_updated'
+  | 'prompt_history_restored'
+  | 'project_created'
+  | 'prompt_added_to_project';
 
 const journeyStorageKey = 'vrompt-analytics-journey';
 

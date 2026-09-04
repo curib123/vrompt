@@ -35,7 +35,7 @@ export default function LoginPage() {
     if (!isLoading && user) {
       router.replace(
         (user.onboardingCompleted
-          ? requestedReturnPath || consumeOAuthReturnPath() || '/search'
+          ? requestedReturnPath || consumeOAuthReturnPath() || '/dashboard'
           : '/onboarding/audience') as Route,
       );
     }

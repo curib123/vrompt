@@ -18,7 +18,7 @@ export function SiteHeader() {
   const pathname = usePathname();
   const { isLoading, user } = useAuth();
   const visiblePrimaryRoutes = user ? primaryRoutes : publicPrimaryRoutes;
-  const homeHref = user ? '/search' : '/';
+  const homeHref = user ? '/dashboard' : '/';
 
   return (
     <header className="sticky top-0 z-30 border-b border-[#E6E6E6]/90 bg-white/95 backdrop-blur dark:border-[#1A1A1A] dark:bg-[#0D0D0D]/95">
@@ -28,7 +28,7 @@ export function SiteHeader() {
             <Link
               aria-label="Vrompt home"
               className="group inline-flex rounded-lg px-1 py-1 transition hover:bg-[#E6E6E6] dark:hover:bg-[#1A1A1A]"
-              href={homeHref}
+              href={homeHref as Route}
             >
               <BrandLockup compact />
             </Link>
@@ -101,7 +101,7 @@ export function SiteHeader() {
           <Link
             aria-label="Vrompt home"
             className="inline-flex min-w-0 rounded-lg px-1 py-1 transition hover:bg-[#E6E6E6] dark:hover:bg-[#1A1A1A]"
-            href={homeHref}
+            href={homeHref as Route}
           >
             <BrandLockup compact />
           </Link>

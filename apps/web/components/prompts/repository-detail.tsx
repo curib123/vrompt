@@ -14,7 +14,7 @@ import { Modal } from '@/components/ui/modal';
 import { Tabs } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { apiRequest, getMediaUrl } from '@/lib/api';
+import { apiRequest, getMediaUrl, updatePromptReuse } from '@/lib/api';
 import { trackAnalyticsEvent } from '@/lib/analytics';
 import { copyToClipboard, getCopyClientKey } from '@/lib/clipboard';
 import { ReportRepositoryButton } from '@/components/reports/report-repository-button';
@@ -57,6 +57,9 @@ export function RepositoryDetail({
     'idle',
   );
   const [likeState, setLikeState] = useState<'idle' | 'liking' | 'failed'>(
+    'idle',
+  );
+  const [reuseState, setReuseState] = useState<'idle' | 'saving' | 'failed'>(
     'idle',
   );
   const [selectedImage, setSelectedImage] = useState<PromptEvidenceImage>();
@@ -178,6 +181,8 @@ export function RepositoryDetail({
               ...current,
               isSaved: result.saved,
               saveCount: result.saveCount,
+              isFavorite: result.saved ? current.isFavorite : false,
+              isPinned: result.saved ? current.isPinned : false,
             }
           : current,
       );
@@ -187,6 +192,60 @@ export function RepositoryDetail({
       }
     } catch {
       setSaveState('failed');
+    }
+  }
+
+  async function updateReuse(
+    action: 'use' | 'favorite' | 'unfavorite' | 'pin' | 'unpin',
+  ) {
+    if (!accessToken || !repository?.isSaved || reuseState === 'saving') return;
+    setReuseState('saving');
+    try {
+      await updatePromptReuse(slug, action, accessToken);
+      setRepository((current) =>
+        current
+          ? {
+              ...current,
+              isFavorite:
+                action === 'favorite'
+                  ? true
+                  : action === 'unfavorite'
+                    ? false
+                    : current.isFavorite,
+              isPinned:
+                action === 'pin'
+                  ? true
+                  : action === 'unpin'
+                    ? false
+                    : current.isPinned,
+              useCount:
+                action === 'use'
+                  ? (current.useCount ?? 0) + 1
+                  : current.useCount,
+              lastUsedAt:
+                action === 'use'
+                  ? new Date().toISOString()
+                  : current.lastUsedAt,
+            }
+          : current,
+      );
+      if (action === 'use')
+        trackAnalyticsEvent('prompt_reused', undefined, accessToken);
+      if (action === 'favorite' || action === 'unfavorite')
+        trackAnalyticsEvent(
+          action === 'favorite' ? 'prompt_favorited' : 'prompt_unfavorited',
+          undefined,
+          accessToken,
+        );
+      if (action === 'pin' || action === 'unpin')
+        trackAnalyticsEvent(
+          action === 'pin' ? 'prompt_pinned' : 'prompt_unpinned',
+          undefined,
+          accessToken,
+        );
+      setReuseState('idle');
+    } catch {
+      setReuseState('failed');
     }
   }
 
@@ -257,7 +316,7 @@ export function RepositoryDetail({
               ) : null}
               {activeVersion ? (
                 <Badge className="!border-white/30 !text-zinc-300">
-                  {selectedVersion ? 'Earlier' : 'Current'} update{' '}
+                  {selectedVersion ? 'Earlier' : 'Current'} history item{' '}
                   {activeVersion.versionNumber}
                 </Badge>
               ) : null}
@@ -320,6 +379,40 @@ export function RepositoryDetail({
                 Sign in to Save
               </Link>
             )}
+            {user && repository.isSaved ? (
+              <>
+                <Button
+                  disabled={reuseState === 'saving'}
+                  onClick={() => void updateReuse('use')}
+                  type="button"
+                  variant="secondary"
+                >
+                  {reuseState === 'saving' ? 'Opening...' : 'Use again'}
+                </Button>
+                <Button
+                  disabled={reuseState === 'saving'}
+                  onClick={() =>
+                    void updateReuse(
+                      repository.isFavorite ? 'unfavorite' : 'favorite',
+                    )
+                  }
+                  type="button"
+                  variant="secondary"
+                >
+                  {repository.isFavorite ? 'Favorited' : 'Favorite'}
+                </Button>
+                <Button
+                  disabled={reuseState === 'saving'}
+                  onClick={() =>
+                    void updateReuse(repository.isPinned ? 'unpin' : 'pin')
+                  }
+                  type="button"
+                  variant="secondary"
+                >
+                  {repository.isPinned ? 'Pinned' : 'Pin'}
+                </Button>
+              </>
+            ) : null}
             {user ? (
               <Button
                 disabled={likeState === 'liking'}
@@ -345,15 +438,18 @@ export function RepositoryDetail({
               <Link
                 className={getButtonClasses('secondary')}
                 href={`/create?variantFrom=${encodeURIComponent(slug)}`}
+                onClick={() =>
+                  trackAnalyticsEvent('prompt_adapted', undefined, accessToken)
+                }
               >
-                Create variation
+                Adapt this prompt
               </Link>
             ) : (
               <Link
                 className={getButtonClasses('secondary')}
                 href={`/login?next=${encodeURIComponent(`/create?variantFrom=${slug}`)}`}
               >
-                Sign in to Create
+                Sign in to adapt
               </Link>
             )}
             <ReportRepositoryButton repositoryId={repository.id} />
@@ -364,6 +460,9 @@ export function RepositoryDetail({
               : `${repository.copyCount} copies - ${repository.saveCount} saves - ${repository.likeCount} likes`}
             {saveState === 'failed' ? ' Could not save; try again.' : ''}
             {likeState === 'failed' ? ' Could not like; try again.' : ''}
+            {reuseState === 'failed'
+              ? ' Could not update reuse settings; try again.'
+              : ''}
           </p>
           <p className="relative max-w-2xl text-xs leading-5 text-zinc-400">
             {user
@@ -401,13 +500,13 @@ export function RepositoryDetail({
       repository.promptTags.length > 0 ||
       repository.aiCompatibility ? (
         <Card className="grid gap-4">
-          <h2 className="text-lg font-semibold">Prompt metadata</h2>
+          <h2 className="text-lg font-semibold">About this prompt</h2>
           {repository.category ? (
             <MetadataRow label="Category" value={repository.category.name} />
           ) : null}
           {repository.promptAudiences.length > 0 ? (
             <MetadataRow
-              label="Audience"
+              label="Best for"
               value={repository.promptAudiences
                 .map(({ audience }) => audience.name)
                 .join(' · ')}
@@ -415,7 +514,7 @@ export function RepositoryDetail({
           ) : null}
           {repository.promptTags.length > 0 ? (
             <MetadataRow
-              label="Topic tags"
+              label="Topics"
               value={repository.promptTags
                 .map(({ tag }) => tag.name)
                 .join(' · ')}
@@ -423,7 +522,7 @@ export function RepositoryDetail({
           ) : null}
           {repository.aiCompatibility ? (
             <MetadataRow
-              label="AI compatibility"
+              label="Works with"
               value={repository.aiCompatibility}
             />
           ) : null}
@@ -459,7 +558,7 @@ export function RepositoryDetail({
               />
             ),
             id: 'prompt',
-            label: 'Prompt',
+            label: 'Instructions',
           },
           {
             content: (
@@ -470,7 +569,7 @@ export function RepositoryDetail({
               />
             ),
             id: 'versions',
-            label: 'Updates',
+            label: 'History',
           },
           {
             content: (
@@ -486,7 +585,7 @@ export function RepositoryDetail({
           {
             content: <LineageTab repositorySlug={slug} />,
             id: 'variants',
-            label: 'Variations',
+            label: 'Adaptations',
           },
           {
             content: (
@@ -497,7 +596,7 @@ export function RepositoryDetail({
               />
             ),
             id: 'activity',
-            label: 'History',
+            label: 'Activity',
           },
         ]}
       />
@@ -538,10 +637,13 @@ function OverviewTab({ repository }: { repository: PromptRepositoryDetail }) {
   return (
     <div className="grid gap-5 md:grid-cols-3">
       <InfoCard
-        label="AI compatibility"
+        label="Works with"
         value={repository.aiCompatibility || 'Model agnostic'}
       />
-      <InfoCard label="License" value={repository.license || 'Not specified'} />
+      <InfoCard
+        label="Sharing terms"
+        value={repository.license || 'Not specified'}
+      />
       <InfoCard label="Updated" value={formatDate(repository.updatedAt)} />
     </div>
   );

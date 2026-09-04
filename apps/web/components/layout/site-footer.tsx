@@ -34,7 +34,7 @@ export function SiteFooter() {
             {isLoading
               ? 'Browse, save, and share prompts that improve your work.'
               : user
-                ? 'Your saved prompts, collections, and profile are ready when you are.'
+                ? 'Your saved prompts, projects, and profile are ready when you are.'
                 : 'Browse and copy freely. Become a creator when you want to save and share.'}
           </p>
         </div>

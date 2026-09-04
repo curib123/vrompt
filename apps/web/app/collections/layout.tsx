@@ -4,8 +4,8 @@ import type { ReactNode } from 'react';
 import { createPrivatePageMetadata } from '@/lib/seo';
 
 export const metadata: Metadata = createPrivatePageMetadata(
-  'Your prompt collections',
-  'Organize useful prompts into personal collections.',
+  'Your prompt projects',
+  'Organize useful prompts into personal projects.',
 );
 
 export default function CollectionsLayout({

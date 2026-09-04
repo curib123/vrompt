@@ -43,7 +43,7 @@ export function CollectionsView({ embedded = false }: { embedded?: boolean }) {
         }
       })
       .catch(() => {
-        if (active) setError('Collections could not be loaded right now.');
+        if (active) setError('Projects could not be loaded right now.');
       });
     return () => {
       active = false;
@@ -66,12 +66,12 @@ export function CollectionsView({ embedded = false }: { embedded?: boolean }) {
       );
       setName('');
       setDescription('');
-      trackAnalyticsEvent('collection_created', undefined, accessToken);
+      trackAnalyticsEvent('project_created', undefined, accessToken);
     } catch (submitError: unknown) {
       setError(
         submitError instanceof Error
           ? submitError.message
-          : 'Collection could not be created.',
+          : 'Project could not be created.',
       );
     } finally {
       setSaving(false);
@@ -88,7 +88,7 @@ export function CollectionsView({ embedded = false }: { embedded?: boolean }) {
           current?.filter((collection) => collection.id !== id) ?? null,
       );
     } catch {
-      setError('Collection could not be archived.');
+      setError('Project could not be archived.');
     } finally {
       setSaving(false);
     }
@@ -96,7 +96,7 @@ export function CollectionsView({ embedded = false }: { embedded?: boolean }) {
 
   if (isLoading || !collections) {
     return error ? (
-      <EmptyState description={error} title="Collections unavailable" />
+      <EmptyState description={error} title="Projects unavailable" />
     ) : (
       <Skeleton className="h-96 rounded-[1.5rem]" />
     );
@@ -113,19 +113,19 @@ export function CollectionsView({ embedded = false }: { embedded?: boolean }) {
       >
         <div className="pointer-events-none absolute -right-24 -top-28 size-80 rounded-full border-[40px] border-white/10" />
         <div className="relative">
-          <Badge className="!border-white/30 !text-zinc-300">Collections</Badge>
+          <Badge className="!border-white/30 !text-zinc-300">Projects</Badge>
           <h1 className="mt-4 text-4xl font-semibold tracking-[-0.06em] sm:text-5xl">
             Organize your prompt shelf.
           </h1>
           <p className="mt-3 max-w-2xl text-sm leading-7 text-zinc-300">
-            Curate reusable prompts for your work, your team, or the wider
-            Vrompt community.
+            Group reusable prompts for your work, your team, or the wider Vrompt
+            community.
           </p>
         </div>
       </Card>
       <Card>
         <div className="space-y-2">
-          <Badge>New collection</Badge>
+          <Badge>New project</Badge>
           <h2 className="text-2xl font-semibold">Start a focused set.</h2>
         </div>
         <form
@@ -133,15 +133,15 @@ export function CollectionsView({ embedded = false }: { embedded?: boolean }) {
           onSubmit={(event) => void createCollection(event)}
         >
           <Input
-            aria-label="Collection name"
+            aria-label="Project name"
             maxLength={120}
             onChange={(event) => setName(event.target.value)}
-            placeholder="Collection name"
+            placeholder="Project name"
             required
             value={name}
           />
           <Textarea
-            aria-label="Collection description"
+            aria-label="Project description"
             maxLength={2000}
             onChange={(event) => setDescription(event.target.value)}
             placeholder="What belongs here?"
@@ -156,10 +156,10 @@ export function CollectionsView({ embedded = false }: { embedded?: boolean }) {
                 }
                 type="checkbox"
               />
-              Public collection
+              Share this project publicly
             </label>
             <Button disabled={saving} type="submit">
-              {saving ? 'Creating...' : 'Create collection'}
+              {saving ? 'Creating...' : 'Create project'}
             </Button>
           </div>
         </form>
@@ -169,8 +169,8 @@ export function CollectionsView({ embedded = false }: { embedded?: boolean }) {
       ) : null}
       {collections.length === 0 ? (
         <EmptyState
-          description="Create a collection to bring related prompts together."
-          title="No collections yet"
+          description="Create a project to bring related prompts together."
+          title="No projects yet"
         />
       ) : (
         <div className="grid gap-4 md:grid-cols-2">
@@ -201,7 +201,7 @@ export function CollectionsView({ embedded = false }: { embedded?: boolean }) {
                   {collection.name}
                 </h2>
                 <p className="mt-3 text-sm leading-7 text-zinc-600 dark:text-zinc-400">
-                  {collection.description || 'A curated prompt collection.'}
+                  {collection.description || 'A focused prompt project.'}
                 </p>
                 <p className="mt-5 text-xs uppercase tracking-[0.18em] text-zinc-600 dark:text-zinc-400">
                   {collection.items.length} prompts
@@ -213,11 +213,11 @@ export function CollectionsView({ embedded = false }: { embedded?: boolean }) {
       )}
       {user ? (
         <p className="text-xs text-zinc-600 dark:text-zinc-400">
-          Public collections can be shared from your profile.
+          Public projects can be shared from your profile.
         </p>
       ) : null}
       <ConfirmationModal
-        confirmLabel="Archive collection"
+        confirmLabel="Archive project"
         description={`“${pendingArchive?.name ?? 'This collection'}” will disappear from your active collections. Its prompts will not be deleted.`}
         destructive
         isConfirming={saving}
@@ -228,7 +228,7 @@ export function CollectionsView({ embedded = false }: { embedded?: boolean }) {
           if (id) void archiveCollection(id);
         }}
         open={Boolean(pendingArchive)}
-        title="Archive this collection?"
+        title="Archive this project?"
       />
     </div>
   );

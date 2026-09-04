@@ -742,6 +742,10 @@ export interface PromptRepositoryDetail {
   likeCount: number;
   isSaved: boolean;
   isLiked: boolean;
+  isFavorite?: boolean;
+  isPinned?: boolean;
+  useCount?: number;
+  lastUsedAt?: string | null;
   variantCount: number;
   sourcePromptId: string | null;
   rootPromptId: string | null;
@@ -763,6 +767,10 @@ export interface PromptRepositoryDetail {
 
 export interface SavedRepositoryItem {
   createdAt: string;
+  lastUsedAt: string | null;
+  useCount: number;
+  isFavorite: boolean;
+  isPinned: boolean;
   promptRepository: {
     id: string;
     title: string;
@@ -983,7 +991,31 @@ export function fetchFeatureUsage(accessToken: string) {
   return apiRequest<FeatureUsageResponse>('/billing/usage', { accessToken });
 }
 
-export function startProCheckout(accessToken: string, discountCode?: string, planCode = 'PRO') {
+export function updatePromptReuse(
+  slug: string,
+  action: 'use' | 'favorite' | 'unfavorite' | 'pin' | 'unpin',
+  accessToken: string,
+) {
+  const method =
+    action === 'unfavorite' || action === 'unpin' ? 'DELETE' : 'POST';
+  const endpoint =
+    action === 'use'
+      ? 'use'
+      : action.replace('unfavorite', 'favorite').replace('unpin', 'pin');
+  return apiRequest(
+    `/prompt-repositories/${encodeURIComponent(slug)}/${endpoint}`,
+    {
+      accessToken,
+      method,
+    },
+  );
+}
+
+export function startProCheckout(
+  accessToken: string,
+  discountCode?: string,
+  planCode = 'PRO',
+) {
   return apiRequest<CheckoutResponse>('/billing/checkout', {
     accessToken,
     headers: { 'idempotency-key': crypto.randomUUID() },

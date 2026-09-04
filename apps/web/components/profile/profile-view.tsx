@@ -216,7 +216,7 @@ export function ProfileView({
             },
             {
               id: 'collections',
-              label: 'Collections',
+              label: 'Projects',
               content: <CollectionsView embedded />,
             },
             {
@@ -294,8 +294,8 @@ function ProfileOverview({ profile }: { profile: ProfileResponse }) {
         )}
       </ContentSection>
       <ContentSection
-        description="Curated public collections from this creator."
-        title="Public collections"
+        description="Curated public projects from this creator."
+        title="Public projects"
       >
         {profile.collections.length > 0 ? (
           <div className="grid gap-4 md:grid-cols-2">
@@ -322,8 +322,8 @@ function ProfileOverview({ profile }: { profile: ProfileResponse }) {
           </div>
         ) : (
           <EmptyState
-            description="Public collections will appear here when this creator publishes one."
-            title="No public collections yet"
+            description="Public projects will appear here when this creator publishes one."
+            title="No public projects yet"
           />
         )}
       </ContentSection>

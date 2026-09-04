@@ -30,6 +30,17 @@ export const ANALYTICS_EVENT_NAMES = [
   'prompt_share_linkedin',
   'prompt_share_reddit',
   'shared_prompt_opened',
+  'prompt_generated',
+  'prompt_reused',
+  'prompt_favorited',
+  'prompt_unfavorited',
+  'prompt_pinned',
+  'prompt_unpinned',
+  'prompt_adapted',
+  'prompt_updated',
+  'prompt_history_restored',
+  'project_created',
+  'prompt_added_to_project',
 ] as const;
 
 export type AnalyticsEventName = (typeof ANALYTICS_EVENT_NAMES)[number];
