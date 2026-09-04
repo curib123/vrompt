@@ -1,3 +1,5 @@
+# syntax=docker/dockerfile:1.7
+
 FROM node:20-bookworm AS dependencies
 
 WORKDIR /workspace
@@ -9,7 +11,12 @@ COPY packages/config/package.json packages/config/package.json
 COPY packages/shared/package.json packages/shared/package.json
 COPY packages/types/package.json packages/types/package.json
 
-RUN npm ci
+RUN --mount=type=cache,target=/root/.npm \
+  npm ci \
+    --fetch-retries=10 \
+    --fetch-retry-mintimeout=20000 \
+    --fetch-retry-maxtimeout=120000 \
+    --fetch-timeout=600000
 
 FROM dependencies AS build
 
