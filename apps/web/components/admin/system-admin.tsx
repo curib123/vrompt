@@ -44,14 +44,21 @@ export function SystemAdmin() {
             <Status
               label="Database"
               ok={data.dependencies.database.status === 'up'}
-              detail={`${data.dependencies.database.latencyMs} ms`}
+              detail={latency(data.dependencies.database.latencyMs)}
             />
             <Status
               label="Redis"
               ok={data.dependencies.redis.status === 'up'}
+              detail={latency(data.dependencies.redis.latencyMs)}
             />
             <Status label="Google OAuth" ok={data.integrations.googleOAuth} />
             <Status label="GitHub OAuth" ok={data.integrations.githubOAuth} />
+            <Status
+              label={`Storage (${data.integrations.storageDriver})`}
+              ok
+            />
+            <Status label="AI provider" ok={data.integrations.aiProvider} />
+            <Status label="PayMongo" ok={data.integrations.payMongo} />
             <ExternalStatus
               label="Oracle server"
               check={data.dependencies.oracleServer}
@@ -86,6 +93,10 @@ export function SystemAdmin() {
               label="Storage errors"
               value={String(data.metrics.evidence.storageErrors)}
             />
+            <Metric
+              label="Memory usage"
+              value={`${Math.round(data.metrics.memory.rssBytes / 1024 / 1024)} MB`}
+            />
           </Card>
           <p className="text-xs text-brand-mid">
             Last checked {new Date(data.checkedAt).toLocaleString()} ·{' '}
@@ -99,6 +110,9 @@ export function SystemAdmin() {
       )}
     </div>
   );
+}
+function latency(value: number | null) {
+  return value === null ? undefined : `${value} ms`;
 }
 function ExternalStatus({
   label,

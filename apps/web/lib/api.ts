@@ -276,8 +276,8 @@ export interface AdminSystemResponse {
   runtime: string;
   uptimeSeconds: number;
   dependencies: {
-    database: { status: 'up' | 'down'; latencyMs: number };
-    redis: { status: 'up' | 'down' };
+    database: { status: 'up' | 'down'; latencyMs: number | null };
+    redis: { status: 'up' | 'down'; latencyMs: number | null };
     oracleServer: {
       status: 'up' | 'down' | 'not_configured';
       latencyMs: number | null;
@@ -291,8 +291,15 @@ export interface AdminSystemResponse {
     googleOAuth: boolean;
     githubOAuth: boolean;
     cloudStorage: boolean;
+    storageDriver: string;
+    aiProvider: boolean;
+    payMongo: boolean;
   };
   metrics: {
+    memory: {
+      rssBytes: number;
+      heapUsedBytes: number;
+    };
     requests: {
       total: number;
       responses2xx: number;
