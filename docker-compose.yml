@@ -7,11 +7,11 @@ services:
     container_name: vrompt-web
     environment:
       NODE_ENV: development
-      NEXT_PUBLIC_SITE_URL: http://localhost:3000
-      NEXT_PUBLIC_API_BASE_URL: http://localhost:4000/api/v1
+      NEXT_PUBLIC_SITE_URL: http://localhost:3100
+      NEXT_PUBLIC_API_BASE_URL: http://localhost:4100/api/v1
       INTERNAL_API_BASE_URL: http://vrompt-api:4000/api/v1
     ports:
-      - '3000:3000'
+      - '3100:3000'
     depends_on:
       vrompt-api:
         condition: service_healthy
@@ -44,7 +44,7 @@ services:
       SWAGGER_ENABLED: 'true'
       DATABASE_URL: postgresql://postgres:postgres@vrompt-postgres:5432/vrompt
       REDIS_URL: redis://vrompt-redis:6379
-      WEB_ORIGIN: http://localhost:3000
+      WEB_ORIGIN: http://localhost:3100
       AI_API_KEY: ${AI_API_KEY:-}
       AI_API_BASE_URL: ${AI_API_BASE_URL:-https://api.openai.com/v1}
       AI_MODEL: ${AI_MODEL:-gpt-5-mini}
@@ -55,10 +55,10 @@ services:
       JWT_REFRESH_TTL_SECONDS: '604800'
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
-      GOOGLE_CALLBACK_URL: ${GOOGLE_CALLBACK_URL:-http://localhost:4000/api/v1/auth/google/callback}
+      GOOGLE_CALLBACK_URL: ${GOOGLE_CALLBACK_URL:-http://localhost:4100/api/v1/auth/google/callback}
       GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID:-}
       GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET:-}
-      GITHUB_CALLBACK_URL: ${GITHUB_CALLBACK_URL:-http://localhost:4000/api/v1/auth/github/callback}
+      GITHUB_CALLBACK_URL: ${GITHUB_CALLBACK_URL:-http://localhost:4100/api/v1/auth/github/callback}
       ADMIN_BOOTSTRAP_EMAIL: ${ADMIN_BOOTSTRAP_EMAIL:-}
       ADMIN_BOOTSTRAP_USERNAME: ${ADMIN_BOOTSTRAP_USERNAME:-}
       ADMIN_BOOTSTRAP_PASSWORD: ${ADMIN_BOOTSTRAP_PASSWORD:-}
@@ -71,7 +71,7 @@ services:
       LOCAL_MEDIA_ROOT: /app/storage/evidence
       MEDIA_STORAGE_LOCAL_PUBLIC_URL: /media
     ports:
-      - '4000:4000'
+      - '4100:4000'
     depends_on:
       vrompt-postgres:
         condition: service_healthy
