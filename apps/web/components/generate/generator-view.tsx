@@ -398,7 +398,7 @@ export function GeneratorView() {
           </label>
           {draft.variables.length > 0 ? (
             <div className="rounded-2xl bg-zinc-50 p-4 dark:bg-zinc-950">
-              <p className="text-sm font-semibold">Suggested variables</p>
+              <p className="text-sm font-semibold">Suggested fill-in fields</p>
               <div className="mt-3 grid gap-2 sm:grid-cols-2">
                 {draft.variables.map((variable) => (
                   <div className="text-sm" key={variable.name}>

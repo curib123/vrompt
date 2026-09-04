@@ -40,7 +40,12 @@ export type AnalyticsEventName =
   | 'prompt_updated'
   | 'prompt_history_restored'
   | 'project_created'
-  | 'prompt_added_to_project';
+  | 'prompt_added_to_project'
+  | 'prompt_removed_from_project'
+  | 'public_prompt_viewed'
+  | 'public_prompt_used'
+  | 'signup_started_from_prompt'
+  | 'signup_completed_from_prompt';
 
 const journeyStorageKey = 'vrompt-analytics-journey';
 

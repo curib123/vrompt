@@ -89,6 +89,9 @@ export function RepositoryDetail({
             },
             accessToken,
           );
+          if (result.visibility === 'PUBLIC') {
+            trackAnalyticsEvent('public_prompt_viewed', undefined, accessToken);
+          }
         }
       })
       .catch(() => {
@@ -154,6 +157,9 @@ export function RepositoryDetail({
       );
       setCopyState('copied');
       trackAnalyticsEvent('prompt_copied', undefined, accessToken);
+      if (repository?.visibility === 'PUBLIC') {
+        trackAnalyticsEvent('public_prompt_used', undefined, accessToken);
+      }
       window.setTimeout(() => setCopyState('idle'), 2200);
     } catch {
       setCopyState('failed');
@@ -356,7 +362,7 @@ export function RepositoryDetail({
                 ? 'Copying...'
                 : copyState === 'copied'
                   ? 'Copied'
-                  : 'Copy Prompt'}
+                  : 'Use this prompt'}
             </Button>
             {user ? (
               <Button
@@ -1109,6 +1115,9 @@ function PromptTab({
       .replaceAll(`{${variable.name}}`, value)
       .replaceAll(`[${variable.name}]`, value);
   }, content);
+  const missingRequired = variables.some(
+    (variable) => variable.required && !values[variable.name]?.trim(),
+  );
 
   async function copyCustomized() {
     await copyToClipboard(customized);
@@ -1121,7 +1130,7 @@ function PromptTab({
           <div className="space-y-1">
             <h2 className="text-lg font-semibold">Customize this prompt</h2>
             <p className="text-sm leading-6 text-zinc-600 dark:text-zinc-400">
-              Fill in the variables, then copy your ready-to-use version.
+              Fill in the fields, then copy your ready-to-use version.
             </p>
           </div>
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
@@ -1130,7 +1139,10 @@ function PromptTab({
                 className="grid gap-1.5 text-sm font-medium"
                 key={variable.id}
               >
-                {variable.name}
+                <span>
+                  {variable.name}
+                  {variable.required ? ' (required)' : ' (optional)'}
+                </span>
                 <Input
                   aria-label={`Value for ${variable.name}`}
                   onChange={(event) =>
@@ -1147,6 +1159,7 @@ function PromptTab({
           </div>
           <Button
             className="mt-4"
+            disabled={missingRequired}
             onClick={() => void copyCustomized()}
             type="button"
           >

@@ -41,6 +41,11 @@ export const ANALYTICS_EVENT_NAMES = [
   'prompt_history_restored',
   'project_created',
   'prompt_added_to_project',
+  'prompt_removed_from_project',
+  'public_prompt_viewed',
+  'public_prompt_used',
+  'signup_started_from_prompt',
+  'signup_completed_from_prompt',
 ] as const;
 
 export type AnalyticsEventName = (typeof ANALYTICS_EVENT_NAMES)[number];
