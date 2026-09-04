@@ -13,6 +13,7 @@ import {
   BillingProvider,
   BillingSubscriptionStatus,
   BillingWebhookStatus,
+  DiscountType,
   MembershipPlan,
   Prisma,
 } from '@prisma/client';
@@ -24,6 +25,10 @@ import { RedisService } from '../common/redis.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { SettingsService } from '../settings/settings.service';
 import type { BillingSummary, PaymentGatewayAdapter } from './billing.types';
+import type {
+  CreateDiscountCodeDto,
+  UpdateDiscountCodeDto,
+} from './dto/create-discount-code.dto';
 
 type PayMongoEvent = {
   data?: {
@@ -90,7 +95,11 @@ export class BillingService {
     };
   }
 
-  async createCheckout(user: AuthenticatedUser, requestedKey?: string) {
+  async createCheckout(
+    user: AuthenticatedUser,
+    requestedKey?: string,
+    requestedDiscountCode?: string,
+  ) {
     const checkoutAttempts = await this.redis.increment(
       `billing:checkout:${user.id}`,
       3_600,
@@ -175,6 +184,18 @@ export class BillingService {
       'billing.proPriceCentavos',
       this.config.get<number>('PAYMONGO_PRO_PRICE_CENTAVOS', 29900),
     );
+    const discount = await this.resolveDiscount(
+      user.id,
+      amount,
+      requestedDiscountCode,
+      now,
+    );
+    const finalAmount = amount - (discount?.discountAmount ?? 0);
+    if (finalAmount < 100) {
+      throw new ConflictException(
+        'The discount cannot reduce the checkout below the minimum payment amount.',
+      );
+    }
     const periodDays = await this.settings.getNumber(
       'billing.proPeriodDays',
       this.config.get<number>('PAYMONGO_PRO_PERIOD_DAYS', 30),
@@ -195,9 +216,12 @@ export class BillingService {
         subscriptionId: subscription.id,
         provider: BillingProvider.PAYMONGO,
         plan: MembershipPlan.PRO,
-        amount,
+        amount: finalAmount,
+        originalAmount: amount,
+        discountAmount: discount?.discountAmount ?? 0,
         currency: 'PHP',
         idempotencyKey,
+        discountCodeId: discount?.id,
       },
     });
 
@@ -207,7 +231,7 @@ export class BillingService {
         'http://localhost:3000',
       );
       const result = await this.gateway.createCheckoutSession({
-        amount,
+        amount: finalAmount,
         currency: 'PHP',
         description: 'Vrompt Pro access',
         referenceNumber: payment.id,
@@ -228,7 +252,9 @@ export class BillingService {
         payment.id,
         {
           provider: BillingProvider.PAYMONGO,
-          amount,
+          amount: finalAmount,
+          originalAmount: amount,
+          discountCode: discount?.code,
           currency: 'PHP',
         },
         user.id,
@@ -255,6 +281,7 @@ export class BillingService {
           },
         }),
       ]);
+      await this.releaseDiscountReservation(discount?.id);
       throw error;
     }
   }
@@ -336,7 +363,12 @@ export class BillingService {
   async cancelPayment(paymentId: string, userId: string) {
     const payment = await this.prisma.billingPayment.findFirst({
       where: { id: paymentId, userId },
-      select: { id: true, status: true, subscriptionId: true },
+      select: {
+        id: true,
+        status: true,
+        subscriptionId: true,
+        discountCodeId: true,
+      },
     });
     if (!payment) throw new NotFoundException('Payment not found');
     if (payment.status === BillingPaymentStatus.PENDING) {
@@ -357,8 +389,145 @@ export class BillingService {
             ]
           : []),
       ]);
+      await this.releaseDiscountReservation(payment.discountCodeId);
     }
     return this.paymentStatus(paymentId, userId);
+  }
+
+  async listDiscountCodes() {
+    return this.prisma.discountCode.findMany({
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true,
+        code: true,
+        name: true,
+        description: true,
+        type: true,
+        value: true,
+        maxDiscountAmount: true,
+        startsAt: true,
+        endsAt: true,
+        isActive: true,
+        maxRedemptions: true,
+        maxRedemptionsPerUser: true,
+        redemptionCount: true,
+        createdAt: true,
+      },
+    });
+  }
+
+  async createDiscountCode(input: CreateDiscountCodeDto) {
+    const data = this.normalizeDiscountInput(input);
+    this.validateDiscountInput(data);
+    return this.prisma.discountCode.create({ data });
+  }
+
+  async updateDiscountCode(id: string, input: UpdateDiscountCodeDto) {
+    const data = this.normalizeDiscountInput(input);
+    this.validateDiscountInput(data);
+    return this.prisma.discountCode.update({ where: { id }, data });
+  }
+
+  private async resolveDiscount(
+    userId: string,
+    originalAmount: number,
+    requestedCode: string | undefined,
+    now: Date,
+  ) {
+    const code = requestedCode?.trim().toUpperCase();
+    if (!code) return null;
+    const discount = await this.prisma.discountCode.findUnique({
+      where: { code },
+    });
+    if (
+      !discount ||
+      !discount.isActive ||
+      discount.startsAt > now ||
+      discount.endsAt <= now
+    ) {
+      throw new ConflictException('This discount code is not available.');
+    }
+    if (
+      discount.type === DiscountType.PERCENTAGE &&
+      (discount.value < 1 || discount.value > 100)
+    ) {
+      throw new ConflictException('This discount code is misconfigured.');
+    }
+    const userRedemptions = await this.prisma.billingPayment.count({
+      where: {
+        userId,
+        discountCodeId: discount.id,
+        status: {
+          in: [BillingPaymentStatus.PENDING, BillingPaymentStatus.PAID],
+        },
+      },
+    });
+    if (userRedemptions >= discount.maxRedemptionsPerUser) {
+      throw new ConflictException('You have already used this discount code.');
+    }
+    const discountAmount = Math.min(
+      originalAmount,
+      discount.type === DiscountType.PERCENTAGE
+        ? Math.floor((originalAmount * discount.value) / 100)
+        : discount.value,
+      discount.maxDiscountAmount ?? originalAmount,
+    );
+    const reserved = await this.prisma.discountCode.updateMany({
+      where: {
+        id: discount.id,
+        isActive: true,
+        startsAt: { lte: now },
+        endsAt: { gt: now },
+        ...(discount.maxRedemptions === null
+          ? {}
+          : { redemptionCount: { lt: discount.maxRedemptions } }),
+      },
+      data: { redemptionCount: { increment: 1 } },
+    });
+    if (reserved.count !== 1) {
+      throw new ConflictException('This discount code has reached its limit.');
+    }
+    return { ...discount, discountAmount };
+  }
+
+  private async releaseDiscountReservation(discountId?: string | null) {
+    if (!discountId) return;
+    await this.prisma.discountCode.updateMany({
+      where: { id: discountId, redemptionCount: { gt: 0 } },
+      data: { redemptionCount: { decrement: 1 } },
+    });
+  }
+
+  private normalizeDiscountInput(input: CreateDiscountCodeDto) {
+    return {
+      code: input.code.trim().toUpperCase(),
+      name: input.name.trim(),
+      description: input.description?.trim() || null,
+      type: input.type,
+      value: input.value,
+      maxDiscountAmount: input.maxDiscountAmount ?? null,
+      startsAt: new Date(input.startsAt),
+      endsAt: new Date(input.endsAt),
+      isActive: input.isActive ?? true,
+      maxRedemptions: input.maxRedemptions ?? null,
+      maxRedemptionsPerUser: input.maxRedemptionsPerUser ?? 1,
+    };
+  }
+
+  private validateDiscountInput(
+    input: ReturnType<typeof this.normalizeDiscountInput>,
+  ) {
+    if (
+      !input.code ||
+      !Number.isFinite(input.startsAt.getTime()) ||
+      !Number.isFinite(input.endsAt.getTime()) ||
+      input.endsAt <= input.startsAt
+    ) {
+      throw new ConflictException('Discount dates and code must be valid.');
+    }
+    if (input.type === DiscountType.PERCENTAGE && input.value > 100) {
+      throw new ConflictException('Percentage discounts must be 1 to 100.');
+    }
   }
 
   async adminOverview() {
@@ -806,7 +975,12 @@ export class BillingService {
   private async expirePendingPayment(paymentId: string, userId: string) {
     const payment = await this.prisma.billingPayment.findFirst({
       where: { id: paymentId, userId, status: BillingPaymentStatus.PENDING },
-      select: { id: true, subscriptionId: true, createdAt: true },
+      select: {
+        id: true,
+        subscriptionId: true,
+        discountCodeId: true,
+        createdAt: true,
+      },
     });
     const expiryHours = this.config.get<number>(
       'PAYMONGO_CHECKOUT_EXPIRY_HOURS',
@@ -834,6 +1008,7 @@ export class BillingService {
           ]
         : []),
     ]);
+    await this.releaseDiscountReservation(payment.discountCodeId);
   }
 
   private verifySignature(rawBody: Buffer, signatureHeader?: string) {

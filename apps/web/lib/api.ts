@@ -942,12 +942,30 @@ export function fetchAiUsage(accessToken?: string) {
   return apiRequest<AiUsageResponse>('/ai/usage', { accessToken });
 }
 
-export function startProCheckout(accessToken: string) {
+export function startProCheckout(accessToken: string, discountCode?: string) {
   return apiRequest<CheckoutResponse>('/billing/checkout', {
     accessToken,
     headers: { 'idempotency-key': crypto.randomUUID() },
     method: 'POST',
+    body: discountCode ? JSON.stringify({ discountCode }) : undefined,
   });
+}
+
+export interface AdminDiscountCode {
+  id: string;
+  code: string;
+  name: string;
+  description: string | null;
+  type: 'PERCENTAGE' | 'FIXED_AMOUNT';
+  value: number;
+  maxDiscountAmount: number | null;
+  startsAt: string;
+  endsAt: string;
+  isActive: boolean;
+  maxRedemptions: number | null;
+  maxRedemptionsPerUser: number;
+  redemptionCount: number;
+  createdAt: string;
 }
 
 export function fetchPaymentStatus(paymentId: string, accessToken: string) {
@@ -962,4 +980,15 @@ export function cancelPayment(paymentId: string, accessToken: string) {
     `/billing/payments/${encodeURIComponent(paymentId)}/cancel`,
     { accessToken, method: 'POST' },
   );
+}
+
+export function createAdminDiscount(
+  accessToken: string,
+  input: Record<string, unknown>,
+) {
+  return apiRequest<AdminDiscountCode>('/admin/billing/discounts', {
+    accessToken,
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
 }

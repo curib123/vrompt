@@ -1,5 +1,6 @@
 import {
   Controller,
+  Body,
   Get,
   Headers,
   Param,
@@ -14,6 +15,7 @@ import type { AuthenticatedUser } from '../auth/auth.types';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { AccessTokenGuard } from '../auth/guards/access-token.guard';
 import { BillingService } from './billing.service';
+import { CreateCheckoutDto } from './dto/create-checkout.dto';
 
 @Controller('billing')
 export class BillingController {
@@ -28,9 +30,14 @@ export class BillingController {
   @UseGuards(AccessTokenGuard)
   checkout(
     @CurrentUser() user: AuthenticatedUser,
+    @Body() input: CreateCheckoutDto,
     @Headers('idempotency-key') idempotencyKey?: string,
   ) {
-    return this.service.createCheckout(user, idempotencyKey);
+    return this.service.createCheckout(
+      user,
+      idempotencyKey,
+      input.discountCode,
+    );
   }
 
   @Get('me')

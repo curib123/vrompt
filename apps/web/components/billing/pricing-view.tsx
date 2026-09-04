@@ -18,6 +18,7 @@ export function PricingView() {
   const [plans, setPlans] = useState<BillingPlan[] | null>(null);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [discountCode, setDiscountCode] = useState('');
 
   useEffect(() => {
     void fetchBillingPlans()
@@ -30,7 +31,7 @@ export function PricingView() {
     setBusy(true);
     setError('');
     try {
-      const checkout = await startProCheckout(accessToken);
+      const checkout = await startProCheckout(accessToken, discountCode);
       if (checkout.checkoutUrl) window.location.assign(checkout.checkoutUrl);
     } catch (requestError) {
       setError(
@@ -61,6 +62,25 @@ export function PricingView() {
         >
           {error}
         </p>
+      ) : null}
+      {user ? (
+        <div className="mx-auto grid w-full max-w-xl gap-2 rounded-2xl border border-zinc-200 bg-white/70 p-4 dark:border-zinc-800 dark:bg-zinc-950/60">
+          <label className="text-sm font-semibold" htmlFor="discount-code">
+            Discount code (optional)
+          </label>
+          <input
+            className="min-h-11 rounded-xl border border-zinc-300 bg-transparent px-3 text-sm uppercase outline-none focus:border-brand-mid dark:border-zinc-700"
+            id="discount-code"
+            maxLength={64}
+            onChange={(event) => setDiscountCode(event.target.value)}
+            placeholder="Enter a code"
+            value={discountCode}
+          />
+          <p className="text-xs text-brand-mid">
+            The final price is calculated and verified by Vrompt before secure
+            checkout.
+          </p>
+        </div>
       ) : null}
       {!plans ? (
         <div className="grid gap-4 md:grid-cols-2">

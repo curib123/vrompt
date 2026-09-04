@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { FormEvent, useEffect, useState } from 'react';
 
 import { useAuth } from '@/components/providers/auth-provider';
 import { Badge } from '@/components/ui/badge';
@@ -11,13 +11,18 @@ import type {
   AdminBillingOverview,
   AdminBillingPayment,
   AdminBillingWebhookFailure,
+  AdminDiscountCode,
 } from '@/lib/api';
+import { createAdminDiscount } from '@/lib/api';
 
 export function AdminBillingView() {
   const { accessToken } = useAuth();
   const [overview, setOverview] = useState<AdminBillingOverview | null>(null);
   const [payments, setPayments] = useState<AdminBillingPayment[]>([]);
   const [failures, setFailures] = useState<AdminBillingWebhookFailure[]>([]);
+  const [discounts, setDiscounts] = useState<AdminDiscountCode[]>([]);
+  const [discountError, setDiscountError] = useState('');
+  const [discountBusy, setDiscountBusy] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -33,16 +38,52 @@ export function AdminBillingView() {
         '/admin/billing/webhook-failures',
         { accessToken },
       ),
+      apiRequest<AdminDiscountCode[]>('/admin/billing/discounts', {
+        accessToken,
+      }),
     ])
-      .then(([nextOverview, nextPayments, nextFailures]) => {
+      .then(([nextOverview, nextPayments, nextFailures, nextDiscounts]) => {
         setOverview(nextOverview);
         setPayments(nextPayments);
         setFailures(nextFailures);
+        setDiscounts(nextDiscounts);
       })
       .catch(() => setError('Billing operations could not be loaded.'));
   }, [accessToken]);
 
   if (!overview) return <Skeleton className="h-96" />;
+
+  async function submitDiscount(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!accessToken) return;
+    setDiscountBusy(true);
+    setDiscountError('');
+    const form = new FormData(event.currentTarget);
+    try {
+      const discount = await createAdminDiscount(accessToken, {
+        code: form.get('code'),
+        name: form.get('name'),
+        type: form.get('type'),
+        value: Number(form.get('value')),
+        startsAt: form.get('startsAt'),
+        endsAt: form.get('endsAt'),
+        maxRedemptions: form.get('maxRedemptions')
+          ? Number(form.get('maxRedemptions'))
+          : undefined,
+        maxRedemptionsPerUser: Number(form.get('maxRedemptionsPerUser') || 1),
+      });
+      setDiscounts((current) => [discount, ...current]);
+      event.currentTarget.reset();
+    } catch (requestError) {
+      setDiscountError(
+        requestError instanceof Error
+          ? requestError.message
+          : 'Discount could not be created.',
+      );
+    } finally {
+      setDiscountBusy(false);
+    }
+  }
   return (
     <div className="grid gap-6">
       <header className="grid gap-4">
@@ -116,6 +157,114 @@ export function AdminBillingView() {
           </div>
         </Card>
       </div>
+      <Card>
+        <h2 className="text-xl font-semibold">Create discount code</h2>
+        <p className="mt-1 text-sm text-brand-mid">
+          Discounts are validated again at checkout and reserved atomically.
+        </p>
+        <form
+          className="mt-4 grid gap-3 sm:grid-cols-2"
+          onSubmit={submitDiscount}
+        >
+          <input
+            className="min-h-11 rounded-xl border border-zinc-300 bg-transparent px-3 text-sm"
+            name="code"
+            placeholder="Code, e.g. LAUNCH70"
+            required
+          />
+          <input
+            className="min-h-11 rounded-xl border border-zinc-300 bg-transparent px-3 text-sm"
+            name="name"
+            placeholder="Campaign name"
+            required
+          />
+          <select
+            className="min-h-11 rounded-xl border border-zinc-300 bg-transparent px-3 text-sm"
+            defaultValue="PERCENTAGE"
+            name="type"
+          >
+            <option value="PERCENTAGE">Percentage</option>
+            <option value="FIXED_AMOUNT">Fixed amount (centavos)</option>
+          </select>
+          <input
+            className="min-h-11 rounded-xl border border-zinc-300 bg-transparent px-3 text-sm"
+            min="1"
+            name="value"
+            placeholder="Value (70 = 70%)"
+            required
+            type="number"
+          />
+          <input
+            className="min-h-11 rounded-xl border border-zinc-300 bg-transparent px-3 text-sm"
+            name="startsAt"
+            required
+            type="datetime-local"
+          />
+          <input
+            className="min-h-11 rounded-xl border border-zinc-300 bg-transparent px-3 text-sm"
+            name="endsAt"
+            required
+            type="datetime-local"
+          />
+          <input
+            className="min-h-11 rounded-xl border border-zinc-300 bg-transparent px-3 text-sm"
+            min="1"
+            name="maxRedemptions"
+            placeholder="Total uses (optional)"
+            type="number"
+          />
+          <input
+            className="min-h-11 rounded-xl border border-zinc-300 bg-transparent px-3 text-sm"
+            defaultValue="1"
+            min="1"
+            name="maxRedemptionsPerUser"
+            placeholder="Uses per member"
+            required
+            type="number"
+          />
+          <button
+            className="min-h-11 rounded-full bg-[#0D0D0D] px-4 text-sm font-semibold text-white disabled:opacity-50 sm:col-span-2"
+            disabled={discountBusy}
+            type="submit"
+          >
+            {discountBusy ? 'Creating…' : 'Create discount'}
+          </button>
+        </form>
+        {discountError ? (
+          <p className="mt-3 text-sm text-red-600" role="alert">
+            {discountError}
+          </p>
+        ) : null}
+        <div className="mt-6 grid gap-3">
+          {discounts.map((discount) => (
+            <div
+              className="rounded-2xl border border-zinc-200 p-4 text-sm dark:border-zinc-800"
+              key={discount.id}
+            >
+              <div className="flex flex-wrap justify-between gap-2">
+                <strong>
+                  {discount.code} · {discount.name}
+                </strong>
+                <Badge>{discount.isActive ? 'Active' : 'Inactive'}</Badge>
+              </div>
+              <p className="mt-2 text-brand-mid">
+                {discount.type === 'PERCENTAGE'
+                  ? `${discount.value}% off`
+                  : `${(discount.value / 100).toFixed(2)} PHP off`}{' '}
+                · {discount.redemptionCount}
+                {discount.maxRedemptions
+                  ? `/${discount.maxRedemptions}`
+                  : ''}{' '}
+                reserved
+              </p>
+              <p className="mt-1 text-xs text-brand-mid">
+                {new Date(discount.startsAt).toLocaleString()} →{' '}
+                {new Date(discount.endsAt).toLocaleString()}
+              </p>
+            </div>
+          ))}
+        </div>
+      </Card>
       <Card>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
