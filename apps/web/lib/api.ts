@@ -244,7 +244,12 @@ export interface AnalyticsSummaryResponse {
   evidenceFunnel: Array<{ name: string; count: number }>;
   acquisition: Array<{ source: string; count: number }>;
   trends: Array<{ bucket: string; name: string; count: number }>;
-  publicPrompts: Array<{ promptId: string; views: number; uses: number; useRate: number }>;
+  publicPrompts: Array<{
+    promptId: string;
+    views: number;
+    uses: number;
+    useRate: number;
+  }>;
   monetization: {
     subscriptionsStarted: number;
     subscriptionsCanceled: number;

@@ -106,7 +106,9 @@ export class AnalyticsService {
         AND ("accountType" IS NULL OR "accountType"::text NOT IN ('STARTER', 'OFFICIAL'))
     `);
 
-    const activity = await this.prismaService.$queryRaw<Array<{ dau: bigint; wau: bigint; mau: bigint }>>(
+    const activity = await this.prismaService.$queryRaw<
+      Array<{ dau: bigint; wau: bigint; mau: bigint }>
+    >(
       Prisma.sql`
         SELECT
           COUNT(DISTINCT CASE WHEN "createdAt" >= ${new Date(to.getTime() - 86_400_000)} THEN "actorId" END)::bigint AS dau,
@@ -117,7 +119,9 @@ export class AnalyticsService {
           AND ("accountType" IS NULL OR "accountType"::text NOT IN ('STARTER', 'OFFICIAL'))
       `,
     );
-    const activation = await this.prismaService.$queryRaw<Array<{ signed_up: bigint; activated: bigint }>>(
+    const activation = await this.prismaService.$queryRaw<
+      Array<{ signed_up: bigint; activated: bigint }>
+    >(
       Prisma.sql`
         WITH signups AS (
           SELECT "actorId", MIN("createdAt") AS signup_at
@@ -135,7 +139,9 @@ export class AnalyticsService {
         FROM signups
       `,
     );
-    const retention = await this.prismaService.$queryRaw<Array<{ cohort: bigint; retained: bigint }>>(
+    const retention = await this.prismaService.$queryRaw<
+      Array<{ cohort: bigint; retained: bigint }>
+    >(
       Prisma.sql`
         WITH cohort AS (
           SELECT "actorId", MIN("createdAt") AS signup_at
@@ -153,7 +159,9 @@ export class AnalyticsService {
         FROM cohort
       `,
     );
-    const publicPrompts = await this.prismaService.$queryRaw<Array<{ prompt_id: string; views: bigint; uses: bigint }>>(
+    const publicPrompts = await this.prismaService.$queryRaw<
+      Array<{ prompt_id: string; views: bigint; uses: bigint }>
+    >(
       Prisma.sql`
         SELECT metadata->>'promptId' AS prompt_id,
           COUNT(*) FILTER (WHERE name = 'public_prompt_viewed')::bigint AS views,
@@ -164,7 +172,9 @@ export class AnalyticsService {
         GROUP BY metadata->>'promptId' ORDER BY views DESC LIMIT 20
       `,
     );
-    const monetization = await this.prismaService.$queryRaw<Array<{ started: bigint; canceled: bigint; revenue: bigint }>>(
+    const monetization = await this.prismaService.$queryRaw<
+      Array<{ started: bigint; canceled: bigint; revenue: bigint }>
+    >(
       Prisma.sql`
         SELECT
           COUNT(*) FILTER (WHERE status = 'PAID')::bigint AS started,
@@ -209,10 +219,18 @@ export class AnalyticsService {
         mau: Number(activity[0]?.mau ?? 0),
         activatedUsers: Number(activation[0]?.activated ?? 0),
         activationRate: Number(activation[0]?.signed_up ?? 0)
-          ? Math.round((Number(activation[0]?.activated ?? 0) / Number(activation[0]?.signed_up ?? 0)) * 1000) / 10
+          ? Math.round(
+              (Number(activation[0]?.activated ?? 0) /
+                Number(activation[0]?.signed_up ?? 0)) *
+                1000,
+            ) / 10
           : 0,
         retention7DayRate: Number(retention[0]?.cohort ?? 0)
-          ? Math.round((Number(retention[0]?.retained ?? 0) / Number(retention[0]?.cohort ?? 0)) * 1000) / 10
+          ? Math.round(
+              (Number(retention[0]?.retained ?? 0) /
+                Number(retention[0]?.cohort ?? 0)) *
+                1000,
+            ) / 10
           : 0,
         promptReuses: counts.prompt_reused ?? 0,
         limitReached: counts.plan_limit_reached ?? 0,
@@ -238,7 +256,9 @@ export class AnalyticsService {
         promptId: item.prompt_id,
         views: Number(item.views),
         uses: Number(item.uses),
-        useRate: Number(item.views) ? Math.round((Number(item.uses) / Number(item.views)) * 1000) / 10 : 0,
+        useRate: Number(item.views)
+          ? Math.round((Number(item.uses) / Number(item.views)) * 1000) / 10
+          : 0,
       })),
       monetization: {
         subscriptionsStarted: Number(monetization[0]?.started ?? 0),

@@ -127,7 +127,11 @@ export function AdminAnalytics() {
             <Kpi label="DAU" value={data.overview.dau} />
             <Kpi label="WAU" value={data.overview.wau} />
             <Kpi label="MAU" value={data.overview.mau} />
-            <Kpi label="7-day retention" suffix="%" value={data.overview.retention7DayRate} />
+            <Kpi
+              label="7-day retention"
+              suffix="%"
+              value={data.overview.retention7DayRate}
+            />
             <Kpi label="Sessions" value={data.overview.sessions} />
             <Kpi label="Organic visits" value={data.overview.organicVisits} />
             <Kpi label="Returning users" value={data.overview.returningUsers} />
@@ -141,18 +145,41 @@ export function AdminAnalytics() {
             <Card>
               <h2 className="text-xl font-semibold">Activation & reuse</h2>
               <div className="mt-5 grid gap-3">
-                <Funnel label="Activated users" value={data.overview.activatedUsers} />
-                <Funnel label="Activation rate" value={data.overview.activationRate} suffix="%" />
-                <Funnel label="Prompt reuses" value={data.overview.promptReuses} />
-                <Funnel label="Limit reached" value={data.overview.limitReached} />
+                <Funnel
+                  label="Activated users"
+                  value={data.overview.activatedUsers}
+                />
+                <Funnel
+                  label="Activation rate"
+                  value={data.overview.activationRate}
+                  suffix="%"
+                />
+                <Funnel
+                  label="Prompt reuses"
+                  value={data.overview.promptReuses}
+                />
+                <Funnel
+                  label="Limit reached"
+                  value={data.overview.limitReached}
+                />
               </div>
             </Card>
             <Card>
               <h2 className="text-xl font-semibold">Monetization</h2>
               <div className="mt-5 grid gap-3">
-                <Funnel label="Subscriptions started" value={data.monetization.subscriptionsStarted} />
-                <Funnel label="Cancellations" value={data.monetization.subscriptionsCanceled} />
-                <Funnel label="Revenue" value={data.monetization.revenue} suffix=" PHP" />
+                <Funnel
+                  label="Subscriptions started"
+                  value={data.monetization.subscriptionsStarted}
+                />
+                <Funnel
+                  label="Cancellations"
+                  value={data.monetization.subscriptionsCanceled}
+                />
+                <Funnel
+                  label="Revenue"
+                  value={data.monetization.revenue}
+                  suffix=" PHP"
+                />
               </div>
             </Card>
           </div>
@@ -234,15 +261,48 @@ export function AdminAnalytics() {
           <Card>
             <div className="flex items-end justify-between gap-3">
               <div>
-                <h2 className="text-xl font-semibold">Public prompt performance</h2>
-                <p className="mt-1 text-xs text-brand-mid">Views and uses attributed to a prompt in this period.</p>
+                <h2 className="text-xl font-semibold">
+                  Public prompt performance
+                </h2>
+                <p className="mt-1 text-xs text-brand-mid">
+                  Views and uses attributed to a prompt in this period.
+                </p>
               </div>
               <span className="text-xs text-brand-mid">Top 20</span>
             </div>
             <div className="mt-5 overflow-x-auto">
               <table className="w-full min-w-[32rem] text-left text-sm">
-                <thead className="text-xs uppercase tracking-[0.12em] text-brand-mid"><tr><th className="pb-3">Prompt</th><th className="pb-3">Views</th><th className="pb-3">Uses</th><th className="pb-3">Use rate</th></tr></thead>
-                <tbody>{data.publicPrompts.length ? data.publicPrompts.map((item) => <tr className="border-t border-[#E6E6E6] dark:border-[#292929]" key={item.promptId}><td className="py-3 font-mono text-xs">{item.promptId.slice(0, 8)}…</td><td className="py-3">{item.views.toLocaleString()}</td><td className="py-3">{item.uses.toLocaleString()}</td><td className="py-3">{item.useRate}%</td></tr>) : <tr><td className="py-4 text-brand-mid" colSpan={4}>No public prompt activity recorded.</td></tr>}</tbody>
+                <thead className="text-xs uppercase tracking-[0.12em] text-brand-mid">
+                  <tr>
+                    <th className="pb-3">Prompt</th>
+                    <th className="pb-3">Views</th>
+                    <th className="pb-3">Uses</th>
+                    <th className="pb-3">Use rate</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.publicPrompts.length ? (
+                    data.publicPrompts.map((item) => (
+                      <tr
+                        className="border-t border-[#E6E6E6] dark:border-[#292929]"
+                        key={item.promptId}
+                      >
+                        <td className="py-3 font-mono text-xs">
+                          {item.promptId.slice(0, 8)}…
+                        </td>
+                        <td className="py-3">{item.views.toLocaleString()}</td>
+                        <td className="py-3">{item.uses.toLocaleString()}</td>
+                        <td className="py-3">{item.useRate}%</td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td className="py-4 text-brand-mid" colSpan={4}>
+                        No public prompt activity recorded.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
               </table>
             </div>
           </Card>
@@ -277,11 +337,22 @@ function Kpi({
     </Card>
   );
 }
-function Funnel({ label, value, suffix = '' }: { label: string; value: number; suffix?: string }) {
+function Funnel({
+  label,
+  value,
+  suffix = '',
+}: {
+  label: string;
+  value: number;
+  suffix?: string;
+}) {
   return (
     <div className="flex justify-between gap-4 border-b border-[#E6E6E6] pb-3 text-sm last:border-0 dark:border-[#292929]">
       <span className="text-brand-mid">{label}</span>
-      <strong>{value.toLocaleString()}{suffix}</strong>
+      <strong>
+        {value.toLocaleString()}
+        {suffix}
+      </strong>
     </div>
   );
 }

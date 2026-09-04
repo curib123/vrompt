@@ -6,17 +6,24 @@ import Link from 'next/link';
 import { useAuth } from '@/components/providers/auth-provider';
 import { Card } from '@/components/ui/card';
 import { apiRequest } from '@/lib/api';
-import type { AdminDashboardResponse, AnalyticsSummaryResponse } from '@/lib/api';
+import type {
+  AdminDashboardResponse,
+  AnalyticsSummaryResponse,
+} from '@/lib/api';
 
 export function AdminDashboard() {
   const { accessToken, user } = useAuth();
   const [data, setData] = useState<AdminDashboardResponse | null>(null);
-  const [analytics, setAnalytics] = useState<AnalyticsSummaryResponse | null>(null);
+  const [analytics, setAnalytics] = useState<AnalyticsSummaryResponse | null>(
+    null,
+  );
   useEffect(() => {
     if (!accessToken) return;
     void Promise.all([
       apiRequest<AdminDashboardResponse>('/admin/dashboard', { accessToken }),
-      apiRequest<AnalyticsSummaryResponse>('/analytics/summary?preset=month', { accessToken }),
+      apiRequest<AnalyticsSummaryResponse>('/analytics/summary?preset=month', {
+        accessToken,
+      }),
     ]).then(([dashboard, summary]) => {
       setData(dashboard);
       setAnalytics(summary);
@@ -57,8 +64,14 @@ export function AdminDashboard() {
       <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
         <Metric label="Daily active users" value={analytics?.overview.dau} />
         <Metric label="Monthly active users" value={analytics?.overview.mau} />
-        <Metric label="Activated users" value={analytics?.overview.activatedUsers} />
-        <Metric label="Prompt reuses" value={analytics?.overview.promptReuses} />
+        <Metric
+          label="Activated users"
+          value={analytics?.overview.activatedUsers}
+        />
+        <Metric
+          label="Prompt reuses"
+          value={analytics?.overview.promptReuses}
+        />
       </div>
       <Card className="flex flex-wrap items-center justify-between gap-4">
         <div>
@@ -69,7 +82,10 @@ export function AdminDashboard() {
               : 'Loading lifecycle metrics…'}
           </p>
         </div>
-        <Link className="text-sm font-semibold underline underline-offset-4" href="/admin/analytics">
+        <Link
+          className="text-sm font-semibold underline underline-offset-4"
+          href="/admin/analytics"
+        >
           Open product analytics →
         </Link>
       </Card>
@@ -103,7 +119,9 @@ function Metric({ label, value }: { label: string; value?: number }) {
       <p className="text-3xl font-semibold tracking-[-0.05em]">
         {value === undefined ? '—' : value.toLocaleString()}
       </p>
-      <p className="mt-2 text-xs uppercase tracking-[0.15em] text-brand-mid">{label}</p>
+      <p className="mt-2 text-xs uppercase tracking-[0.15em] text-brand-mid">
+        {label}
+      </p>
     </Card>
   );
 }

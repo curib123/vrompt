@@ -28,11 +28,18 @@ export function ModerationView() {
       return;
     let active = true;
     void Promise.all([
-      apiRequest<ModerationReport[]>('/admin/moderation/reports', { accessToken }),
-      apiRequest<ModerationSummary>('/admin/moderation/summary', { accessToken }),
+      apiRequest<ModerationReport[]>('/admin/moderation/reports', {
+        accessToken,
+      }),
+      apiRequest<ModerationSummary>('/admin/moderation/summary', {
+        accessToken,
+      }),
     ])
       .then(([response, metrics]) => {
-        if (active) { setReports(response); setSummary(metrics); }
+        if (active) {
+          setReports(response);
+          setSummary(metrics);
+        }
       })
       .catch(() => {
         if (active) setError('Moderation queue could not be loaded.');
@@ -213,5 +220,12 @@ export function ModerationView() {
 }
 
 function SummaryCard({ label, value }: { label: string; value: number }) {
-  return <Card className="p-5"><p className="text-3xl font-semibold">{value.toLocaleString()}</p><p className="mt-2 text-xs uppercase tracking-[0.12em] text-brand-mid">{label}</p></Card>;
+  return (
+    <Card className="p-5">
+      <p className="text-3xl font-semibold">{value.toLocaleString()}</p>
+      <p className="mt-2 text-xs uppercase tracking-[0.12em] text-brand-mid">
+        {label}
+      </p>
+    </Card>
+  );
 }

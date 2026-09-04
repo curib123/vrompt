@@ -165,7 +165,11 @@ export class AdminUsersService {
     if (!input.role && !input.status && !input.password)
       throw new BadRequestException('No changes provided');
     const resultingRole = input.role ?? existing.role;
-    if (input.password && resultingRole !== UserRole.ADMIN && resultingRole !== UserRole.MODERATOR)
+    if (
+      input.password &&
+      resultingRole !== UserRole.ADMIN &&
+      resultingRole !== UserRole.MODERATOR
+    )
       throw new BadRequestException(
         'Passwords are only available for staff accounts',
       );
