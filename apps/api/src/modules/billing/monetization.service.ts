@@ -37,7 +37,7 @@ export class MonetizationService {
       },
     });
     return {
-      currency: plans[0]?.currency ?? 'PHP',
+      currency: plans[0]?.currency ?? 'USD',
       plans: plans.map((plan) => {
         const promotion = plan.promotions
           .map(({ promotion }) => promotion)

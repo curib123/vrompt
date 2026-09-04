@@ -70,8 +70,8 @@ export function PricingView() {
             return (
               <Card className={isPaid ? 'border-brand-mid' : ''} key={plan.id}>
                 <div className="flex items-start justify-between gap-3"><div><p className="text-sm leading-6 text-brand-mid">{plan.description}</p><h2 className="mt-3 text-2xl font-semibold">{plan.name}</h2></div>{isCurrent ? <Badge>Current plan</Badge> : null}</div>
-                {plan.promotion ? <div className="mt-6 flex items-center gap-2"><Badge>{plan.promotion.discountType === 'PERCENTAGE' ? `${plan.promotion.discountValue}% OFF` : 'SPECIAL OFFER'}</Badge><span className="text-sm text-brand-mid line-through">₱{(plan.originalPrice / 100).toFixed(2)}</span></div> : null}
-                <p className="mt-2 text-4xl font-semibold tracking-[-0.06em]">{plan.priceCentavos === 0 ? 'Free' : `₱${(plan.priceCentavos / 100).toFixed(2)}`}</p>
+                {plan.promotion ? <div className="mt-6 flex items-center gap-2"><Badge>{plan.promotion.discountType === 'PERCENTAGE' ? `${plan.promotion.discountValue}% OFF` : 'SPECIAL OFFER'}</Badge><span className="text-sm text-brand-mid line-through">{formatPlanPrice(plan.originalPrice, plan.currency)}</span></div> : null}
+                <p className="mt-2 text-4xl font-semibold tracking-[-0.06em]">{plan.priceCentavos === 0 ? 'Free' : formatPlanPrice(plan.priceCentavos, plan.currency)}</p>
                 <p className="mt-1 text-sm text-brand-mid">{plan.billingPeriod}</p>
                 <ul className="mt-8 grid gap-3 text-sm leading-6 text-brand-mid">
                   {plan.features.map((feature) => <li className="flex gap-2" key={`${feature.key}-${feature.resetPeriod}`}><span aria-hidden="true" className="text-emerald-600">✓</span><span>{feature.limit === null ? `Unlimited ${feature.name}` : `${feature.limit} ${feature.unitLabel} ${feature.resetPeriod === 'DAILY' ? 'per day' : 'per month'}`}</span></li>)}
@@ -88,4 +88,12 @@ export function PricingView() {
       <p className="text-center text-xs leading-6 text-brand-mid">Payments are processed securely by PayMongo. Vrompt never receives or stores card details.</p>
     </div>
   );
+}
+
+function formatPlanPrice(amount: number, currency: string) {
+  return `${new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency,
+    minimumFractionDigits: 2,
+  }).format(amount / 100)} ${currency}`;
 }

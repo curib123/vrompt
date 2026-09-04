@@ -52,11 +52,16 @@ export class PayMongoAdapter implements PaymentGatewayAdapter {
       'PAYMONGO_API_BASE_URL',
       'https://api.paymongo.com',
     );
-    const paymentMethods = this.config
+    const configuredPaymentMethods = this.config
       .get<string>('PAYMONGO_PAYMENT_METHODS', 'card,gcash,qrph')
       .split(',')
       .map((method) => method.trim())
       .filter(Boolean);
+    const paymentMethods =
+      input.currency.toUpperCase() === 'PHP'
+        ? configuredPaymentMethods
+        : configuredPaymentMethods.filter((method) => method === 'card');
+    if (paymentMethods.length === 0) paymentMethods.push('card');
     const authorization = Buffer.from(`${secretKey}:`).toString('base64');
 
     let response: Response;

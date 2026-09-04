@@ -62,14 +62,14 @@ export class BillingService {
   async plans() {
     const priceCentavos = await this.settings.getNumber(
       'billing.proPriceCentavos',
-      this.config.get<number>('PAYMONGO_PRO_PRICE_CENTAVOS', 29900),
+      this.config.get<number>('PAYMONGO_PRO_PRICE_CENTAVOS', 599),
     );
     const periodDays = await this.settings.getNumber(
       'billing.proPeriodDays',
       this.config.get<number>('PAYMONGO_PRO_PERIOD_DAYS', 30),
     );
     return {
-      currency: 'PHP',
+      currency: 'USD',
       plans: [
         {
           id: MembershipPlan.FREE,
@@ -187,7 +187,7 @@ export class BillingService {
       configuredPlan?.originalPrice ??
       (await this.settings.getNumber(
         'billing.proPriceCentavos',
-        this.config.get<number>('PAYMONGO_PRO_PRICE_CENTAVOS', 29900),
+        this.config.get<number>('PAYMONGO_PRO_PRICE_CENTAVOS', 599),
       ));
     const promotion = configuredPlan
       ? await this.resolvePromotion(
@@ -240,7 +240,7 @@ export class BillingService {
         amount: finalAmount,
         originalAmount: amount,
         discountAmount,
-        currency: configuredPlan?.currency ?? 'PHP',
+        currency: configuredPlan?.currency ?? 'USD',
         idempotencyKey,
         discountCodeId: discount?.id,
       },
@@ -279,7 +279,7 @@ export class BillingService {
       );
       const result = await this.gateway.createCheckoutSession({
         amount: finalAmount,
-        currency: configuredPlan?.currency ?? 'PHP',
+        currency: configuredPlan?.currency ?? 'USD',
         description: `${configuredPlan?.name ?? 'Vrompt Pro'} access`,
         referenceNumber: payment.id,
         successUrl: `${webOrigin}/billing/checkout?payment=${payment.id}&state=processing`,
@@ -303,7 +303,7 @@ export class BillingService {
           originalAmount: amount,
           discountCode: discount?.code,
           promotion: promotion?.name,
-          currency: configuredPlan?.currency ?? 'PHP',
+          currency: configuredPlan?.currency ?? 'USD',
         },
         user.id,
       );
@@ -812,7 +812,7 @@ export class BillingService {
           : 0,
         retainedRevenueCentavos: paidRevenue._sum.amount ?? 0,
         retainedRevenue30DaysCentavos: paidRevenue30Days._sum.amount ?? 0,
-        currency: 'PHP',
+        currency: 'USD',
       },
     };
   }

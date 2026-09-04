@@ -147,12 +147,12 @@ export const SETTING_DEFINITIONS: Record<string, Definition> = {
     maxValue: 100000,
   },
   'billing.proPriceCentavos': {
-    defaultValue: 29900,
+    defaultValue: 599,
     group: 'Billing',
     isPublic: false,
-    label: 'Pro price in centavos',
+    label: 'Pro price in minor currency units',
     description:
-      'Trusted PHP amount sent to PayMongo for one Pro access period.',
+      'Trusted amount in the configured plan currency sent to PayMongo.',
     type: 'number',
     maxValue: 10000000,
   },

@@ -55,4 +55,37 @@ describe('PayMongoAdapter security', () => {
       subject.createCheckoutSession(checkoutInput),
     ).rejects.toBeInstanceOf(ServiceUnavailableException);
   });
+
+  it('uses cards only for USD checkout', async () => {
+    const fetchMock = jest.spyOn(global, 'fetch').mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          data: {
+            id: 'cs_test',
+            attributes: {
+              checkout_url: 'https://checkout.paymongo.com/cs_test',
+            },
+          },
+        }),
+        { status: 200 },
+      ),
+    );
+    const subject = adapter({
+      PAYMONGO_MODE: 'test',
+      PAYMONGO_SECRET_KEY: 'sk_test_valid_for_unit_test',
+      PAYMONGO_PAYMENT_METHODS: 'card,gcash,qrph',
+    });
+
+    await subject.createCheckoutSession({
+      ...checkoutInput,
+      amount: 599,
+      currency: 'USD',
+    });
+
+    const request = fetchMock.mock.calls[0]?.[1];
+    const body = JSON.parse(String(request?.body)) as {
+      data: { attributes: { payment_method_types: string[] } };
+    };
+    expect(body.data.attributes.payment_method_types).toEqual(['card']);
+  });
 });

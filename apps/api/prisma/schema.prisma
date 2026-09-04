@@ -647,7 +647,7 @@ model BillingPlan {
   name            String          @db.VarChar(100)
   description     String          @db.Text
   originalPrice   Int
-  currency        String          @default("PHP") @db.Char(3)
+  currency        String          @default("USD") @db.Char(3)
   billingInterval BillingInterval
   intervalCount   Int             @default(1)
   isActive        Boolean         @default(true)

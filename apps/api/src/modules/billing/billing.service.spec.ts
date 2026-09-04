@@ -322,7 +322,7 @@ describe('BillingService freemium analytics', () => {
         checkoutConversionPercent: 50,
         retainedRevenueCentavos: 299_000,
         retainedRevenue30DaysCentavos: 89_700,
-        currency: 'PHP',
+        currency: 'USD',
       },
     });
   });
