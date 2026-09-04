@@ -87,8 +87,8 @@ export interface PaymentStatusResponse {
 export interface AiUsageResponse {
   plan: 'GUEST' | 'FREE' | 'PRO';
   used: number;
-  limit: number;
-  remaining: number;
+  limit: number | null;
+  remaining: number | null;
   resetAt: string;
   advancedTools: boolean;
   generationEnabled: boolean;

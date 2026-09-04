@@ -80,7 +80,7 @@ export function BillingAccountView() {
             <div>
               <p className="text-sm text-brand-mid">AI generation today</p>
               <h2 className="mt-2 text-3xl font-semibold">
-                {usage.remaining} left
+                {usage.plan === 'PRO' ? 'Unlimited' : `${usage.remaining} left`}
               </h2>
             </div>
             <Badge>{usage.plan}</Badge>

@@ -6,7 +6,7 @@ import { SettingsService } from '../settings/settings.service';
 
 export type AiEntitlements = {
   plan: 'GUEST' | 'FREE' | 'PRO';
-  dailyGenerationLimit: number;
+  dailyGenerationLimit: number | null;
   advancedTools: boolean;
   generationEnabled: boolean;
   concurrencyLimit: number;
@@ -65,13 +65,9 @@ export class AiEntitlementsService {
       },
     );
     if (subscription) {
-      const dailyGenerationLimit = await this.settingsService.getNumber(
-        'limits.aiProDaily',
-        this.configService.get<number>('AI_PUBLIC_PREMIUM_DAILY_LIMIT', 100),
-      );
       return {
         plan: 'PRO',
-        dailyGenerationLimit,
+        dailyGenerationLimit: null,
         advancedTools: true,
         generationEnabled,
         concurrencyLimit,
@@ -86,7 +82,7 @@ export class AiEntitlementsService {
     return {
       plan: 'FREE',
       dailyGenerationLimit,
-      advancedTools: false,
+      advancedTools: true,
       generationEnabled,
       concurrencyLimit,
       rateLimitPerMinute,

@@ -102,7 +102,6 @@ export const envValidationSchema = Joi.object({
     .default(60000),
   AI_PUBLIC_GUEST_DAILY_LIMIT: Joi.number().integer().min(0).default(3),
   AI_PUBLIC_FREE_DAILY_LIMIT: Joi.number().integer().min(0).default(10),
-  AI_PUBLIC_PREMIUM_DAILY_LIMIT: Joi.number().integer().min(0).default(100),
   AI_INTERNAL_DAILY_LIMIT: Joi.number().integer().min(0).default(50),
   AI_MAX_OUTPUT_TOKENS: Joi.number()
     .integer()

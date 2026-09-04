@@ -130,7 +130,7 @@ export function GeneratorView() {
         requestError instanceof ApiError && requestError.status === 429
           ? "You've reached your AI generation limit."
           : requestError instanceof ApiError && requestError.status === 403
-            ? 'Prompt refinement is available with Vrompt Pro.'
+            ? 'Sign in to use prompt refinement tools.'
             : requestError instanceof Error
               ? requestError.message
               : 'Generation failed. Try again.',
@@ -203,14 +203,16 @@ export function GeneratorView() {
               <div className="flex flex-wrap items-center gap-3 text-sm text-brand-mid">
                 <Badge>{usage.plan} plan</Badge>
                 <strong className="text-foreground">
-                  {usage.remaining} of {usage.limit} generations left today
+                  {usage.plan === 'PRO'
+                    ? 'Unlimited generations while Pro is active'
+                    : `${usage.remaining} of ${usage.limit} generations left today`}
                 </strong>
                 {usage.plan !== 'PRO' ? (
                   <Link
                     className="inline-flex min-h-10 items-center rounded-full bg-[#0D0D0D] px-4 text-sm font-semibold !text-white transition hover:bg-[#242424] dark:bg-white dark:!text-black"
                     href={'/pricing' as Route}
                   >
-                    Become Premium
+                    Explore Pro
                   </Link>
                 ) : null}
               </div>
@@ -221,8 +223,8 @@ export function GeneratorView() {
               </p>
               {usage.remaining === 0 ? (
                 <p className="text-sm font-semibold text-foreground">
-                  Today&apos;s allowance is used up. Become Premium for more
-                  daily generations.
+                  Today&apos;s allowance is used up. Explore Pro for unlimited
+                  generations.
                 </p>
               ) : null}
             </div>
@@ -425,7 +427,7 @@ export function GeneratorView() {
                 ['IMPROVE', 'EXPAND', 'SHORTEN', 'REGENERATE'] as Operation[]
               ).map((operation) => (
                 <Button
-                  disabled={Boolean(busy)}
+                  disabled={Boolean(busy) || !usage?.advancedTools}
                   key={operation}
                   onClick={() => void generate(operation)}
                   type="button"
@@ -433,16 +435,14 @@ export function GeneratorView() {
                 >
                   {busy === operation
                     ? 'Working...'
-                    : operation.charAt(0) +
-                      operation.slice(1).toLowerCase() +
-                      (usage?.plan === 'PRO' ? '' : ' · Pro')}
+                    : operation.charAt(0) + operation.slice(1).toLowerCase()}
                 </Button>
               ))}
             </div>
-            {usage?.plan !== 'PRO' ? (
+            {usage?.plan === 'GUEST' ? (
               <p className="mt-3 text-xs text-brand-mid">
-                Refinement tools are part of Vrompt Pro. You can still generate
-                and copy a prompt on Free.
+                Sign in for a personal Free allowance. Free members can use
+                every generation and refinement tool within their daily limit.
               </p>
             ) : null}
           </div>

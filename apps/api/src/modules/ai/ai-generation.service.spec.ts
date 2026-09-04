@@ -1,16 +1,17 @@
 import { BadRequestException } from '@nestjs/common';
+import { AiGenerationOperation } from '@prisma/client';
 
 import { AiGenerationService } from './ai-generation.service';
 
-function buildService() {
+function buildService(plan: 'GUEST' | 'FREE' = 'GUEST') {
   const quota = {
     reserve: jest.fn().mockRejectedValue(new Error('stop after reservation')),
   };
   const entitlements = {
     forUser: jest.fn().mockResolvedValue({
-      plan: 'GUEST',
-      dailyGenerationLimit: 3,
-      advancedTools: false,
+      plan,
+      dailyGenerationLimit: plan === 'FREE' ? 10 : 3,
+      advancedTools: plan === 'FREE',
       generationEnabled: true,
       concurrencyLimit: 1,
       rateLimitPerMinute: 5,
@@ -62,7 +63,7 @@ describe('AiGenerationService Free-tier protection', () => {
     await expect(
       service.generatePublic(
         {
-          goal: 'Improve this existing generated prompt',
+          goal: 'Improve this prompt',
           basePrompt: 'x'.repeat(40),
         },
         undefined,
@@ -70,5 +71,27 @@ describe('AiGenerationService Free-tier protection', () => {
       ),
     ).rejects.toBeInstanceOf(BadRequestException);
     expect(quota.reserve).not.toHaveBeenCalled();
+  });
+
+  it('allows Free members to use refinement tools within their daily allowance', async () => {
+    const { service, quota } = buildService('FREE');
+
+    await expect(
+      service.generatePublic(
+        {
+          goal: 'Improve this prompt',
+          operation: AiGenerationOperation.IMPROVE,
+          basePrompt: 'Useful launch prompt.',
+        },
+        { id: 'free-user' } as never,
+        '203.0.113.10',
+      ),
+    ).rejects.toThrow('stop after reservation');
+    expect(quota.reserve).toHaveBeenCalledWith(
+      expect.objectContaining({
+        limit: 10,
+        operation: AiGenerationOperation.IMPROVE,
+      }),
+    );
   });
 });

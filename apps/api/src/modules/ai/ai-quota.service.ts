@@ -18,7 +18,7 @@ export class AiQuotaService {
     requestKey: string;
     mode: AiGenerationMode;
     operation: AiGenerationOperation;
-    limit: number;
+    limit: number | null;
   }) {
     const periodStart = new Date();
     periodStart.setUTCHours(0, 0, 0, 0);
@@ -42,9 +42,11 @@ export class AiQuotaService {
         const updated = await transaction.aiQuotaBucket.updateMany({
           where: {
             id: bucket.id,
-            ...(input.mode === AiGenerationMode.PUBLIC
-              ? { publicUsed: { lt: input.limit } }
-              : { internalUsed: { lt: input.limit } }),
+            ...(input.limit === null
+              ? {}
+              : input.mode === AiGenerationMode.PUBLIC
+                ? { publicUsed: { lt: input.limit } }
+                : { internalUsed: { lt: input.limit } }),
           },
           data:
             input.mode === AiGenerationMode.PUBLIC

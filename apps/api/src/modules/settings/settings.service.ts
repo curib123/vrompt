@@ -112,15 +112,6 @@ export const SETTING_DEFINITIONS: Record<string, Definition> = {
       'Maximum public AI generations available to free members per UTC day.',
     type: 'number',
   },
-  'limits.aiProDaily': {
-    defaultValue: 100,
-    group: 'AI limits',
-    isPublic: false,
-    label: 'Pro daily AI generations',
-    description:
-      'Maximum public AI generations available to Pro members per UTC day.',
-    type: 'number',
-  },
   'limits.aiInternalDaily': {
     defaultValue: 50,
     group: 'AI limits',

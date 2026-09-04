@@ -73,7 +73,7 @@ export class BillingService {
           features: [
             'Browse and search the public prompt library',
             'Copy prompts',
-            'Limited AI generation',
+            'Daily-limited AI generation and refinement tools',
           ],
         },
         {
@@ -82,8 +82,7 @@ export class BillingService {
           priceCentavos,
           billingPeriod: `${periodDays} days · one-time payment`,
           features: [
-            'Higher AI generation allowance',
-            'Advanced generation tools',
+            'Unlimited AI generation and refinement tools while Pro is active',
             'More room for saved workflows',
           ],
         },

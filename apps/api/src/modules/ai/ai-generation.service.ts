@@ -63,9 +63,7 @@ export class AiGenerationService {
       requestedOperation !== AiGenerationOperation.GENERATE &&
       !entitlements.advancedTools
     ) {
-      throw new ForbiddenException(
-        'Prompt refinement is available with Vrompt Pro.',
-      );
+      throw new ForbiddenException('Sign in to use prompt refinement tools.');
     }
     const normalized = this.normalizeInput(input, entitlements.maxInputChars);
     const subjectKey = user?.id
@@ -176,7 +174,10 @@ export class AiGenerationService {
       plan: entitlements.plan,
       used,
       limit: entitlements.dailyGenerationLimit,
-      remaining: Math.max(entitlements.dailyGenerationLimit - used, 0),
+      remaining:
+        entitlements.dailyGenerationLimit === null
+          ? null
+          : Math.max(entitlements.dailyGenerationLimit - used, 0),
       resetAt: resetAt.toISOString(),
       advancedTools: entitlements.advancedTools,
       generationEnabled: entitlements.generationEnabled,
@@ -199,7 +200,10 @@ export class AiGenerationService {
       plan: entitlements.plan,
       used,
       limit: entitlements.dailyGenerationLimit,
-      remaining: Math.max(entitlements.dailyGenerationLimit - used, 0),
+      remaining:
+        entitlements.dailyGenerationLimit === null
+          ? null
+          : Math.max(entitlements.dailyGenerationLimit - used, 0),
       resetAt: resetAt.toISOString(),
       advancedTools: false,
       generationEnabled: entitlements.generationEnabled,
@@ -444,7 +448,7 @@ export class AiGenerationService {
     input: AiGenerationInput;
     subjectKey: string;
     userId?: string;
-    limit: number;
+    limit: number | null;
     entitlements: Awaited<ReturnType<AiEntitlementsService['forUser']>>;
   }) {
     if (!context.entitlements.generationEnabled) {
