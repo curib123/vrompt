@@ -46,6 +46,7 @@ export const ANALYTICS_EVENT_NAMES = [
   'public_prompt_used',
   'signup_started_from_prompt',
   'signup_completed_from_prompt',
+  'plan_limit_reached',
 ] as const;
 
 export type AnalyticsEventName = (typeof ANALYTICS_EVENT_NAMES)[number];

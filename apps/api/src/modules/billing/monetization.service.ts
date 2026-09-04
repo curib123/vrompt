@@ -186,11 +186,24 @@ export class MonetizationService {
               },
               data: { used: { increment: units } },
             });
-            if (updated.count !== 1)
+            if (updated.count !== 1) {
+              const actor = await tx.user.findUnique({
+                where: { id: input.userId },
+                select: { accountType: true },
+              });
+              await tx.analyticsEvent.create({
+                data: {
+                  name: 'plan_limit_reached',
+                  actorId: input.userId,
+                  accountType: actor?.accountType,
+                  metadata: { feature: input.featureKey, limit: limit.limit },
+                },
+              });
               throw new HttpException(
                 `${limit.feature.name} ${limit.resetPeriod.toLowerCase()} limit reached. Upgrade your plan for more usage.`,
                 HttpStatus.TOO_MANY_REQUESTS,
               );
+            }
             await tx.featureUsageEvent.create({
               data: {
                 userId: input.userId,
