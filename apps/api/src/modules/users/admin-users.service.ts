@@ -164,6 +164,11 @@ export class AdminUsersService {
       );
     if (!input.role && !input.status && !input.password)
       throw new BadRequestException('No changes provided');
+    const resultingRole = input.role ?? existing.role;
+    if (input.password && resultingRole !== UserRole.ADMIN && resultingRole !== UserRole.MODERATOR)
+      throw new BadRequestException(
+        'Passwords are only available for staff accounts',
+      );
     const user = await this.prisma.user.update({
       where: { id: userId },
       data: {
@@ -173,14 +178,6 @@ export class AdminUsersService {
       select: this.userSelect,
     });
     if (input.password) {
-      if (
-        !input.role &&
-        user.role !== UserRole.ADMIN &&
-        user.role !== UserRole.MODERATOR
-      )
-        throw new BadRequestException(
-          'Passwords are only available for staff accounts',
-        );
       await this.auth.setStaffPassword(userId, input.password);
     }
     if (input.role && input.role === UserRole.USER)
