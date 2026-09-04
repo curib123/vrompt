@@ -57,14 +57,16 @@ export class AdminUsersService {
   }
 
   async system() {
-    const startedAt = Date.now();
     const [database, cache, oracleServer, domain] = await Promise.allSettled([
-      this.prisma.$queryRaw`SELECT 1`,
-      this.redis.ping(),
+      this.checkDependency(() => this.prisma.$queryRaw`SELECT 1`),
+      this.checkDependency(() => this.redis.ping()),
       this.checkOracleServer(),
       this.checkDomain(),
     ] as const);
-    const databaseLatencyMs = Date.now() - startedAt;
+    const storageDriver = this.config.get<string>(
+      'MEDIA_STORAGE_DRIVER',
+      'local',
+    );
     return {
       checkedAt: new Date().toISOString(),
       environment: this.config.get<string>('NODE_ENV', 'development'),
@@ -72,10 +74,17 @@ export class AdminUsersService {
       uptimeSeconds: Math.round(process.uptime()),
       dependencies: {
         database: {
-          status: database.status === 'fulfilled' ? 'up' : 'down',
-          latencyMs: databaseLatencyMs,
+          status:
+            database.status === 'fulfilled'
+              ? database.value.status
+              : ('down' as const),
+          latencyMs:
+            database.status === 'fulfilled' ? database.value.latencyMs : null,
         },
-        redis: { status: cache.status === 'fulfilled' ? 'up' : 'down' },
+        redis:
+          cache.status === 'fulfilled'
+            ? cache.value
+            : { status: 'down' as const, latencyMs: null },
         oracleServer:
           oracleServer.status === 'fulfilled'
             ? oracleServer.value
@@ -89,11 +98,26 @@ export class AdminUsersService {
         googleOAuth: Boolean(this.config.get<string>('GOOGLE_CLIENT_ID', '')),
         githubOAuth: Boolean(this.config.get<string>('GITHUB_CLIENT_ID', '')),
         cloudStorage:
-          this.config.get<string>('MEDIA_STORAGE_DRIVER', 'local') ===
-          'cloudinary',
+          storageDriver === 'cloudinary',
+        storageDriver,
+        aiProvider: Boolean(this.config.get<string>('AI_API_KEY', '').trim()),
+        payMongo: Boolean(
+          this.config.get<string>('PAYMONGO_SECRET_KEY', '').trim() &&
+            this.config.get<string>('PAYMONGO_WEBHOOK_SECRET', '').trim(),
+        ),
       },
       metrics: this.metrics.getSnapshot(),
     };
+  }
+
+  private async checkDependency(check: () => Promise<unknown>) {
+    const startedAt = Date.now();
+    try {
+      await check();
+      return { status: 'up' as const, latencyMs: Date.now() - startedAt };
+    } catch {
+      return { status: 'down' as const, latencyMs: Date.now() - startedAt };
+    }
   }
 
   private checkOracleServer() {
@@ -112,7 +136,10 @@ export class AdminUsersService {
       latencyMs: number;
     }>((resolve) => {
       const socket = new Socket();
+      let completed = false;
       const finish = (status: 'up' | 'down') => {
+        if (completed) return;
+        completed = true;
         socket.destroy();
         resolve({ status, latencyMs: Date.now() - startedAt });
       };
