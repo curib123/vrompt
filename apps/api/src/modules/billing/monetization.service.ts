@@ -187,18 +187,6 @@ export class MonetizationService {
               data: { used: { increment: units } },
             });
             if (updated.count !== 1) {
-              const actor = await tx.user.findUnique({
-                where: { id: input.userId },
-                select: { accountType: true },
-              });
-              await tx.analyticsEvent.create({
-                data: {
-                  name: 'plan_limit_reached',
-                  actorId: input.userId,
-                  accountType: actor?.accountType,
-                  metadata: { feature: input.featureKey, limit: limit.limit },
-                },
-              });
               throw new HttpException(
                 `${limit.feature.name} ${limit.resetPeriod.toLowerCase()} limit reached. Upgrade your plan for more usage.`,
                 HttpStatus.TOO_MANY_REQUESTS,
@@ -220,6 +208,23 @@ export class MonetizationService {
         { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
       );
     } catch (error) {
+      if (
+        error instanceof HttpException &&
+        error.getStatus() === HttpStatus.TOO_MANY_REQUESTS
+      ) {
+        const actor = await this.prisma.user.findUnique({
+          where: { id: input.userId },
+          select: { accountType: true },
+        });
+        await this.prisma.analyticsEvent.create({
+          data: {
+            name: 'plan_limit_reached',
+            actorId: input.userId,
+            accountType: actor?.accountType,
+            metadata: { feature: input.featureKey, units },
+          },
+        });
+      }
       if (
         error instanceof Prisma.PrismaClientKnownRequestError &&
         error.code === 'P2034'
