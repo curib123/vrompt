@@ -18,6 +18,7 @@ services:
     volumes:
       - .:/workspace
       - vrompt-node-modules:/workspace/node_modules
+      - vrompt-web-node-modules:/workspace/apps/web/node_modules
     healthcheck:
       test:
         [
@@ -80,6 +81,7 @@ services:
     volumes:
       - .:/workspace
       - vrompt-node-modules:/workspace/node_modules
+      - vrompt-api-node-modules:/workspace/apps/api/node_modules
       - ./storage/evidence:/app/storage/evidence
     healthcheck:
       test:
@@ -125,5 +127,7 @@ services:
 
 volumes:
   vrompt-node-modules:
+  vrompt-api-node-modules:
+  vrompt-web-node-modules:
   vrompt-postgres-data:
   vrompt-media-storage:
