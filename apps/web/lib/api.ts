@@ -231,11 +231,25 @@ export interface AnalyticsSummaryResponse {
     signupStarts: number;
     completedSignups: number;
     signupConversionRate: number;
+    dau: number;
+    wau: number;
+    mau: number;
+    activatedUsers: number;
+    activationRate: number;
+    retention7DayRate: number;
+    promptReuses: number;
+    limitReached: number;
   };
   events: Array<{ name: string; count: number }>;
   evidenceFunnel: Array<{ name: string; count: number }>;
   acquisition: Array<{ source: string; count: number }>;
   trends: Array<{ bucket: string; name: string; count: number }>;
+  publicPrompts: Array<{ promptId: string; views: number; uses: number; useRate: number }>;
+  monetization: {
+    subscriptionsStarted: number;
+    subscriptionsCanceled: number;
+    revenue: number;
+  };
 }
 
 export interface AdminSetting {

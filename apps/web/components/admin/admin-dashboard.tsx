@@ -6,16 +6,21 @@ import Link from 'next/link';
 import { useAuth } from '@/components/providers/auth-provider';
 import { Card } from '@/components/ui/card';
 import { apiRequest } from '@/lib/api';
-import type { AdminDashboardResponse } from '@/lib/api';
+import type { AdminDashboardResponse, AnalyticsSummaryResponse } from '@/lib/api';
 
 export function AdminDashboard() {
   const { accessToken, user } = useAuth();
   const [data, setData] = useState<AdminDashboardResponse | null>(null);
+  const [analytics, setAnalytics] = useState<AnalyticsSummaryResponse | null>(null);
   useEffect(() => {
-    if (accessToken)
-      void apiRequest<AdminDashboardResponse>('/admin/dashboard', {
-        accessToken,
-      }).then(setData);
+    if (!accessToken) return;
+    void Promise.all([
+      apiRequest<AdminDashboardResponse>('/admin/dashboard', { accessToken }),
+      apiRequest<AnalyticsSummaryResponse>('/analytics/summary?preset=month', { accessToken }),
+    ]).then(([dashboard, summary]) => {
+      setData(dashboard);
+      setAnalytics(summary);
+    });
   }, [accessToken]);
   return (
     <div className="grid gap-6">
@@ -49,6 +54,25 @@ export function AdminDashboard() {
               </Card>
             ))}
       </div>
+      <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+        <Metric label="Daily active users" value={analytics?.overview.dau} />
+        <Metric label="Monthly active users" value={analytics?.overview.mau} />
+        <Metric label="Activated users" value={analytics?.overview.activatedUsers} />
+        <Metric label="Prompt reuses" value={analytics?.overview.promptReuses} />
+      </div>
+      <Card className="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h2 className="text-xl font-semibold">Product health</h2>
+          <p className="mt-1 text-sm text-brand-mid">
+            {analytics
+              ? `${analytics.overview.activationRate}% activation · ${analytics.overview.retention7DayRate}% 7-day retention · ${analytics.overview.limitReached} limit reaches`
+              : 'Loading lifecycle metrics…'}
+          </p>
+        </div>
+        <Link className="text-sm font-semibold underline underline-offset-4" href="/admin/analytics">
+          Open product analytics →
+        </Link>
+      </Card>
       <div className="grid gap-3 sm:grid-cols-2">
         <Link
           className="rounded-[1.5rem] border border-[#E6E6E6] p-6 transition hover:border-black dark:border-[#292929] dark:hover:border-white"
@@ -70,6 +94,17 @@ export function AdminDashboard() {
         </Link>
       </div>
     </div>
+  );
+}
+
+function Metric({ label, value }: { label: string; value?: number }) {
+  return (
+    <Card className="p-5">
+      <p className="text-3xl font-semibold tracking-[-0.05em]">
+        {value === undefined ? '—' : value.toLocaleString()}
+      </p>
+      <p className="mt-2 text-xs uppercase tracking-[0.15em] text-brand-mid">{label}</p>
+    </Card>
   );
 }
 
