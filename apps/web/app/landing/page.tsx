@@ -40,6 +40,12 @@ const problems = [
   ],
 ] as const;
 
+const realWorldProblems = [
+  '“I had a useful prompt before, but I cannot find it.”',
+  '“I can get an AI result, but I cannot reliably repeat it.”',
+  '“My team repeats the same AI work without a shared, trusted starting point.”',
+] as const;
+
 const workflow = [
   ['Find', 'Discover useful prompts by outcome, category, audience, or tool.'],
   ['Save', 'Keep the prompts you want to use again in focused Collections.'],
@@ -100,6 +106,40 @@ export default function LandingPage() {
       <OrganicFunnelTracker />
       <div className="grid gap-24 overflow-hidden sm:gap-32 lg:gap-40">
         <Hero />
+
+        <section
+          aria-labelledby="real-world-problem-title"
+          className="grid gap-8 rounded-[2rem] border border-[#E6E6E6] bg-[#F5F5F3] p-6 sm:p-10 dark:border-[#292929] dark:bg-[#151515]"
+        >
+          <div className="grid gap-3">
+            <p className="font-mono text-xs font-semibold uppercase tracking-[0.24em] text-brand-mid">
+              Why Vrompt exists
+            </p>
+            <h2
+              className="max-w-3xl text-3xl font-semibold tracking-[-0.06em] sm:text-5xl"
+              id="real-world-problem-title"
+            >
+              AI is useful only when good work is easy to find and repeat.
+            </h2>
+            <p className="max-w-2xl text-sm leading-7 text-brand-mid sm:text-base">
+              Vrompt gives useful prompts a dependable home, so individuals and
+              teams can reuse what works instead of starting from scratch.
+            </p>
+          </div>
+          <div className="grid gap-3 lg:grid-cols-3">
+            {realWorldProblems.map((problem, index) => (
+              <blockquote
+                className="rounded-[1.5rem] border border-[#E6E6E6] bg-white p-5 text-lg font-medium leading-7 tracking-[-0.02em] dark:border-[#292929] dark:bg-[#0D0D0D]"
+                key={problem}
+              >
+                <span className="mb-5 block font-mono text-xs font-semibold tracking-[0.2em] text-brand-mid">
+                  0{index + 1}
+                </span>
+                {problem}
+              </blockquote>
+            ))}
+          </div>
+        </section>
 
         <nav
           aria-label="Explore Vrompt"
