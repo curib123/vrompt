@@ -36,12 +36,7 @@ export class BookmarksService {
       throw error;
     }
 
-    return {
-      saved: true,
-      saveCount: repository.saveCount + 1,
-      isFavorite: false,
-      isPinned: false,
-    };
+    return { saved: true, saveCount: repository.saveCount + 1 };
   }
 
   async remove(userId: string, slug: string) {
