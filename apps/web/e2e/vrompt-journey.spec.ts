@@ -793,6 +793,7 @@ test('completes the two-user prompt and evidence journey on mobile', async ({
     ),
   ).toBeVisible();
   await preview.getByRole('link', { name: 'View full details' }).click();
+  await expect(preview).toBeHidden();
   await page.waitForURL('**/prompts/repo-a/prompt-a');
   await expect(page.getByRole('heading', { name: 'Prompt A' })).toBeVisible();
 

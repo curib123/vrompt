@@ -230,6 +230,7 @@ export function PromptPreviewProvider({ children }: { children: ReactNode }) {
             onCopy={() => void copyPrompt()}
             onCopyLink={() => void copyShareLink()}
             onCopyPost={() => void copySharePost()}
+            onClose={closePreview}
             onShare={() => void sharePrompt()}
             repository={repository}
             shareState={shareState}
@@ -288,6 +289,7 @@ function PromptPreviewContent({
   onCopy,
   onCopyLink,
   onCopyPost,
+  onClose,
   onShare,
   repository,
   shareState,
@@ -296,6 +298,7 @@ function PromptPreviewContent({
   onCopy: () => void;
   onCopyLink: () => void;
   onCopyPost: () => void;
+  onClose: () => void;
   onShare: () => void;
   repository: PromptRepositoryDetail;
   shareState: ShareState;
@@ -329,6 +332,7 @@ function PromptPreviewContent({
         <Link
           className="font-semibold text-foreground underline underline-offset-4"
           href={`/u/${repository.owner.username}`}
+          onClick={onClose}
         >
           By @{repository.owner.username}
         </Link>
@@ -359,6 +363,7 @@ function PromptPreviewContent({
         <Link
           className={getButtonClasses('secondary', 'w-full whitespace-nowrap')}
           href={getPublicPromptPath(repository.id, repository.slug)}
+          onClick={onClose}
         >
           View full details
         </Link>
