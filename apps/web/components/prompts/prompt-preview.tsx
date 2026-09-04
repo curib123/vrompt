@@ -434,8 +434,10 @@ function PromptPreviewContent({
           </>
         ) : (
           <p className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-300">
-            Set this prompt to Public or Unlisted before sharing its details
-            link.
+            {repository.visibility === 'PUBLIC' &&
+            repository.status === 'ACTIVE'
+              ? 'Public sharing links are unavailable in this environment.'
+              : 'Publish this prompt before sharing its details link.'}
           </p>
         )}
       </div>

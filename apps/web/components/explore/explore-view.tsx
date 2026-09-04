@@ -70,9 +70,9 @@ export function ExploreView({
         </p>
       </header>
       {publicSettings['features.showRecommendations'] &&
-      explore.recommendedForYou.length > 0 ? (
+      (explore.recommendedForYou ?? []).length > 0 ? (
         <ExploreSection
-          items={explore.recommendedForYou}
+          items={explore.recommendedForYou ?? []}
           onOpen={() => trackAnalyticsEvent('recommended_prompt_opened')}
           title="Recommended for you"
         />

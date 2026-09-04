@@ -9,6 +9,14 @@ import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { apiRequest } from '@/lib/api';
 import type { AdminUser, AdminUsersResponse } from '@/lib/api';
+import {
+  AdminLoading,
+  AdminPageHeader,
+  AdminPagination,
+  ConfirmDialog,
+} from './admin-ui';
+import { EmptyState } from '@/components/ui/empty-state';
+import { useToast } from '@/components/ui/toast';
 
 export function UserAdmin() {
   const { accessToken } = useAuth();
@@ -18,6 +26,13 @@ export function UserAdmin() {
   const [page, setPage] = useState(1);
   const [revision, setRevision] = useState(0);
   const [error, setError] = useState('');
+  const [pendingUpdate, setPendingUpdate] = useState<{
+    user: AdminUser;
+    body: Record<string, unknown>;
+    label: string;
+  } | null>(null);
+  const [busy, setBusy] = useState(false);
+  const { pushToast } = useToast();
   const [form, setForm] = useState({
     email: '',
     username: '',
@@ -61,6 +76,10 @@ export function UserAdmin() {
       });
       setForm({ email: '', username: '', password: '', role: 'MODERATOR' });
       setRevision((value) => value + 1);
+      pushToast({
+        title: 'Staff account created',
+        description: `@${form.username} can now sign in.`,
+      });
     } catch (e) {
       setError(
         e instanceof Error ? e.message : 'Staff account could not be created',
@@ -70,32 +89,39 @@ export function UserAdmin() {
   async function update(user: AdminUser, body: Record<string, unknown>) {
     if (!accessToken) return;
     try {
+      setBusy(true);
       await apiRequest(`/admin/users/${user.id}`, {
         accessToken,
         method: 'PATCH',
         body: JSON.stringify(body),
       });
       setRevision((value) => value + 1);
+      setPendingUpdate(null);
+      pushToast({
+        title: 'User updated',
+        description: `Changes to @${user.username} were saved.`,
+      });
     } catch (e) {
       setError(e instanceof Error ? e.message : 'User could not be updated');
+    } finally {
+      setBusy(false);
     }
   }
 
   return (
     <div className="grid gap-6">
+      <AdminPageHeader
+        eyebrow="Administration"
+        title="Users & staff"
+        description="Search members, control access, and create credential-based staff accounts."
+      />
       <Card>
-        <p className="font-mono text-xs uppercase tracking-[0.2em] text-brand-mid">
-          Administrator only
-        </p>
-        <h1 className="mt-3 text-4xl font-semibold tracking-[-0.06em]">
-          Users & staff
-        </h1>
-        <p className="mt-3 text-sm text-brand-mid">
-          Search members, control access, and create credential-based staff
-          accounts.
-        </p>
-      </Card>
-      <Card>
+        <div className="mb-4">
+          <h2 className="font-semibold">Create staff account</h2>
+          <p className="mt-1 text-sm text-brand-mid">
+            Use a unique temporary password with at least 12 characters.
+          </p>
+        </div>
         <form className="grid gap-3 lg:grid-cols-4" onSubmit={create}>
           <Input
             aria-label="Staff email"
@@ -159,6 +185,7 @@ export function UserAdmin() {
           {error}
         </p>
       ) : null}
+      {!result && !error ? <AdminLoading label="Loading users" /> : null}
       <div className="grid gap-3">
         {result?.items.map((user) => (
           <Card className="grid gap-4" key={user.id}>
@@ -176,7 +203,13 @@ export function UserAdmin() {
               <select
                 aria-label={`Role for ${user.username}`}
                 className="min-h-11 rounded-2xl border border-zinc-300 bg-white px-3 text-sm dark:border-zinc-700 dark:bg-zinc-950"
-                onChange={(e) => void update(user, { role: e.target.value })}
+                onChange={(e) =>
+                  setPendingUpdate({
+                    user,
+                    body: { role: e.target.value },
+                    label: `Change role to ${e.target.value.toLowerCase()}`,
+                  })
+                }
                 value={user.role}
               >
                 <option value="USER">User</option>
@@ -185,8 +218,15 @@ export function UserAdmin() {
               </select>
               <Button
                 onClick={() =>
-                  void update(user, {
-                    status: user.status === 'ACTIVE' ? 'SUSPENDED' : 'ACTIVE',
+                  setPendingUpdate({
+                    user,
+                    body: {
+                      status: user.status === 'ACTIVE' ? 'SUSPENDED' : 'ACTIVE',
+                    },
+                    label:
+                      user.status === 'ACTIVE'
+                        ? 'Suspend user'
+                        : 'Restore user',
                   })
                 }
                 variant="secondary"
@@ -197,27 +237,35 @@ export function UserAdmin() {
           </Card>
         ))}
       </div>
-      {result ? (
-        <div className="flex items-center justify-between">
-          <p className="text-sm text-brand-mid">{result.total} users</p>
-          <div className="flex gap-2">
-            <Button
-              disabled={page === 1}
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              variant="secondary"
-            >
-              Previous
-            </Button>
-            <Button
-              disabled={!result.hasNextPage}
-              onClick={() => setPage((p) => p + 1)}
-              variant="secondary"
-            >
-              Next
-            </Button>
-          </div>
-        </div>
+      {result?.items.length === 0 ? (
+        <EmptyState
+          description="Try a different email or username."
+          title="No users found"
+        />
       ) : null}
+      {result ? (
+        <AdminPagination
+          hasNextPage={result.hasNextPage}
+          onPageChange={setPage}
+          page={page}
+          total={result.total}
+        />
+      ) : null}
+      <ConfirmDialog
+        busy={busy}
+        confirmLabel={pendingUpdate?.label ?? 'Confirm'}
+        description={
+          pendingUpdate
+            ? `This changes access for @${pendingUpdate.user.username}. Administrative changes are recorded in the audit log.`
+            : ''
+        }
+        onClose={() => setPendingUpdate(null)}
+        onConfirm={() =>
+          pendingUpdate && void update(pendingUpdate.user, pendingUpdate.body)
+        }
+        open={Boolean(pendingUpdate)}
+        title={pendingUpdate?.label ?? 'Confirm change'}
+      />
     </div>
   );
 }

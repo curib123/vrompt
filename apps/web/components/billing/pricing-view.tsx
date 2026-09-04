@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import type { Route } from 'next';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 import { AuthModalTrigger } from '@/components/auth/auth-modal';
 import { useAuth } from '@/components/providers/auth-provider';
@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button, getButtonClasses } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { AsyncNotice } from '@/components/ui/page';
 import { fetchBillingPlans, startProCheckout } from '@/lib/api';
 import type { BillingPlan } from '@/lib/api';
 
@@ -29,11 +30,20 @@ export function PricingView() {
   const [discountCode, setDiscountCode] = useState('');
   const [now, setNow] = useState(() => Date.now());
 
-  useEffect(() => {
-    void fetchBillingPlans()
-      .then((response) => setPlans(response.plans))
-      .catch(() => setError('Plans are temporarily unavailable.'));
+  const loadPlans = useCallback(async () => {
+    setError('');
+    try {
+      const response = await fetchBillingPlans();
+      setPlans(response.plans);
+    } catch {
+      setError('Plans are temporarily unavailable.');
+    }
   }, []);
+  useEffect(() => {
+    // Hydrate current pricing from the public billing endpoint.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void loadPlans();
+  }, [loadPlans]);
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 1_000);
     return () => window.clearInterval(timer);
@@ -74,12 +84,9 @@ export function PricingView() {
         </p>
       </header>
       {error ? (
-        <p
-          className="text-center text-sm text-red-600 dark:text-red-300"
-          role="alert"
-        >
+        <AsyncNotice onRetry={() => void loadPlans()} tone="error">
           {error}
-        </p>
+        </AsyncNotice>
       ) : null}
       {user ? (
         <div className="mx-auto grid w-full max-w-xl gap-2 rounded-2xl border border-zinc-200 p-4 dark:border-zinc-800">
@@ -100,12 +107,12 @@ export function PricingView() {
           </p>
         </div>
       ) : null}
-      {!plans ? (
+      {!plans && !error ? (
         <div className="grid gap-4 md:grid-cols-2">
           <Skeleton className="h-96" />
           <Skeleton className="h-96" />
         </div>
-      ) : (
+      ) : plans ? (
         <div
           className={`grid gap-4 ${plans.length > 2 ? 'lg:grid-cols-3' : 'md:grid-cols-2'}`}
         >
@@ -116,7 +123,12 @@ export function PricingView() {
               ? Math.max(new Date(plan.promotion.endsAt).getTime() - now, 0)
               : 0;
             return (
-              <Card className={isPaid ? 'border-brand-mid' : ''} key={plan.id}>
+              <Card
+                className={
+                  isPaid ? 'border-brand-mid ring-1 ring-brand-mid' : ''
+                }
+                key={plan.id}
+              >
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className="text-sm leading-6 text-brand-mid">
@@ -124,7 +136,11 @@ export function PricingView() {
                     </p>
                     <h2 className="mt-3 text-2xl font-semibold">{plan.name}</h2>
                   </div>
-                  {isCurrent ? <Badge>Current plan</Badge> : null}
+                  {isCurrent ? (
+                    <Badge>Current plan</Badge>
+                  ) : isPaid ? (
+                    <Badge>Recommended</Badge>
+                  ) : null}
                 </div>
                 {plan.promotion ? (
                   <div className="mt-6 flex items-center gap-2">
@@ -231,7 +247,7 @@ export function PricingView() {
             );
           })}
         </div>
-      )}
+      ) : null}
       <p className="text-center text-xs leading-6 text-brand-mid">
         Paid plans are charged in USD and processed securely by PayMongo.
         International Visa and Mastercard cards are supported; your bank may

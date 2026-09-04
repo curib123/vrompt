@@ -4,11 +4,10 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 
 import { useAuth } from '@/components/providers/auth-provider';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Skeleton } from '@/components/ui/skeleton';
+import { InteractivePagination, PageHeader } from '@/components/ui/page';
 import { apiRequest } from '@/lib/api';
 import type { ActivityFeedResponse } from '@/lib/api';
 
@@ -48,24 +47,13 @@ export function FollowingFeed({ embedded = false }: { embedded?: boolean }) {
 
   return (
     <div className={embedded ? 'grid gap-6 pt-4' : 'grid gap-8'}>
-      <Card
-        className={
-          embedded
-            ? 'hidden'
-            : 'relative overflow-hidden border-[#0D0D0D] bg-[#0D0D0D] text-white dark:border-white'
-        }
-      >
-        <div className="relative space-y-4">
-          <Badge className="!border-white/30 !text-zinc-300">Following</Badge>
-          <h1 className="text-4xl font-semibold tracking-[-0.07em] sm:text-7xl">
-            Keep up with useful work.
-          </h1>
-          <p className="max-w-2xl text-base leading-8 text-zinc-300">
-            A focused stream of updates from creators you follow. No clutter,
-            just useful prompt work.
-          </p>
-        </div>
-      </Card>
+      {embedded ? null : (
+        <PageHeader
+          eyebrow="Following"
+          title="Keep up with useful work"
+          description="A focused stream of updates from creators you follow."
+        />
+      )}
       {feed.items.length === 0 ? (
         <EmptyState
           actionHref="/explore"
@@ -81,22 +69,12 @@ export function FollowingFeed({ embedded = false }: { embedded?: boolean }) {
         </div>
       )}
       {feed.total > 0 ? (
-        <div className="flex justify-end gap-2">
-          <Button
-            disabled={feed.page <= 1}
-            onClick={() => setPage((current) => Math.max(current - 1, 1))}
-            variant="secondary"
-          >
-            Previous
-          </Button>
-          <Button
-            disabled={!feed.hasNextPage}
-            onClick={() => setPage((current) => current + 1)}
-            variant="secondary"
-          >
-            Next
-          </Button>
-        </div>
+        <InteractivePagination
+          hasNextPage={feed.hasNextPage}
+          onPageChange={setPage}
+          page={feed.page}
+          total={feed.total}
+        />
       ) : null}
     </div>
   );

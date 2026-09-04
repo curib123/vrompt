@@ -131,6 +131,8 @@ export function RepositoryDetail({
   const displayName =
     repository.owner.profile?.displayName || repository.owner.username;
   const evidenceImages = activeVersion?.evidenceImages ?? [];
+  const promptAudiences = repository.promptAudiences ?? [];
+  const promptTags = repository.promptTags ?? [];
   const promptPath =
     publicPath ?? getPublicPromptPath(repository.id, repository.slug);
 
@@ -313,9 +315,9 @@ export function RepositoryDetail({
                   {repository.category.name}
                 </Badge>
               ) : null}
-              {repository.promptAudiences.length > 0 ? (
+              {promptAudiences.length > 0 ? (
                 <Badge className="!border-white/30 !text-zinc-300">
-                  {repository.promptAudiences
+                  {promptAudiences
                     .map(({ audience }) => audience.name)
                     .join(' · ')}
                 </Badge>
@@ -328,7 +330,7 @@ export function RepositoryDetail({
               ) : null}
             </div>
             <div>
-              <h1 className="max-w-4xl text-4xl font-semibold leading-[0.98] tracking-[-0.07em] sm:text-7xl">
+              <h1 className="max-w-4xl text-4xl font-semibold leading-[0.98] tracking-[-0.07em] sm:text-5xl">
                 {repository.title}
               </h1>
               <p className="mt-4 max-w-2xl text-base leading-8 text-zinc-300">
@@ -356,7 +358,7 @@ export function RepositoryDetail({
               disabled={!version || copyState === 'copying'}
               onClick={() => void copyPrompt()}
               type="button"
-              variant="secondary"
+              variant="primary"
             >
               {copyState === 'copying'
                 ? 'Copying...'
@@ -502,26 +504,26 @@ export function RepositoryDetail({
         </Card>
       ) : null}
 
-      {repository.promptAudiences.length > 0 ||
-      repository.promptTags.length > 0 ||
+      {promptAudiences.length > 0 ||
+      promptTags.length > 0 ||
       repository.aiCompatibility ? (
         <Card className="grid gap-4">
           <h2 className="text-lg font-semibold">About this prompt</h2>
           {repository.category ? (
             <MetadataRow label="Category" value={repository.category.name} />
           ) : null}
-          {repository.promptAudiences.length > 0 ? (
+          {promptAudiences.length > 0 ? (
             <MetadataRow
               label="Best for"
-              value={repository.promptAudiences
+              value={promptAudiences
                 .map(({ audience }) => audience.name)
                 .join(' · ')}
             />
           ) : null}
-          {repository.promptTags.length > 0 ? (
+          {promptTags.length > 0 ? (
             <MetadataRow
               label="Topics"
-              value={repository.promptTags
+              value={promptTags
                 .map(({ tag }) => tag.name)
                 .join(' · ')}
             />
@@ -538,7 +540,7 @@ export function RepositoryDetail({
       {user?.id === repository.ownerId ? (
         <PromptAudienceEditor
           accessToken={accessToken}
-          initialAudienceIds={repository.promptAudiences.map(
+          initialAudienceIds={promptAudiences.map(
             ({ audience }) => audience.id,
           )}
           onSaved={setRepository}
@@ -546,7 +548,28 @@ export function RepositoryDetail({
         />
       ) : null}
 
+      <div
+        className="grid gap-3 sm:grid-cols-2"
+        aria-label="Prompt history guide"
+      >
+        <div className="rounded-2xl border border-[#E6E6E6] p-4 text-sm dark:border-[#292929]">
+          <strong>Versions</strong>
+          <p className="mt-1 leading-6 text-brand-mid">
+              Improvements published by this prompt&apos;s creator. Earlier versions
+            remain available.
+          </p>
+        </div>
+        <div className="rounded-2xl border border-[#E6E6E6] p-4 text-sm dark:border-[#292929]">
+          <strong>Adaptations</strong>
+          <p className="mt-1 leading-6 text-brand-mid">
+            New prompts made by other creators from this starting point, with
+            attribution preserved.
+          </p>
+        </div>
+      </div>
+
       <Tabs
+        ariaLabel="Prompt sections"
         initialId={initialTab}
         items={[
           {
@@ -564,7 +587,7 @@ export function RepositoryDetail({
               />
             ),
             id: 'prompt',
-            label: 'Instructions',
+            label: 'Prompt',
           },
           {
             content: (
@@ -575,7 +598,7 @@ export function RepositoryDetail({
               />
             ),
             id: 'versions',
-            label: 'History',
+            label: 'Versions',
           },
           {
             content: (

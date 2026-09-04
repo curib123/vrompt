@@ -10,6 +10,7 @@ import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
 import { ConfirmationModal } from '@/components/ui/feedback-modal';
 import { Skeleton } from '@/components/ui/skeleton';
+import { InteractivePagination } from '@/components/ui/page';
 import { apiRequest } from '@/lib/api';
 import type { SavedRepositoriesResponse } from '@/lib/api';
 
@@ -206,28 +207,12 @@ export function SavedRepositories({
       )}
 
       {result.total > 0 ? (
-        <div className="flex items-center justify-between gap-4">
-          <p className="text-sm text-zinc-600 dark:text-zinc-400">
-            Page {result.page} of{' '}
-            {Math.max(Math.ceil(result.total / result.pageSize), 1)}
-          </p>
-          <div className="flex gap-2">
-            <Button
-              disabled={result.page <= 1}
-              onClick={() => setPage((current) => Math.max(current - 1, 1))}
-              variant="secondary"
-            >
-              Previous
-            </Button>
-            <Button
-              disabled={!result.hasNextPage}
-              onClick={() => setPage((current) => current + 1)}
-              variant="secondary"
-            >
-              Next
-            </Button>
-          </div>
-        </div>
+        <InteractivePagination
+          hasNextPage={result.hasNextPage}
+          onPageChange={setPage}
+          page={result.page}
+          total={result.total}
+        />
       ) : null}
       <ConfirmationModal
         confirmLabel="Remove saved prompt"

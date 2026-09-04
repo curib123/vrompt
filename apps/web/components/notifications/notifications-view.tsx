@@ -4,19 +4,22 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 
 import { useAuth } from '@/components/providers/auth-provider';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Skeleton } from '@/components/ui/skeleton';
 import { apiRequest } from '@/lib/api';
 import type { NotificationsResponse } from '@/lib/api';
+import { PageHeader } from '@/components/ui/page';
+import { useToast } from '@/components/ui/toast';
 
 export function NotificationsView() {
   const { accessToken, isLoading } = useAuth();
   const [notifications, setNotifications] =
     useState<NotificationsResponse | null>(null);
   const [error, setError] = useState(false);
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const { pushToast } = useToast();
 
   useEffect(() => {
     if (isLoading || !accessToken) return;
@@ -38,10 +41,20 @@ export function NotificationsView() {
 
   async function markRead(id: string) {
     if (!accessToken || !notifications) return;
-    await apiRequest(`/notifications/${id}/read`, {
-      accessToken,
-      method: 'PATCH',
-    }).catch(() => undefined);
+    setBusyId(id);
+    try {
+      await apiRequest(`/notifications/${id}/read`, {
+        accessToken,
+        method: 'PATCH',
+      });
+    } catch {
+      pushToast({
+        title: 'Could not mark notification as read',
+        description: 'Please try again.',
+      });
+      setBusyId(null);
+      return;
+    }
     setNotifications((current) =>
       current
         ? {
@@ -55,14 +68,26 @@ export function NotificationsView() {
           }
         : current,
     );
+    setBusyId(null);
+    window.dispatchEvent(new Event('vrompt:notifications-updated'));
   }
 
   async function markAllRead() {
     if (!accessToken || !notifications) return;
-    await apiRequest('/notifications/read-all', {
-      accessToken,
-      method: 'POST',
-    }).catch(() => undefined);
+    setBusyId('all');
+    try {
+      await apiRequest('/notifications/read-all', {
+        accessToken,
+        method: 'POST',
+      });
+    } catch {
+      pushToast({
+        title: 'Notifications were not updated',
+        description: 'Please try again.',
+      });
+      setBusyId(null);
+      return;
+    }
     setNotifications((current) =>
       current
         ? {
@@ -75,6 +100,9 @@ export function NotificationsView() {
           }
         : current,
     );
+    setBusyId(null);
+    pushToast({ title: 'All notifications marked as read' });
+    window.dispatchEvent(new Event('vrompt:notifications-updated'));
   }
 
   if (!notifications) {
@@ -90,38 +118,48 @@ export function NotificationsView() {
 
   return (
     <div className="grid gap-8">
-      <Card className="relative overflow-hidden border-[#0D0D0D] bg-[#0D0D0D] text-white dark:border-white">
-        <div className="relative flex flex-wrap items-end justify-between gap-5">
-          <div className="space-y-4">
-            <Badge className="!border-white/30 !text-zinc-300">
-              Notifications
-            </Badge>
-            <h1 className="text-4xl font-semibold tracking-[-0.07em] sm:text-7xl">
-              Useful signals, in one place.
-            </h1>
-            <p className="max-w-2xl text-base leading-8 text-zinc-300">
-              {notifications.unreadCount} unread notifications from the people
-              and prompts connected to your work.
-            </p>
-          </div>
-          <Button onClick={() => void markAllRead()} variant="secondary">
-            Mark all read
+      <PageHeader
+        action={
+          <Button
+            disabled={notifications.unreadCount === 0 || Boolean(busyId)}
+            onClick={() => void markAllRead()}
+            variant="secondary"
+          >
+            {busyId === 'all' ? 'Marking read…' : 'Mark all read'}
           </Button>
-        </div>
-      </Card>
+        }
+        description={`${notifications.unreadCount} unread notifications from the people and prompts connected to your work.`}
+        eyebrow="Activity"
+        title="Notifications"
+      />
       {notifications.items.length === 0 ? (
         <EmptyState
           description="Likes, comments, follows, and variations will appear here."
           title="No notifications yet"
         />
       ) : (
-        <div className="grid gap-3">
-          {notifications.items.map((item) => (
-            <NotificationCard
-              item={item}
-              onRead={() => void markRead(item.id)}
-              key={item.id}
-            />
+        <div className="grid gap-7">
+          {groupNotifications(notifications.items).map(([label, items]) => (
+            <section
+              className="grid gap-3"
+              key={label}
+              aria-labelledby={`notifications-${label.toLowerCase().replaceAll(' ', '-')}`}
+            >
+              <h2
+                className="text-sm font-semibold uppercase tracking-[0.14em] text-brand-mid"
+                id={`notifications-${label.toLowerCase().replaceAll(' ', '-')}`}
+              >
+                {label}
+              </h2>
+              {items.map((item) => (
+                <NotificationCard
+                  item={item}
+                  busy={busyId === item.id}
+                  onRead={() => void markRead(item.id)}
+                  key={item.id}
+                />
+              ))}
+            </section>
           ))}
         </div>
       )}
@@ -129,10 +167,35 @@ export function NotificationsView() {
   );
 }
 
+function groupNotifications(items: NotificationsResponse['items']) {
+  const startOfToday = new Date();
+  startOfToday.setHours(0, 0, 0, 0);
+  const startOfWeek = new Date(startOfToday);
+  startOfWeek.setDate(startOfToday.getDate() - 7);
+  const groups = new Map<string, NotificationsResponse['items']>([
+    ['Today', []],
+    ['Earlier this week', []],
+    ['Older', []],
+  ]);
+  for (const item of items) {
+    const createdAt = new Date(item.createdAt);
+    const label =
+      createdAt >= startOfToday
+        ? 'Today'
+        : createdAt >= startOfWeek
+          ? 'Earlier this week'
+          : 'Older';
+    groups.get(label)?.push(item);
+  }
+  return [...groups.entries()].filter(([, group]) => group.length > 0);
+}
+
 function NotificationCard({
+  busy,
   item,
   onRead,
 }: {
+  busy: boolean;
   item: NotificationsResponse['items'][number];
   onRead: () => void;
 }) {
@@ -173,8 +236,8 @@ function NotificationCard({
           {actor} {message}
         </p>
         {!item.readAt ? (
-          <Button onClick={onRead} variant="ghost">
-            Mark read
+          <Button disabled={busy} onClick={onRead} variant="ghost">
+            {busy ? 'Marking…' : 'Mark read'}
           </Button>
         ) : null}
       </div>
@@ -182,9 +245,10 @@ function NotificationCard({
         className="mt-3 block text-xs text-zinc-600 dark:text-zinc-400"
         dateTime={item.createdAt}
       >
-        {new Intl.DateTimeFormat('en', { dateStyle: 'medium' }).format(
-          new Date(item.createdAt),
-        )}
+        {new Intl.DateTimeFormat('en', {
+          dateStyle: 'medium',
+          timeStyle: 'short',
+        }).format(new Date(item.createdAt))}
       </time>
     </Card>
   );

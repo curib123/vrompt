@@ -2,13 +2,13 @@
 
 import Link from 'next/link';
 import type { Route } from 'next';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 import { useAuth } from '@/components/providers/auth-provider';
 import { Badge } from '@/components/ui/badge';
 import { Button, getButtonClasses } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Skeleton } from '@/components/ui/skeleton';
+import { AsyncNotice, PageLoading } from '@/components/ui/page';
 import { fetchBillingSummary, fetchFeatureUsage } from '@/lib/api';
 import type { BillingSummaryResponse, FeatureUsageResponse } from '@/lib/api';
 
@@ -17,22 +17,40 @@ export function BillingAccountView() {
   const [summary, setSummary] = useState<BillingSummaryResponse | null>(null);
   const [usage, setUsage] = useState<FeatureUsageResponse | null>(null);
   const [error, setError] = useState('');
+  const [refreshing, setRefreshing] = useState(false);
 
-  useEffect(() => {
+  const load = useCallback(async () => {
     if (!accessToken) return;
-    void Promise.all([
-      fetchBillingSummary(accessToken),
-      fetchFeatureUsage(accessToken),
-    ])
-      .then(([nextSummary, nextUsage]) => {
-        setSummary(nextSummary);
-        setUsage(nextUsage);
-      })
-      .catch(() => setError('Billing details are temporarily unavailable.'));
+    setRefreshing(true);
+    try {
+      const [nextSummary, nextUsage] = await Promise.all([
+        fetchBillingSummary(accessToken),
+        fetchFeatureUsage(accessToken),
+      ]);
+      setSummary(nextSummary);
+      setUsage(nextUsage);
+      setError('');
+    } catch {
+      setError('Billing details are temporarily unavailable.');
+    } finally {
+      setRefreshing(false);
+    }
   }, [accessToken]);
 
+  useEffect(() => {
+    // The initial request hydrates billing state from the authenticated API session.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void load();
+  }, [load]);
+
   if (!summary || !usage) {
-    return <Skeleton className="h-80" />;
+    return error ? (
+      <AsyncNotice onRetry={() => void load()} tone="error">
+        {error}
+      </AsyncNotice>
+    ) : (
+      <PageLoading label="Loading billing details" />
+    );
   }
 
   const periodEnd = summary.subscription?.currentPeriodEnd
@@ -76,13 +94,39 @@ export function BillingAccountView() {
           ) : null}
         </Card>
         <Card>
-          <div className="flex items-center justify-between gap-3"><h2 className="text-xl font-semibold">Feature usage</h2><Badge>{usage.plan}</Badge></div>
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="text-xl font-semibold">Feature usage</h2>
+            <Badge>{usage.plan}</Badge>
+          </div>
           <div className="mt-5 grid gap-5">
             {usage.usage.map((item) => (
               <div key={`${item.featureKey}-${item.resetPeriod}`}>
-                <div className="flex justify-between gap-3 text-sm"><span>{item.featureName} · {item.resetPeriod.toLowerCase()}</span><strong>{item.limit === null ? `${item.used} used · unlimited` : `${item.used} of ${item.limit} used`}</strong></div>
-                <div className="mt-2 h-2 overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800"><div className={`h-full rounded-full ${item.reached ? 'bg-red-600' : item.warning ? 'bg-amber-500' : 'bg-brand-mid'}`} style={{ width: `${item.limit ? Math.min((item.used / item.limit) * 100, 100) : 0}%` }} /></div>
-                <p className="mt-2 text-xs text-brand-mid">Resets {new Date(item.resetAt).toLocaleString()}. {item.reached ? 'Limit reached — upgrade for more usage.' : item.warning ? `${item.remaining} ${item.unitLabel} remaining — consider upgrading.` : ''}</p>
+                <div className="flex justify-between gap-3 text-sm">
+                  <span>
+                    {item.featureName} · {item.resetPeriod.toLowerCase()}
+                  </span>
+                  <strong>
+                    {item.limit === null
+                      ? `${item.used} used · unlimited`
+                      : `${item.used} of ${item.limit} used`}
+                  </strong>
+                </div>
+                <div className="mt-2 h-2 overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800">
+                  <div
+                    className={`h-full rounded-full ${item.reached ? 'bg-red-600' : item.warning ? 'bg-amber-500' : 'bg-brand-mid'}`}
+                    style={{
+                      width: `${item.limit ? Math.min((item.used / item.limit) * 100, 100) : 0}%`,
+                    }}
+                  />
+                </div>
+                <p className="mt-2 text-xs text-brand-mid">
+                  Resets {new Date(item.resetAt).toLocaleString()}.{' '}
+                  {item.reached
+                    ? 'Limit reached — upgrade for more usage.'
+                    : item.warning
+                      ? `${item.remaining} ${item.unitLabel} remaining — consider upgrading.`
+                      : ''}
+                </p>
               </div>
             ))}
           </div>
@@ -101,8 +145,8 @@ export function BillingAccountView() {
           </p>
         </Card>
       ) : null}
-      <Button onClick={() => window.location.reload()} variant="ghost">
-        Refresh billing status
+      <Button disabled={refreshing} onClick={() => void load()} variant="ghost">
+        {refreshing ? 'Refreshing billing status…' : 'Refresh billing status'}
       </Button>
       {user?.plan === 'PRO' ? (
         <p className="text-center text-xs text-brand-mid">

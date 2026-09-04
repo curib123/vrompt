@@ -4,12 +4,17 @@ import { useEffect, useState } from 'react';
 
 import { useAuth } from '@/components/providers/auth-provider';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Input } from '@/components/ui/input';
 import { apiRequest } from '@/lib/api';
 import type { AuditResponse } from '@/lib/api';
+import {
+  AdminLoading,
+  AdminNotice,
+  AdminPageHeader,
+  AdminPagination,
+} from '@/components/admin/admin-ui';
 
 export function AuditView() {
   const { accessToken, isLoading, user } = useAuth();
@@ -18,6 +23,7 @@ export function AuditView() {
   const [targetType, setTargetType] = useState('');
   const [actor, setActor] = useState('');
   const [page, setPage] = useState(1);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     if (
@@ -36,9 +42,14 @@ export function AuditView() {
       accessToken,
     })
       .then((response) => {
-        if (active) setAudit(response);
+        if (active) {
+          setAudit(response);
+          setError('');
+        }
       })
-      .catch(() => undefined);
+      .catch(() => {
+        if (active) setError('Audit events could not be loaded.');
+      });
     return () => {
       active = false;
     };
@@ -54,29 +65,19 @@ export function AuditView() {
       />
     );
   if (!audit)
-    return (
-      <Card>
-        <p className="text-sm text-zinc-600 dark:text-zinc-400">
-          Loading audit log...
-        </p>
-      </Card>
+    return error ? (
+      <AdminNotice tone="error">{error}</AdminNotice>
+    ) : (
+      <AdminLoading label="Loading audit log" />
     );
 
   return (
     <div className="grid gap-8">
-      <Card className="relative overflow-hidden border-[#0D0D0D] bg-[#0D0D0D] text-white dark:border-white">
-        <div className="relative space-y-4">
-          <Badge className="!border-white/30 !text-zinc-300">
-            Admin / Audit
-          </Badge>
-          <h1 className="text-4xl font-semibold tracking-[-0.07em] sm:text-7xl">
-            The record stays readable.
-          </h1>
-          <p className="max-w-2xl text-base leading-8 text-zinc-300">
-            A clear record of important changes for accountability and review.
-          </p>
-        </div>
-      </Card>
+      <AdminPageHeader
+        eyebrow="Accountability"
+        title="Audit log"
+        description="A clear record of important changes for accountability and review."
+      />
       <Card>
         <div className="grid gap-3 sm:grid-cols-3">
           <Input
@@ -154,6 +155,7 @@ export function AuditView() {
                 >
                   {new Intl.DateTimeFormat('en', {
                     dateStyle: 'medium',
+                    timeStyle: 'short',
                   }).format(new Date(item.createdAt))}
                 </time>
               </div>
@@ -161,22 +163,11 @@ export function AuditView() {
           ))}
         </div>
       )}
-      <div className="flex justify-end gap-2">
-        <Button
-          disabled={audit.page <= 1}
-          onClick={() => setPage((current) => Math.max(1, current - 1))}
-          variant="secondary"
-        >
-          Previous
-        </Button>
-        <Button
-          disabled={!audit.hasNextPage}
-          onClick={() => setPage((current) => current + 1)}
-          variant="secondary"
-        >
-          Next
-        </Button>
-      </div>
+      <AdminPagination
+        hasNextPage={audit.hasNextPage}
+        onPageChange={setPage}
+        page={audit.page}
+      />
     </div>
   );
 }

@@ -8,6 +8,8 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { apiRequest } from '@/lib/api';
+import { AdminPageHeader } from '@/components/admin/admin-ui';
+import { useToast } from '@/components/ui/toast';
 
 export default function StaffSecurityPage() {
   const router = useRouter();
@@ -17,6 +19,8 @@ export default function StaffSecurityPage() {
   const [confirmation, setConfirmation] = useState('');
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
+  const [showPasswords, setShowPasswords] = useState(false);
+  const { pushToast } = useToast();
   async function submit(event: React.FormEvent) {
     event.preventDefault();
     if (!accessToken) return;
@@ -32,6 +36,10 @@ export default function StaffSecurityPage() {
         method: 'POST',
         body: JSON.stringify({ currentPassword, newPassword }),
       });
+      pushToast({
+        title: 'Password updated',
+        description: 'For security, sign in again with your new password.',
+      });
       await logout();
       router.replace('/staff/login' as Route);
     } catch (e) {
@@ -43,18 +51,11 @@ export default function StaffSecurityPage() {
   }
   return (
     <div className="grid gap-6">
-      <Card>
-        <p className="font-mono text-xs uppercase tracking-[0.2em] text-brand-mid">
-          Account security
-        </p>
-        <h1 className="mt-3 text-4xl font-semibold tracking-[-0.06em]">
-          Change password
-        </h1>
-        <p className="mt-3 text-sm leading-7 text-brand-mid">
-          Use a unique password of at least 12 characters. Changing it signs out
-          all active sessions.
-        </p>
-      </Card>
+      <AdminPageHeader
+        eyebrow="Account security"
+        title="Change password"
+        description="Use a unique password of at least 12 characters. Changing it signs out all active sessions."
+      />
       <Card className="max-w-xl">
         <form className="grid gap-4" onSubmit={submit}>
           <label className="grid gap-2 text-sm font-medium">
@@ -64,7 +65,7 @@ export default function StaffSecurityPage() {
               minLength={12}
               onChange={(e) => setCurrentPassword(e.target.value)}
               required
-              type="password"
+              type={showPasswords ? 'text' : 'password'}
               value={currentPassword}
             />
           </label>
@@ -75,7 +76,7 @@ export default function StaffSecurityPage() {
               minLength={12}
               onChange={(e) => setNewPassword(e.target.value)}
               required
-              type="password"
+              type={showPasswords ? 'text' : 'password'}
               value={newPassword}
             />
           </label>
@@ -86,10 +87,22 @@ export default function StaffSecurityPage() {
               minLength={12}
               onChange={(e) => setConfirmation(e.target.value)}
               required
-              type="password"
+              type={showPasswords ? 'text' : 'password'}
               value={confirmation}
             />
           </label>
+          <label className="flex items-center gap-2 text-sm text-brand-mid">
+            <input
+              checked={showPasswords}
+              onChange={(event) => setShowPasswords(event.target.checked)}
+              type="checkbox"
+            />
+            Show passwords
+          </label>
+          <div className="rounded-xl bg-[#F5F5F3] p-3 text-xs leading-5 text-brand-mid dark:bg-[#202020]">
+            Use 12 or more characters. A passphrase with mixed words, numbers,
+            and symbols is easier to remember and harder to guess.
+          </div>
           {error ? (
             <p className="text-sm text-red-600 dark:text-red-400" role="alert">
               {error}

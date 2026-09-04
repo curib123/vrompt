@@ -14,6 +14,7 @@ import { apiRequest, getMediaUrl } from '@/lib/api';
 import type { ProfileResponse } from '@/lib/api';
 import { cn } from '@/lib/cn';
 import { primaryRoutes, publicPrimaryRoutes } from '@/lib/routes';
+import { useUnreadNotificationCount } from '@/components/notifications/use-unread-count';
 
 export function MobileNav() {
   const pathname = usePathname();
@@ -96,6 +97,7 @@ export function MobileNav() {
   const displayName = profile?.displayName || user?.username || 'Creator';
   const profileHref = user ? (`/u/${user.username}` as Route) : '/login';
   const homeHref = user ? '/dashboard' : '/';
+  const unreadCount = useUnreadNotificationCount();
 
   return (
     <div className="lg:hidden">
@@ -224,9 +226,18 @@ export function MobileNav() {
             >
               {visibleRoutes.map((route) => (
                 <Link
+                  aria-current={
+                    pathname === route.href ||
+                    (route.href !== '/' &&
+                      pathname.startsWith(`${route.href}/`))
+                      ? 'page'
+                      : undefined
+                  }
                   className={cn(
                     'group flex min-h-12 items-center gap-3 rounded-2xl px-3.5 py-3 text-sm font-semibold transition',
-                    pathname === route.href
+                    pathname === route.href ||
+                      (route.href !== '/' &&
+                        pathname.startsWith(`${route.href}/`))
                       ? 'bg-[#0D0D0D] !text-background shadow-[0_10px_24px_rgba(13,13,13,0.16)] dark:bg-white dark:shadow-none'
                       : '!text-brand-mid hover:bg-[#E6E6E6] dark:hover:bg-[#1A1A1A]',
                   )}
@@ -261,7 +272,11 @@ export function MobileNav() {
                   <DrawerShortcut
                     href="/notifications"
                     icon="notifications"
-                    label="Notifications"
+                    label={
+                      unreadCount > 0
+                        ? `Notifications (${unreadCount > 99 ? '99+' : unreadCount})`
+                        : 'Notifications'
+                    }
                     onSelect={closeDrawer}
                   />
                 </div>

@@ -31,6 +31,8 @@ export function CollectionsView({ embedded = false }: { embedded?: boolean }) {
     id: string;
     name: string;
   } | null>(null);
+  const [query, setQuery] = useState('');
+  const [sort, setSort] = useState<'newest' | 'name'>('newest');
 
   useEffect(() => {
     if (isLoading || !accessToken) return;
@@ -102,6 +104,19 @@ export function CollectionsView({ embedded = false }: { embedded?: boolean }) {
     );
   }
 
+  const visibleCollections = collections
+    .filter((collection) =>
+      `${collection.name} ${collection.description ?? ''}`
+        .toLowerCase()
+        .includes(query.trim().toLowerCase()),
+    )
+    .sort((left, right) =>
+      sort === 'name'
+        ? left.name.localeCompare(right.name)
+        : new Date(right.updatedAt).getTime() -
+          new Date(left.updatedAt).getTime(),
+    );
+
   return (
     <div className={embedded ? 'grid gap-6 pt-4' : 'grid gap-8'}>
       <Card
@@ -167,14 +182,48 @@ export function CollectionsView({ embedded = false }: { embedded?: boolean }) {
       {error ? (
         <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
       ) : null}
+      {collections.length > 0 ? (
+        <Card className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_12rem_auto] sm:items-center">
+          <Input
+            aria-label="Search projects"
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Search projects"
+            type="search"
+            value={query}
+          />
+          <select
+            aria-label="Sort projects"
+            className="min-h-11 rounded-2xl border border-zinc-300 bg-white px-4 text-sm dark:border-zinc-700 dark:bg-zinc-950"
+            onChange={(event) =>
+              setSort(event.target.value as 'newest' | 'name')
+            }
+            value={sort}
+          >
+            <option value="newest">Recently updated</option>
+            <option value="name">Project name</option>
+          </select>
+          {query ? (
+            <Button onClick={() => setQuery('')} variant="ghost">
+              Clear
+            </Button>
+          ) : (
+            <span />
+          )}
+        </Card>
+      ) : null}
       {collections.length === 0 ? (
         <EmptyState
           description="Create a project to bring related prompts together."
           title="No projects yet"
         />
+      ) : visibleCollections.length === 0 ? (
+        <EmptyState
+          description="Try another project name or clear the search."
+          title="No matching projects"
+        />
       ) : (
         <div className="grid gap-4 md:grid-cols-2">
-          {collections.map((collection) => (
+          {visibleCollections.map((collection) => (
             <Card className="flex h-full flex-col" key={collection.id}>
               <div className="flex items-start justify-between gap-4">
                 <Badge>{collection.visibility.toLowerCase()}</Badge>

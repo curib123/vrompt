@@ -6,16 +6,32 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { apiRequest } from '@/lib/api';
 import type { AdminSystemResponse } from '@/lib/api';
+import { AdminLoading, AdminNotice } from './admin-ui';
 
 export function SystemAdmin() {
   const { accessToken } = useAuth();
   const [data, setData] = useState<AdminSystemResponse | null>(null);
   const [revision, setRevision] = useState(0);
+  const [error, setError] = useState('');
+  const [checking, setChecking] = useState(true);
   useEffect(() => {
-    if (accessToken)
+    if (accessToken) {
       void apiRequest<AdminSystemResponse>('/admin/system', {
         accessToken,
-      }).then(setData);
+      })
+        .then((value) => {
+          setData(value);
+          setError('');
+        })
+        .catch((caught: unknown) =>
+          setError(
+            caught instanceof Error
+              ? caught.message
+              : 'System checks could not be completed.',
+          ),
+        )
+        .finally(() => setChecking(false));
+    }
   }, [accessToken, revision]);
   return (
     <div className="grid gap-6">
@@ -33,11 +49,33 @@ export function SystemAdmin() {
               shown.
             </p>
           </div>
-          <Button onClick={() => setRevision((v) => v + 1)} variant="secondary">
-            Run checks
+          <Button
+            disabled={checking}
+            onClick={() => {
+              setChecking(true);
+              setRevision((v) => v + 1);
+            }}
+            variant="secondary"
+          >
+            {checking ? 'Running checks…' : 'Run checks'}
           </Button>
         </div>
       </Card>
+      {error ? (
+        <AdminNotice tone="error">
+          {error}{' '}
+          <button
+            className="ml-2 font-semibold underline"
+            onClick={() => {
+              setChecking(true);
+              setRevision((v) => v + 1);
+            }}
+            type="button"
+          >
+            Retry
+          </button>
+        </AdminNotice>
+      ) : null}
       {data ? (
         <>
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
@@ -61,10 +99,7 @@ export function SystemAdmin() {
               label="AI provider"
               ok={Boolean(data.integrations.aiProvider)}
             />
-            <Status
-              label="PayMongo"
-              ok={Boolean(data.integrations.payMongo)}
-            />
+            <Status label="PayMongo" ok={Boolean(data.integrations.payMongo)} />
             <ExternalStatus
               label="Oracle server"
               check={data.dependencies.oracleServer}
@@ -114,9 +149,7 @@ export function SystemAdmin() {
           </p>
         </>
       ) : (
-        <Card>
-          <p className="text-sm text-brand-mid">Running system checks…</p>
-        </Card>
+        <AdminLoading label="Running system checks" />
       )}
     </div>
   );

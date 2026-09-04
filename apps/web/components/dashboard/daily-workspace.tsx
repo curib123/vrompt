@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button, getButtonClasses } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Skeleton } from '@/components/ui/skeleton';
+import { PageHeader } from '@/components/ui/page';
 import { apiRequest, updatePromptReuse } from '@/lib/api';
 import type {
   OwnedPromptRepository,
@@ -150,30 +151,27 @@ export function DailyWorkspace() {
 
   return (
     <div className="grid gap-8">
-      <section className="relative overflow-hidden rounded-[2rem] bg-[#0D0D0D] p-6 text-white shadow-[0_24px_70px_rgba(13,13,13,0.16)] sm:p-10">
-        <div className="pointer-events-none absolute -right-20 -top-28 size-80 rounded-full border-[40px] border-white/10" />
-        <div className="relative grid gap-6 sm:grid-cols-[1fr_auto] sm:items-end">
-          <div>
-            <Badge className="!border-white/30 !text-zinc-300">Today</Badge>
-            <h1 className="mt-4 text-4xl font-semibold tracking-[-0.07em] sm:text-6xl">
-              What do you need help with today?
-            </h1>
-            <p className="mt-4 max-w-2xl text-sm leading-7 text-zinc-300 sm:text-base">
-              Turn a repeated task into a reusable workflow you can use again
-              tomorrow.
-            </p>
+      <PageHeader
+        eyebrow="Today"
+        title="What do you need help with?"
+        description="Turn a repeated task into a reusable workflow you can use again tomorrow."
+        action={
+          <div className="flex flex-wrap gap-2">
+            <Link
+              className={getButtonClasses('secondary')}
+              href={'/search' as Route}
+            >
+              Search prompts
+            </Link>
+            <Link
+              className={getButtonClasses('primary')}
+              href={'/generate' as Route}
+            >
+              Generate a prompt
+            </Link>
           </div>
-          <Link
-            className={getButtonClasses(
-              'secondary',
-              'w-full border-white bg-white !text-on-light sm:w-auto',
-            )}
-            href={'/generate' as Route}
-          >
-            Generate a prompt
-          </Link>
-        </div>
-      </section>
+        }
+      />
       {error ? (
         <p className="text-sm text-red-600 dark:text-red-400" role="alert">
           {error}

@@ -21,6 +21,7 @@ export function AudienceOnboarding() {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [revision, setRevision] = useState(0);
 
   const load = useEffectEvent(async () => {
     if (!accessToken) return;
@@ -28,6 +29,9 @@ export function AudienceOnboarding() {
       const result = await apiRequest<MyAudiencesResponse>('/me/audiences', {
         accessToken,
       });
+      if (!Array.isArray(result.options) || !Array.isArray(result.selected)) {
+        throw new Error('Audience response is incomplete.');
+      }
       if (result.onboardingCompleted) {
         router.replace((consumeOAuthReturnPath() || '/search') as Route);
         return;
@@ -45,7 +49,7 @@ export function AudienceOnboarding() {
     // Load the resumable onboarding state for this Google account.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void load();
-  }, [accessToken]);
+  }, [accessToken, revision]);
 
   async function continueOnboarding() {
     if (!accessToken) {
@@ -88,13 +92,14 @@ export function AudienceOnboarding() {
   return (
     <Card className="mx-auto grid max-w-3xl gap-8 p-5 sm:p-10">
       <div className="space-y-4">
-        <Badge>One quick step</Badge>
+        <Badge>Step 1 of 1</Badge>
         <h1 className="text-4xl font-semibold tracking-[-0.07em] sm:text-6xl">
           Choose what you&apos;re interested in
         </h1>
         <p className="max-w-2xl text-sm leading-7 text-zinc-600 dark:text-zinc-400">
-          Select the types of prompts you want to discover. You can change this
-          later.
+          Select up to five interests to shape recommendations and search
+          suggestions. You can change these preferences later from your profile
+          settings.
         </p>
       </div>
       {data ? (
@@ -104,15 +109,24 @@ export function AudienceOnboarding() {
           options={data.options}
           selectedIds={selectedIds}
         />
-      ) : (
+      ) : !error ? (
         <p className="text-sm text-zinc-600 dark:text-zinc-400" role="status">
           {error ?? 'Loading audience options...'}
         </p>
-      )}
+      ) : null}
       {error ? (
-        <p className="text-sm text-red-600 dark:text-red-400" role="alert">
-          {error}
-        </p>
+        <div
+          className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/30 dark:text-red-300"
+          role="alert"
+        >
+          <span>{error}</span>
+          <Button
+            onClick={() => setRevision((value) => value + 1)}
+            variant="secondary"
+          >
+            Retry
+          </Button>
+        </div>
       ) : null}
       <div className="flex justify-end">
         <div className="flex flex-wrap justify-end gap-3">

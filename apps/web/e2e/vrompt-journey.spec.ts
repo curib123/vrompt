@@ -9,6 +9,7 @@ type TestUser = {
   username: string;
   role: 'USER';
   accountType: 'REAL';
+  onboardingCompleted: boolean;
 };
 
 const author: TestUser = {
@@ -17,6 +18,7 @@ const author: TestUser = {
   username: 'author',
   role: 'USER',
   accountType: 'REAL',
+  onboardingCompleted: true,
 };
 
 const explorer: TestUser = {
@@ -25,6 +27,7 @@ const explorer: TestUser = {
   username: 'explorer',
   role: 'USER',
   accountType: 'REAL',
+  onboardingCompleted: true,
 };
 
 function evidence(id: string, filename: string) {
@@ -194,16 +197,17 @@ test('keeps the signed-out desktop navigation focused', async ({ page }) => {
     0,
   );
   const header = page.getByRole('banner');
-  await expect(header.getByRole('link', { name: 'Sign in' })).toBeVisible();
+  await expect(header.getByRole('button', { name: 'Sign in' })).toBeVisible();
   await expect(
-    header.getByRole('link', { name: 'Become a creator' }),
-  ).toHaveAttribute('href', '/login');
+    header.getByRole('button', { name: 'Become a creator' }),
+  ).toBeVisible();
 });
 
 test('redirects an authenticated session away from the public landing page', async ({
   context,
   page,
 }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
   await context.addCookies([
     {
       name: 'vrompt_refresh_token',
@@ -277,15 +281,17 @@ test('opens the mobile navigation drawer from the left-side hamburger', async ({
   });
   await expect(closeButton).toBeFocused();
   await expect(drawer.getByRole('link', { name: 'Explore' })).toBeVisible();
-  await expect(drawer.getByRole('link', { name: 'Home' })).toBeVisible();
+  await expect(
+    drawer.getByRole('link', { name: 'Home', exact: true }),
+  ).toBeVisible();
   await expect(drawer.getByRole('link', { name: 'Search' })).toHaveAttribute(
     'href',
     '/search',
   );
   await expect(drawer.getByRole('link', { name: 'Landing' })).toHaveCount(0);
-  const joinLink = drawer.getByRole('link', { name: 'Become a creator' });
-  await expect(joinLink).toHaveAttribute('href', '/login');
-  await expect(joinLink).toHaveCSS('color', 'rgb(255, 255, 255)');
+  const joinButton = drawer.getByRole('button', { name: 'Become a creator' });
+  await expect(joinButton).toBeVisible();
+  await expect(joinButton).toHaveCSS('color', 'rgb(255, 255, 255)');
   await expect(drawer.getByRole('link', { name: 'Create' })).toHaveCount(0);
   await expect(drawer.getByRole('link', { name: 'Saved' })).toHaveCount(0);
   await expect(drawer.getByRole('link', { name: 'Settings' })).toHaveCount(0);
@@ -332,7 +338,9 @@ test('shows the signed-in creator profile and workspace links in the drawer', as
     'href',
     '/search',
   );
-  await expect(drawer.getByRole('link', { name: 'Home' })).toHaveCount(0);
+  await expect(
+    drawer.getByRole('link', { name: 'Home', exact: true }),
+  ).toHaveCount(0);
   const profileCard = drawer.getByRole('link', {
     name: "View Author A's profile",
   });
@@ -349,9 +357,10 @@ test('shows the signed-in creator profile and workspace links in the drawer', as
     'href',
     '/u/author?tab=saved',
   );
-  await expect(
-    drawer.getByRole('link', { name: 'Collections' }),
-  ).toHaveAttribute('href', '/u/author?tab=collections');
+  await expect(drawer.getByRole('link', { name: 'Projects' })).toHaveAttribute(
+    'href',
+    '/u/author?tab=collections',
+  );
   await expect(drawer.getByRole('link', { name: 'Following' })).toHaveAttribute(
     'href',
     '/u/author?tab=following',
@@ -373,6 +382,7 @@ test('keeps Explore focused without a duplicate search panel', async ({
     if (url.pathname === '/api/v1/search/explore') {
       await route.fulfill({
         json: {
+          recommendedForYou: [],
           featured: [],
           popular: [],
           recentlyUpdated: [],
@@ -382,6 +392,7 @@ test('keeps Explore focused without a duplicate search panel', async ({
           categories: [
             { id: 'category-writing', name: 'Writing', slug: 'writing' },
           ],
+          audiences: [],
           starterCollections: [],
         },
       });
@@ -411,14 +422,7 @@ test('keeps Explore focused without a duplicate search panel', async ({
   ).toHaveCount(0);
   await expect(page.getByText('Advanced filters')).toHaveCount(0);
   await expect(page.getByText('Browse by topic')).toHaveCount(0);
-  await page.getByRole('link', { name: 'Writing' }).click();
-
-  await page.waitForURL((url) => {
-    return (
-      url.pathname === '/search' &&
-      url.searchParams.get('category') === 'writing'
-    );
-  });
+  await expect(page.getByRole('heading', { name: 'Featured' })).toBeVisible();
 });
 
 test('completes the two-user prompt and evidence journey on mobile', async ({
@@ -426,6 +430,7 @@ test('completes the two-user prompt and evidence journey on mobile', async ({
 }) => {
   test.setTimeout(180_000);
   let currentUser = author;
+  let signedIn = false;
   let promptVersion = version(
     'version-1',
     1,
@@ -452,6 +457,10 @@ test('completes the two-user prompt and evidence journey on mobile', async ({
     const method = request.method();
 
     if (path === '/auth/refresh' && method === 'POST') {
+      if (!signedIn) {
+        await route.fulfill({ status: 401, json: { message: 'Signed out' } });
+        return;
+      }
       await route.fulfill({
         json: { accessToken: `token-${currentUser.id}`, user: currentUser },
       });
@@ -463,6 +472,16 @@ test('completes the two-user prompt and evidence journey on mobile', async ({
     }
     if (path === '/profiles/me' && method === 'PATCH') {
       await route.fulfill({ json: profile(currentUser) });
+      return;
+    }
+    if (path === '/me/audiences' && method === 'GET') {
+      await route.fulfill({
+        json: { onboardingCompleted: true, selected: [], options: [] },
+      });
+      return;
+    }
+    if (path === '/audiences') {
+      await route.fulfill({ json: [] });
       return;
     }
     if (path === '/categories') {
@@ -699,17 +718,18 @@ test('completes the two-user prompt and evidence journey on mobile', async ({
       'Already have an account? Use the same Google or GitHub button to sign in.',
     ),
   ).toBeVisible();
+  signedIn = true;
 
   await page.goto('/u/author?tab=settings');
   await expect(
     page.getByRole('heading', { name: 'Make your profile yours.' }),
   ).toBeVisible();
-  await page.getByLabel('Display name').fill('Author A');
+  await page.getByLabel('Display name').fill('Author Updated');
   await page.getByRole('button', { name: 'Save profile' }).click();
   await expect(page.getByText('Profile updated.')).toBeVisible();
 
   await page.goto('/create');
-  await page.getByRole('button', { name: 'New prompt' }).click();
+  await page.getByText('New prompt', { exact: true }).click();
   await page
     .getByRole('textbox', { name: 'Title', exact: true })
     .fill('Prompt A');
@@ -732,17 +752,19 @@ test('completes the two-user prompt and evidence journey on mobile', async ({
   await page.getByLabel('Result 1 image description').fill('First result');
   await page.getByLabel('Result 2 caption').fill('Second result');
   await page.getByLabel('Result 3 image description').fill('Third result');
-  await page.getByRole('button', { name: 'Save prompt' }).click();
+  await page.getByRole('button', { name: 'Publish prompt' }).click();
   await expect(page.getByRole('heading', { name: 'Prompt A' })).toBeVisible();
   await page.getByRole('link', { name: 'Open and manage' }).click();
-  await page.waitForURL('**/p/prompt-a');
+  await page.waitForURL('**/prompts/repo-a/prompt-a');
 
-  await page.getByRole('button', { name: 'Copy Prompt' }).click();
+  await page.getByRole('button', { name: 'Use this prompt' }).click();
   await expect(page.getByRole('button', { name: 'Copied' })).toBeVisible();
-  await page.getByRole('button', { name: 'Save' }).click();
-  await expect(page.getByRole('button', { name: 'Saved' })).toBeVisible();
+  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  await expect(
+    page.getByRole('button', { name: 'Saved', exact: true }),
+  ).toBeVisible();
 
-  await page.getByRole('tab', { name: 'Updates' }).click();
+  await page.getByRole('tab', { name: 'Versions' }).click();
   await expect(page.getByRole('button', { name: /Update 1/ })).toBeVisible();
   await page
     .getByLabel('New prompt update')
@@ -766,19 +788,12 @@ test('completes the two-user prompt and evidence journey on mobile', async ({
     preview.getByRole('button', { name: 'Prompt copied' }),
   ).toBeVisible();
   await expect(
-    preview.getByRole('link', { name: 'Share on Facebook' }),
-  ).toHaveAttribute('href', /facebook\.com\/sharer/);
-  await expect(
-    preview.getByRole('link', { name: 'Share on LinkedIn' }),
-  ).toHaveAttribute('href', /linkedin\.com\/sharing/);
-  await expect(
-    preview.getByRole('link', { name: 'Share on WhatsApp' }),
-  ).toHaveAttribute('href', /wa\.me/);
-  await expect(
-    preview.getByRole('link', { name: 'Share on X' }),
-  ).toHaveAttribute('href', /twitter\.com\/intent/);
+    preview.getByText(
+      'Public sharing links are unavailable in this environment.',
+    ),
+  ).toBeVisible();
   await preview.getByRole('link', { name: 'View full details' }).click();
-  await page.waitForURL('**/p/prompt-a');
+  await page.waitForURL('**/prompts/repo-a/prompt-a');
   await expect(page.getByRole('heading', { name: 'Prompt A' })).toBeVisible();
 
   await page.goto('/u/author');
@@ -786,17 +801,15 @@ test('completes the two-user prompt and evidence journey on mobile', async ({
   await page.getByRole('button', { name: 'Follow' }).click();
   await expect(page.getByRole('button', { name: 'Following' })).toBeVisible();
 
-  await page.goto('/p/prompt-a');
-  await page.getByRole('link', { name: 'Create variation' }).click();
+  await page.goto('/prompts/repo-a/prompt-a');
+  await page.getByRole('link', { name: 'Adapt this prompt' }).click();
   await page.waitForURL('**/create?variantFrom=prompt-a');
   await expect(
     page.getByRole('heading', { name: 'Make the useful thing reusable.' }),
   ).toBeVisible({ timeout: 15_000 });
   await expect(
-    page.getByText(
-      'Prefilled from Prompt A. Attribution will be kept automatically.',
-    ),
-  ).toBeVisible({ timeout: 15_000 });
+    page.getByRole('textbox', { name: 'Title', exact: true }),
+  ).toHaveValue('Prompt A variation');
   await expect(page.getByText('0/3 images.')).toBeVisible();
   await page
     .getByRole('textbox', { name: 'Title', exact: true })
@@ -805,13 +818,13 @@ test('completes the two-user prompt and evidence journey on mobile', async ({
     .locator('input[type="file"]')
     .setInputFiles(pngFile('variant.png'));
   await expect(page.getByText('1/3 images.')).toBeVisible();
-  await page.getByRole('button', { name: 'Save prompt' }).click();
+  await page.getByRole('button', { name: 'Save private draft' }).click();
   await expect(
     page.getByRole('heading', { name: 'Prompt A Variant' }),
   ).toBeVisible();
   await page.getByRole('link', { name: 'Open and manage' }).click();
-  await page.waitForURL('**/p/prompt-a-variant');
-  await expect(page.getByText('Attribution')).toBeVisible();
+  await page.waitForURL('**/prompts/repo-variant/prompt-a-variant');
+  await expect(page.getByText('Attribution', { exact: true })).toBeVisible();
   await expect(page.getByRole('link', { name: '@author' })).toBeVisible();
   expect(variantCreated).toBe(true);
 

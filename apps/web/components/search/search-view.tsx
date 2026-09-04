@@ -12,6 +12,7 @@ import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
+import { AsyncNotice, InteractivePagination } from '@/components/ui/page';
 import { trackAnalyticsEvent } from '@/lib/analytics';
 import { apiRequest } from '@/lib/api';
 import type { AudienceOption, SearchResponse, SearchResult } from '@/lib/api';
@@ -71,6 +72,7 @@ export function SearchView({
   const [isSearching, setIsSearching] = useState(false);
   const [audienceOptions, setAudienceOptions] = useState<AudienceOption[]>([]);
   const resultsRef = useRef<HTMLDivElement>(null);
+  const requestSequenceRef = useRef(0);
 
   useEffect(() => {
     let active = true;
@@ -92,6 +94,7 @@ export function SearchView({
   }, [accessToken]);
 
   async function runSearch(filters: Filters, nextPage: number) {
+    const requestId = ++requestSequenceRef.current;
     setIsSearching(true);
     setError(null);
     const params = toSearchParams(filters, nextPage);
@@ -100,14 +103,16 @@ export function SearchView({
       const response = await apiRequest<SearchResponse>(
         `/search?${params.toString()}`,
       );
+      if (requestId !== requestSequenceRef.current) return;
       setResult(response);
       trackAnalyticsEvent('search_performed', {
         resultCount: response.total,
       });
     } catch {
+      if (requestId !== requestSequenceRef.current) return;
       setError('We could not refresh these prompts. Please try again.');
     } finally {
-      setIsSearching(false);
+      if (requestId === requestSequenceRef.current) setIsSearching(false);
     }
   }
 
@@ -134,6 +139,39 @@ export function SearchView({
         block: 'start',
       });
     });
+  }
+
+  function clearFilters() {
+    const nextFilters: Filters = {
+      ai: '',
+      audience: '',
+      category: '',
+      query: '',
+      sort: 'relevance',
+    };
+    setQuery('');
+    setCategory('');
+    setAi('');
+    setAudience('');
+    setSort('relevance');
+    setAppliedFilters(nextFilters);
+    setPage(1);
+    router.replace('/search', { scroll: false });
+    void runSearch(nextFilters, 1);
+  }
+
+  function removeAppliedFilter(key: 'ai' | 'audience' | 'category' | 'query') {
+    const nextFilters = { ...appliedFilters, [key]: '' };
+    setAppliedFilters(nextFilters);
+    if (key === 'query') setQuery('');
+    if (key === 'category') setCategory('');
+    if (key === 'ai') setAi('');
+    if (key === 'audience') setAudience('');
+    setPage(1);
+    const params = toSearchParams(nextFilters, 1);
+    params.delete('page');
+    router.replace(`/search?${params.toString()}` as Route, { scroll: false });
+    void runSearch(nextFilters, 1);
   }
 
   const activeFilterCount =
@@ -236,10 +274,48 @@ export function SearchView({
                 <option value="saves">Most saved</option>
                 <option value="likes">Most liked</option>
               </select>
+              {activeFilterCount > 0 ? (
+                <Button
+                  className="sm:col-span-3 sm:justify-self-start"
+                  onClick={clearFilters}
+                  variant="ghost"
+                >
+                  Clear all filters
+                </Button>
+              ) : null}
             </div>
           </details>
         </form>
       </Card>
+
+      {(['query', 'category', 'ai', 'audience'] as const).some(
+        (key) => appliedFilters[key],
+      ) ? (
+        <div
+          className="flex flex-wrap items-center gap-2"
+          aria-label="Active search filters"
+        >
+          <span className="text-xs font-semibold uppercase tracking-[0.14em] text-brand-mid">
+            Active filters
+          </span>
+          {(['query', 'category', 'ai', 'audience'] as const).map((key) =>
+            appliedFilters[key] ? (
+              <button
+                aria-label={`Remove ${key} filter ${appliedFilters[key]}`}
+                className="rounded-full border border-[#D8D8D8] bg-white px-3 py-1.5 text-xs font-medium hover:border-black dark:border-[#4D4D4D] dark:bg-[#151515] dark:hover:border-white"
+                key={key}
+                onClick={() => removeAppliedFilter(key)}
+                type="button"
+              >
+                {key === 'ai'
+                  ? 'AI'
+                  : key.charAt(0).toUpperCase() + key.slice(1)}
+                : {appliedFilters[key]} <span aria-hidden="true">×</span>
+              </button>
+            ) : null,
+          )}
+        </div>
+      ) : null}
 
       <div
         aria-busy={isSearching}
@@ -247,15 +323,15 @@ export function SearchView({
         ref={resultsRef}
       >
         {error ? (
-          <div
-            className="rounded-2xl border border-[#E6E6E6] bg-[#F7F7F7] px-4 py-3 text-sm text-brand-mid dark:border-[#4D4D4D] dark:bg-[#111111]"
-            role="status"
+          <AsyncNotice
+            onRetry={() => void runSearch(appliedFilters, page)}
+            tone="error"
           >
             {error}
-          </div>
+          </AsyncNotice>
         ) : null}
 
-        {!result ? <SearchSkeleton /> : null}
+        {!result && !error ? <SearchSkeleton /> : null}
 
         {result && result.items.length === 0 ? (
           <EmptyState
@@ -301,25 +377,14 @@ export function SearchView({
                 />
               ))}
             </div>
-            <div className="flex items-center justify-between gap-2 border-t border-[#E6E6E6] pt-5 dark:border-[#1A1A1A]">
-              <Button
-                disabled={page <= 1 || isSearching}
-                onClick={() => changePage(page - 1)}
-                variant="secondary"
-              >
-                Previous
-              </Button>
-              <span className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
-                Page {page}
-              </span>
-              <Button
-                disabled={!result.hasNextPage || isSearching}
-                onClick={() => changePage(page + 1)}
-                variant="secondary"
-              >
-                Next
-              </Button>
-            </div>
+            <fieldset className="contents" disabled={isSearching}>
+              <InteractivePagination
+                hasNextPage={result.hasNextPage}
+                onPageChange={changePage}
+                page={page}
+                total={result.total}
+              />
+            </fieldset>
           </>
         ) : null}
       </div>
@@ -338,9 +403,11 @@ function ResultCard({ item, query }: { item: SearchResult; query: string }) {
       <div className="flex flex-wrap gap-2">
         {item.category ? <Badge>{item.category.name}</Badge> : null}
         {item.aiCompatibility ? <Badge>{item.aiCompatibility}</Badge> : null}
-        {item.promptAudiences.slice(0, 2).map(({ audience: itemAudience }) => (
+        {(item.promptAudiences ?? [])
+          .slice(0, 2)
+          .map(({ audience: itemAudience }) => (
           <Badge key={itemAudience.slug}>{itemAudience.name}</Badge>
-        ))}
+          ))}
         {item.owner.accountType !== 'REAL' ? <Badge>Vrompt pick</Badge> : null}
         {item.origin === 'AI_GENERATED' ? <Badge>AI-generated</Badge> : null}
         {item.origin === 'IMPORTED' ? <Badge>Imported</Badge> : null}

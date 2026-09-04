@@ -1,5 +1,4 @@
 import type { Metadata } from 'next';
-import { notFound } from 'next/navigation';
 
 import { ProfileView } from '@/components/profile/profile-view';
 import { JsonLd } from '@/components/seo/json-ld';
@@ -50,9 +49,6 @@ export default async function ProfilePage({
   const { username } = await params;
   const { tab } = await searchParams;
   const profile = await getProfileSeoData(username);
-  if (!profile) {
-    notFound();
-  }
   const displayName = profile?.displayName || profile?.username || username;
 
   return (

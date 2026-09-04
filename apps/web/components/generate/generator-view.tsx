@@ -274,6 +274,30 @@ export function GeneratorView() {
               {goal.length.toLocaleString()} / 4,000 characters
             </span>
           </label>
+          {!goal ? (
+            <div
+              className="flex flex-wrap items-center gap-2"
+              aria-label="Example outcomes"
+            >
+              <span className="mr-1 text-xs font-medium text-brand-mid">
+                Try an example:
+              </span>
+              {[
+                'Review a launch plan and identify risks',
+                'Turn interview notes into key insights',
+                'Write a clear project status update',
+              ].map((example) => (
+                <button
+                  className="rounded-full border border-zinc-200 px-3 py-2 text-xs font-medium transition hover:border-zinc-500 dark:border-zinc-800 dark:hover:border-zinc-500"
+                  key={example}
+                  onClick={() => setGoal(example)}
+                  type="button"
+                >
+                  {example}
+                </button>
+              ))}
+            </div>
+          ) : null}
           {user ? (
             <details className="rounded-2xl border border-zinc-200 px-4 py-3 dark:border-zinc-800">
               <summary className="cursor-pointer text-sm font-semibold">

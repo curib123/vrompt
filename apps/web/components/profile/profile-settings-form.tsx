@@ -12,6 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { apiRequest, getMediaUrl } from '@/lib/api';
 import type { ProfileResponse } from '@/lib/api';
+import { useToast } from '@/components/ui/toast';
 
 interface ProfileForm {
   bio: string;
@@ -39,6 +40,13 @@ export function ProfileSettingsForm({
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const { pushToast } = useToast();
+  const dirty =
+    profile !== null &&
+    (form.bio !== (profile.bio ?? '') ||
+      form.displayName !== (profile.displayName ?? '') ||
+      form.username !== profile.username ||
+      form.website !== (profile.website ?? ''));
 
   const loadProfile = useEffectEvent(async () => {
     if (!accessToken) {
@@ -88,6 +96,10 @@ export function ProfileSettingsForm({
       setForm((current) => ({ ...current, username: result.username }));
       await refreshSession();
       setMessage('Profile updated.');
+      pushToast({
+        title: 'Profile updated',
+        description: 'Your public profile now shows these changes.',
+      });
       window.dispatchEvent(new Event('vrompt:profile-updated'));
     } catch (saveError: unknown) {
       setError(
@@ -122,6 +134,7 @@ export function ProfileSettingsForm({
       });
       setProfile(result);
       setMessage('Avatar updated.');
+      pushToast({ title: 'Avatar updated' });
       window.dispatchEvent(new Event('vrompt:profile-updated'));
     } catch (uploadError: unknown) {
       setError(
@@ -180,8 +193,8 @@ export function ProfileSettingsForm({
           />
         </label>
         <p className="text-xs leading-5 text-zinc-400">
-          Use a JPEG, PNG, WebP, or GIF up to 5 MB. Your Google account remains
-          the only sign-in method.
+          Use a JPEG, PNG, WebP, or GIF up to 5 MB. Your connected Google or
+          GitHub account remains your sign-in method.
         </p>
       </Card>
 
@@ -208,7 +221,7 @@ export function ProfileSettingsForm({
         >
           <FieldGroup className="sm:grid-cols-2">
             <FormField
-              description="3-32 lowercase letters, numbers, underscores, or hyphens."
+              description="3-32 lowercase letters, numbers, underscores, or hyphens. Changing this also changes your public profile link."
               label="Username"
             >
               <Input
@@ -244,6 +257,9 @@ export function ProfileSettingsForm({
               placeholder="What do you make, explore, or want to share?"
               value={form.bio}
             />
+            <span className="text-right text-xs text-brand-mid">
+              {form.bio.length}/2000
+            </span>
           </FormField>
           <FormField
             description="Include https:// so your link is safe and clickable."
@@ -271,7 +287,7 @@ export function ProfileSettingsForm({
             <p className="text-xs text-zinc-600 dark:text-zinc-400">
               Signed in as {user?.email}
             </p>
-            <Button disabled={isSaving} type="submit">
+            <Button disabled={isSaving || !dirty} type="submit">
               {isSaving ? 'Saving...' : 'Save profile'}
             </Button>
           </div>

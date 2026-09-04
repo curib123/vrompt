@@ -19,6 +19,7 @@ export function CheckoutStatusView() {
   const { accessToken, refreshSession } = useAuth();
   const [status, setStatus] = useState<PaymentStatusResponse | null>(null);
   const [attempts, setAttempts] = useState(0);
+  const [requestFailed, setRequestFailed] = useState(false);
 
   useEffect(() => {
     if (
@@ -42,11 +43,15 @@ export function CheckoutStatusView() {
           .then((nextStatus) => {
             if (!active) return;
             setStatus(nextStatus);
+            setRequestFailed(false);
             setAttempts((value) => value + 1);
             if (nextStatus.status === 'PAID') void refreshSession();
           })
           .catch(() => {
-            if (active) setAttempts((value) => value + 1);
+            if (active) {
+              setAttempts((value) => value + 1);
+              setRequestFailed(true);
+            }
           });
       },
       attempts === 0 ? 0 : 2000,
@@ -108,10 +113,19 @@ export function CheckoutStatusView() {
             Explore prompts
           </Link>
         </div>
+        {!paid && !failed && attempts > 0 ? (
+          <p aria-live="polite" className="mt-4 text-xs text-brand-mid">
+            Verification attempt {Math.min(attempts, 12)} of 12
+            {requestFailed ? ' · connection interrupted' : ''}
+          </p>
+        ) : null}
         {!paid && !failed && attempts >= 12 ? (
           <Button
             className="mt-4"
-            onClick={() => window.location.reload()}
+            onClick={() => {
+              setRequestFailed(false);
+              setAttempts(0);
+            }}
             variant="ghost"
           >
             Check again

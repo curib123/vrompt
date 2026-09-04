@@ -5,7 +5,7 @@ import { cn } from '@/lib/cn';
 import type { AudienceOption } from '@/lib/api';
 
 export function AudienceSelector({
-  options,
+  options = [],
   selectedIds,
   onChange,
   disabled = false,
@@ -15,13 +15,16 @@ export function AudienceSelector({
   onChange: (ids: string[]) => void;
   disabled?: boolean;
 }) {
+  const safeOptions = Array.isArray(options) ? options : [];
+  const safeSelectedIds = Array.isArray(selectedIds) ? selectedIds : [];
+
   function toggle(id: string) {
-    if (selectedIds.includes(id)) {
-      onChange(selectedIds.filter((selectedId) => selectedId !== id));
+    if (safeSelectedIds.includes(id)) {
+      onChange(safeSelectedIds.filter((selectedId) => selectedId !== id));
       return;
     }
-    if (selectedIds.length >= 5) return;
-    onChange([...selectedIds, id]);
+    if (safeSelectedIds.length >= 5) return;
+    onChange([...safeSelectedIds, id]);
   }
 
   return (
@@ -30,11 +33,11 @@ export function AudienceSelector({
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
           Select the types of prompts you want to discover.
         </p>
-        <Badge>{selectedIds.length} of 5 selected</Badge>
+        <Badge>{safeSelectedIds.length} of 5 selected</Badge>
       </div>
       <div className="grid gap-3 sm:grid-cols-2">
-        {options.map((option) => {
-          const selected = selectedIds.includes(option.id);
+        {safeOptions.map((option) => {
+          const selected = safeSelectedIds.includes(option.id);
           return (
             <button
               aria-pressed={selected}
@@ -44,7 +47,7 @@ export function AudienceSelector({
                   ? 'border-black bg-black text-white dark:border-white dark:bg-white dark:text-black'
                   : 'border-zinc-300 bg-white hover:border-black dark:border-zinc-700 dark:bg-zinc-950 dark:hover:border-white',
               )}
-              disabled={disabled || (!selected && selectedIds.length >= 5)}
+              disabled={disabled || (!selected && safeSelectedIds.length >= 5)}
               key={option.id}
               onClick={() => toggle(option.id)}
               type="button"

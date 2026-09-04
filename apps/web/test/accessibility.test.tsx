@@ -2,6 +2,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 
 import { Modal } from '@/components/ui/modal';
 import { Tabs } from '@/components/ui/tabs';
+import { AdminPagination, ConfirmDialog } from '@/components/admin/admin-ui';
 
 describe('shared accessibility primitives', () => {
   it('keeps keyboard focus inside an open modal', () => {
@@ -66,5 +67,36 @@ describe('shared accessibility primitives', () => {
     fireEvent.keyDown(overview, { key: 'ArrowRight' });
     expect(screen.getByRole('tab', { name: 'Prompt' })).toHaveFocus();
     expect(screen.getByText('Prompt content')).toBeVisible();
+  });
+
+  it('gives admin pagination an accessible label and current page', () => {
+    render(
+      <AdminPagination
+        hasNextPage
+        onPageChange={() => undefined}
+        page={2}
+        total={75}
+      />,
+    );
+    expect(
+      screen.getByRole('navigation', { name: 'Pagination' }),
+    ).toBeVisible();
+    expect(screen.getByText('Page 2 · 75 total')).toBeVisible();
+  });
+
+  it('requires confirmation for high-impact admin actions', () => {
+    const onConfirm = vi.fn();
+    render(
+      <ConfirmDialog
+        confirmLabel="Suspend user"
+        description="This changes access."
+        onClose={() => undefined}
+        onConfirm={onConfirm}
+        open
+        title="Suspend this user?"
+      />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Suspend user' }));
+    expect(onConfirm).toHaveBeenCalledTimes(1);
   });
 });

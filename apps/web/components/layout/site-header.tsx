@@ -13,12 +13,14 @@ import { ThemeToggle } from '@/components/theme/theme-toggle';
 import { getButtonClasses } from '@/components/ui/button';
 import { cn } from '@/lib/cn';
 import { primaryRoutes, publicPrimaryRoutes } from '@/lib/routes';
+import { useUnreadNotificationCount } from '@/components/notifications/use-unread-count';
 
 export function SiteHeader() {
   const pathname = usePathname();
   const { isLoading, user } = useAuth();
   const visiblePrimaryRoutes = user ? primaryRoutes : publicPrimaryRoutes;
   const homeHref = user ? '/dashboard' : '/';
+  const unreadCount = useUnreadNotificationCount();
 
   return (
     <header className="sticky top-0 z-30 border-b border-[#E6E6E6]/90 bg-white/95 backdrop-blur dark:border-[#1A1A1A] dark:bg-[#0D0D0D]/95">
@@ -38,9 +40,18 @@ export function SiteHeader() {
             >
               {visiblePrimaryRoutes.map((route) => (
                 <Link
+                  aria-current={
+                    pathname === route.href ||
+                    (route.href !== '/' &&
+                      pathname.startsWith(`${route.href}/`))
+                      ? 'page'
+                      : undefined
+                  }
                   className={cn(
                     'rounded-lg px-4 py-2 text-sm transition',
-                    pathname === route.href
+                    pathname === route.href ||
+                      (route.href !== '/' &&
+                        pathname.startsWith(`${route.href}/`))
                       ? 'bg-[#0D0D0D] !text-background dark:bg-white'
                       : 'text-brand-mid hover:bg-[#E6E6E6] dark:hover:bg-[#1A1A1A]',
                   )}
@@ -56,15 +67,26 @@ export function SiteHeader() {
             <ThemeToggle />
             {user ? (
               <Link
+                aria-current={
+                  pathname.startsWith('/notifications') ? 'page' : undefined
+                }
                 className={cn(
                   'rounded-lg px-4 py-2 text-sm transition',
-                  pathname === '/notifications'
+                  pathname.startsWith('/notifications')
                     ? 'bg-[#0D0D0D] !text-background dark:bg-white'
                     : 'text-brand-mid hover:bg-[#E6E6E6] dark:hover:bg-[#1A1A1A]',
                 )}
                 href="/notifications"
               >
                 Notifications
+                {unreadCount > 0 ? (
+                  <span
+                    aria-label={`${unreadCount} unread`}
+                    className="ml-2 inline-grid min-w-5 place-items-center rounded-full bg-red-600 px-1.5 py-0.5 text-[0.65rem] font-semibold text-white"
+                  >
+                    {unreadCount > 99 ? '99+' : unreadCount}
+                  </span>
+                ) : null}
               </Link>
             ) : null}
             {isLoading ? (

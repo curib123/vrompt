@@ -11,6 +11,8 @@ import { Card } from '@/components/ui/card';
 import { AlertModal, ConfirmationModal } from '@/components/ui/feedback-modal';
 import { Modal } from '@/components/ui/modal';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Input } from '@/components/ui/input';
+import { PageHeader } from '@/components/ui/page';
 import { apiRequest } from '@/lib/api';
 import type { OwnedPromptRepository } from '@/lib/api';
 import { getPublicPromptPath } from '@/lib/prompt-sharing';
@@ -22,6 +24,8 @@ export function PromptManager({ variantFrom }: { variantFrom?: string }) {
   const [dirty, setDirty] = useState(false);
   const [confirmClose, setConfirmClose] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [query, setQuery] = useState('');
+  const [visibility, setVisibility] = useState('ALL');
 
   const loadPrompts = useCallback(async () => {
     if (!accessToken) return;
@@ -57,33 +61,65 @@ export function PromptManager({ variantFrom }: { variantFrom?: string }) {
     void loadPrompts();
   }
 
+  const filteredPrompts = (prompts ?? []).filter((prompt) => {
+    const matchesQuery =
+      !query.trim() ||
+      `${prompt.title} ${prompt.description ?? ''}`
+        .toLowerCase()
+        .includes(query.trim().toLowerCase());
+    return (
+      matchesQuery && (visibility === 'ALL' || prompt.visibility === visibility)
+    );
+  });
+
   return (
     <div className="grid gap-8">
-      <section className="relative overflow-hidden rounded-[2rem] bg-[#0D0D0D] p-6 text-white shadow-[0_24px_70px_rgba(13,13,13,0.16)] sm:p-10">
-        <div className="pointer-events-none absolute -right-20 -top-28 size-80 rounded-full border-[40px] border-white/10" />
-        <div className="relative flex flex-col gap-8 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <Badge className="!border-white/30 !text-zinc-300">Workspace</Badge>
-            <h1 className="mt-4 text-4xl font-semibold tracking-[-0.07em] sm:text-6xl">
-              Your prompts, in one place.
-            </h1>
-            <p className="mt-4 max-w-2xl text-sm leading-7 text-zinc-300 sm:text-base">
-              Create new prompt systems, revisit drafts, and manage everything
-              you have published from one focused workspace.
-            </p>
-          </div>
-          <Button
-            className="shrink-0 border-white bg-white !text-on-light hover:bg-[#E6E6E6]"
-            onClick={() => setCreateOpen(true)}
-            variant="secondary"
-          >
-            <span aria-hidden="true" className="text-lg leading-none">
-              +
-            </span>
-            New prompt
+      <PageHeader
+        action={
+          <Button onClick={() => setCreateOpen(true)}>
+            <span aria-hidden="true">+</span> New prompt
           </Button>
-        </div>
-      </section>
+        }
+        description="Create prompts, revisit private drafts, and manage everything you have published."
+        eyebrow="Workspace"
+        title="Your prompts"
+      />
+
+      {prompts && prompts.length > 0 ? (
+        <Card className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_12rem_auto] sm:items-center">
+          <Input
+            aria-label="Search your prompts"
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Search your prompts"
+            type="search"
+            value={query}
+          />
+          <select
+            aria-label="Filter by visibility"
+            className="min-h-11 rounded-2xl border border-zinc-300 bg-white px-4 text-sm dark:border-zinc-700 dark:bg-zinc-950"
+            onChange={(event) => setVisibility(event.target.value)}
+            value={visibility}
+          >
+            <option value="ALL">All visibility</option>
+            <option value="PRIVATE">Private drafts</option>
+            <option value="UNLISTED">Unlisted</option>
+            <option value="PUBLIC">Public</option>
+          </select>
+          {query || visibility !== 'ALL' ? (
+            <Button
+              onClick={() => {
+                setQuery('');
+                setVisibility('ALL');
+              }}
+              variant="ghost"
+            >
+              Clear
+            </Button>
+          ) : (
+            <span />
+          )}
+        </Card>
+      ) : null}
 
       {!prompts ? (
         <div className="grid gap-4 md:grid-cols-2">
@@ -108,9 +144,26 @@ export function PromptManager({ variantFrom }: { variantFrom?: string }) {
             </Button>
           </div>
         </Card>
+      ) : filteredPrompts.length === 0 ? (
+        <Card className="py-12 text-center">
+          <h2 className="text-xl font-semibold">No matching prompts</h2>
+          <p className="mt-2 text-sm text-brand-mid">
+            Try another search or clear the visibility filter.
+          </p>
+          <Button
+            className="mt-5"
+            onClick={() => {
+              setQuery('');
+              setVisibility('ALL');
+            }}
+            variant="secondary"
+          >
+            Clear filters
+          </Button>
+        </Card>
       ) : (
         <section className="grid gap-4 md:grid-cols-2">
-          {prompts.map((prompt) => (
+          {filteredPrompts.map((prompt) => (
             <Card
               className="group flex h-full flex-col transition hover:-translate-y-1 hover:shadow-xl"
               key={prompt.id}

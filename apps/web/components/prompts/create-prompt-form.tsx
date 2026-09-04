@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { ChangeEvent, DragEvent, FormEvent } from 'react';
 
 import { useAuth } from '@/components/providers/auth-provider';
@@ -52,6 +52,7 @@ const blankVariable: DraftVariable = {
 };
 
 const blankExample: DraftExample = { input: '', output: '', title: '' };
+const draftStorageKey = 'vrompt:create-prompt-draft:v1';
 
 export function CreatePromptForm({
   embedded = false,
@@ -85,6 +86,46 @@ export function CreatePromptForm({
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [created, setCreated] = useState<PromptCreateResponse | null>(null);
+  const [draftRestored, setDraftRestored] = useState(false);
+  const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
+  const contentRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    if (variantFrom) return;
+    try {
+      const stored = window.localStorage.getItem(draftStorageKey);
+      if (!stored) return;
+      const draft = JSON.parse(stored) as {
+        title?: string;
+        slug?: string;
+        description?: string;
+        content?: string;
+        categorySlug?: string;
+        audienceIds?: string[];
+        aiCompatibility?: string;
+        license?: string;
+        visibility?: string;
+        variables?: DraftVariable[];
+        examples?: DraftExample[];
+      };
+      // Restore only serializable fields; local image files cannot be recovered safely.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setTitle(draft.title ?? '');
+      setSlug(draft.slug ?? '');
+      setDescription(draft.description ?? '');
+      setContent(draft.content ?? '');
+      setCategorySlug(draft.categorySlug ?? '');
+      setAudienceIds(draft.audienceIds ?? []);
+      setAiCompatibility(draft.aiCompatibility ?? '');
+      setLicense(draft.license ?? '');
+      setVisibility(draft.visibility ?? 'PRIVATE');
+      setVariables(draft.variables ?? []);
+      setExamples(draft.examples ?? []);
+      setDraftRestored(true);
+    } catch {
+      window.localStorage.removeItem(draftStorageKey);
+    }
+  }, [variantFrom]);
 
   useEffect(() => {
     void apiRequest<AudienceOption[]>('/audiences')
@@ -136,6 +177,45 @@ export function CreatePromptForm({
   useEffect(() => {
     onDirtyChange?.(isDirty && !created);
   }, [created, isDirty, onDirtyChange]);
+
+  useEffect(() => {
+    if (variantFrom || created || !isDirty) return;
+    const timer = window.setTimeout(() => {
+      window.localStorage.setItem(
+        draftStorageKey,
+        JSON.stringify({
+          title,
+          slug,
+          description,
+          content,
+          categorySlug,
+          audienceIds,
+          aiCompatibility,
+          license,
+          visibility,
+          variables,
+          examples,
+        }),
+      );
+      setLastSavedAt(new Date());
+    }, 600);
+    return () => window.clearTimeout(timer);
+  }, [
+    aiCompatibility,
+    audienceIds,
+    categorySlug,
+    content,
+    created,
+    description,
+    examples,
+    isDirty,
+    license,
+    slug,
+    title,
+    variables,
+    variantFrom,
+    visibility,
+  ]);
 
   useEffect(() => {
     if (!isDirty || created) {
@@ -233,6 +313,18 @@ export function CreatePromptForm({
 
     if (!content.trim()) {
       setError('Add prompt content before saving.');
+      contentRef.current?.focus();
+      return;
+    }
+
+    const variableNames = variables
+      .map((variable) => variable.name.trim().toLowerCase())
+      .filter(Boolean);
+    if (new Set(variableNames).size !== variableNames.length) {
+      setError(
+        'Each variable needs a unique name. Remove or rename duplicate variables.',
+      );
+      document.querySelector<HTMLElement>('#prompt-variables input')?.focus();
       return;
     }
 
@@ -266,6 +358,7 @@ export function CreatePromptForm({
       );
 
       setCreated(repository);
+      window.localStorage.removeItem(draftStorageKey);
 
       for (const [index, image] of evidence.entries()) {
         const body = new FormData();
@@ -363,8 +456,50 @@ export function CreatePromptForm({
       </Card>
 
       {!isPreview ? (
+        <nav
+          aria-label="Prompt form sections"
+          className="sticky top-[4.75rem] z-20 -mx-1 flex gap-2 overflow-x-auto rounded-2xl border border-[#E6E6E6] bg-white/95 p-2 shadow-sm backdrop-blur dark:border-[#292929] dark:bg-[#0D0D0D]/95"
+        >
+          {[
+            ['prompt-details', '1. Details'],
+            ['prompt-audience', '2. Audience'],
+            ['prompt-content', '3. Prompt'],
+            ['prompt-variables', '4. Variables'],
+            ['prompt-examples', '5. Examples'],
+            ['prompt-results', '6. Results'],
+          ].map(([href, label]) => (
+            <a
+              className="whitespace-nowrap rounded-xl px-3 py-2 text-xs font-semibold text-brand-mid transition hover:bg-[#F0F0EE] hover:text-foreground dark:hover:bg-[#202020]"
+              href={`#${href}`}
+              key={href}
+            >
+              {label}
+            </a>
+          ))}
+        </nav>
+      ) : null}
+      {draftRestored ? (
+        <div
+          className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200"
+          role="status"
+        >
+          <span>Your unsaved local draft was restored.</span>
+          <Button
+            className="min-h-9 px-4 py-1"
+            onClick={() => {
+              window.localStorage.removeItem(draftStorageKey);
+              setDraftRestored(false);
+            }}
+            variant="ghost"
+          >
+            Dismiss
+          </Button>
+        </div>
+      ) : null}
+
+      {!isPreview ? (
         <>
-          <Card className="grid gap-6">
+          <Card className="grid scroll-mt-36 gap-6" id="prompt-details">
             <div className="space-y-2">
               <Badge>Prompt details</Badge>
               <h2 className="text-2xl font-semibold tracking-tight">
@@ -422,7 +557,7 @@ export function CreatePromptForm({
             </FormField>
           </Card>
 
-          <Card className="grid gap-6">
+          <Card className="grid scroll-mt-36 gap-6" id="prompt-audience">
             <div className="space-y-2">
               <Badge>Audience</Badge>
               <h2 className="text-2xl font-semibold tracking-tight">
@@ -447,7 +582,7 @@ export function CreatePromptForm({
             )}
           </Card>
 
-          <Card className="grid gap-6">
+          <Card className="grid scroll-mt-36 gap-6" id="prompt-content">
             <div className="space-y-2">
               <Badge>Prompt content</Badge>
               <h2 className="text-2xl font-semibold tracking-tight">
@@ -460,6 +595,7 @@ export function CreatePromptForm({
             >
               <Textarea
                 className="min-h-72 font-mono text-sm leading-7"
+                ref={contentRef}
                 onChange={(event) => setContent(event.target.value)}
                 placeholder="You are an expert..."
                 required
@@ -489,7 +625,7 @@ export function CreatePromptForm({
             </FieldGroup>
           </Card>
 
-          <Card className="grid gap-6">
+          <Card className="grid scroll-mt-36 gap-6" id="prompt-variables">
             <div className="flex items-start justify-between gap-4">
               <div className="space-y-2">
                 <Badge>Variables</Badge>
@@ -553,7 +689,7 @@ export function CreatePromptForm({
             ) : null}
           </Card>
 
-          <Card className="grid gap-6">
+          <Card className="grid scroll-mt-36 gap-6" id="prompt-examples">
             <div className="flex items-start justify-between gap-4">
               <div className="space-y-2">
                 <Badge>Examples</Badge>
@@ -631,7 +767,7 @@ export function CreatePromptForm({
             ) : null}
           </Card>
 
-          <Card className="grid gap-6">
+          <Card className="grid scroll-mt-36 gap-6" id="prompt-results">
             <div className="flex items-start justify-between gap-4">
               <div className="space-y-2">
                 <Badge>Results images</Badge>
@@ -757,9 +893,23 @@ export function CreatePromptForm({
               Open your saved prompt
             </Link>
           ) : null}
-          <div className="flex justify-end">
-            <Button disabled={isSaving} type="submit">
-              {isSaving ? 'Saving prompt...' : 'Save prompt'}
+          <div className="sticky bottom-3 z-20 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#E6E6E6] bg-white/95 p-3 shadow-[0_16px_40px_rgba(13,13,13,0.12)] backdrop-blur dark:border-[#292929] dark:bg-[#151515]/95">
+            <p className="text-xs text-brand-mid" aria-live="polite">
+              {lastSavedAt
+                ? `Draft saved locally at ${lastSavedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+                : isDirty
+                  ? 'Saving draft locally…'
+                  : 'Start entering details to save a draft.'}
+            </p>
+            <Button
+              disabled={isSaving || !title.trim() || !content.trim()}
+              type="submit"
+            >
+              {isSaving
+                ? 'Saving prompt...'
+                : visibility === 'PUBLIC'
+                  ? 'Publish prompt'
+                  : 'Save private draft'}
             </Button>
           </div>
         </>

@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { notFound, permanentRedirect } from 'next/navigation';
+import { permanentRedirect } from 'next/navigation';
 
 import { SharedPromptTracker } from '@/components/analytics/shared-prompt-tracker';
 import { RepositoryDetail } from '@/components/prompts/repository-detail';
@@ -22,7 +22,15 @@ export async function generateMetadata({
 }: PublicPromptPageProps): Promise<Metadata> {
   const { id } = await params;
   const repository = await getPromptSeoDataById(id);
-  if (!repository) notFound();
+
+  if (!repository) {
+    return createPageMetadata({
+      title: 'Prompt',
+      description: 'Explore this reusable AI prompt on Vrompt.',
+      path: '/explore',
+      index: false,
+    });
+  }
 
   const publicPath = getPublicPromptPath(repository.id, repository.slug);
   const description = truncateSeoText(
@@ -48,7 +56,16 @@ export default async function PublicPromptPage({
 }: PublicPromptPageProps) {
   const { id, slug } = await params;
   const repository = await getPromptSeoDataById(id);
-  if (!repository) notFound();
+
+  if (!repository) {
+    return (
+      <RepositoryDetail
+        initialTab="prompt"
+        publicPath={getPublicPromptPath(id, slug)}
+        slug={slug}
+      />
+    );
+  }
 
   const publicPath = getPublicPromptPath(repository.id, repository.slug);
   if (slug !== repository.slug) permanentRedirect(publicPath);

@@ -7,6 +7,8 @@ import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { apiRequest } from '@/lib/api';
 import type { CategoryOption, TagOption } from '@/lib/api';
+import { AdminLoading, AdminPageHeader, ConfirmDialog } from './admin-ui';
+import { useToast } from '@/components/ui/toast';
 
 export function TaxonomyAdmin() {
   const { accessToken } = useAuth();
@@ -16,6 +18,12 @@ export function TaxonomyAdmin() {
   const [tag, setTag] = useState('');
   const [error, setError] = useState('');
   const [revision, setRevision] = useState(0);
+  const [pendingDelete, setPendingDelete] = useState<{
+    kind: 'Categories' | 'Tags';
+    slug: string;
+  } | null>(null);
+  const [loaded, setLoaded] = useState(false);
+  const { pushToast } = useToast();
   useEffect(() => {
     let active = true;
     void Promise.all([
@@ -27,6 +35,7 @@ export function TaxonomyAdmin() {
           setCategories(nextCategories);
           setTags(nextTags);
           setError('');
+          setLoaded(true);
         }
       })
       .catch((e: unknown) => {
@@ -98,19 +107,17 @@ export function TaxonomyAdmin() {
     }
   }
   async function removeItem(kind: 'Categories' | 'Tags', slug: string) {
-    if (
-      !accessToken ||
-      !window.confirm(
-        `Delete this ${kind === 'Categories' ? 'category' : 'tag'}? This cannot be undone.`,
-      )
-    )
-      return;
+    if (!accessToken) return;
     try {
       await apiRequest(
         `/${kind === 'Categories' ? 'categories' : 'tags'}/${slug}`,
         { accessToken, method: 'DELETE' },
       );
       setRevision((value) => value + 1);
+      setPendingDelete(null);
+      pushToast({
+        title: `${kind === 'Categories' ? 'Category' : 'Tag'} deleted`,
+      });
     } catch (caught) {
       setError(
         caught instanceof Error ? caught.message : 'Item could not be deleted',
@@ -119,21 +126,18 @@ export function TaxonomyAdmin() {
   }
   return (
     <div className="grid gap-6">
-      <Card>
-        <p className="font-mono text-xs uppercase tracking-[0.2em] text-brand-mid">
-          Administrator only
-        </p>
-        <h1 className="mt-3 text-4xl font-semibold tracking-[-0.06em]">
-          Categories & tags
-        </h1>
-        <p className="mt-3 text-sm text-brand-mid">
-          Manage the vocabulary people use to organize and discover prompts.
-        </p>
-      </Card>
+      <AdminPageHeader
+        eyebrow="Content"
+        title="Categories & tags"
+        description="Manage the vocabulary people use to organize and discover prompts."
+      />
       {error ? (
         <p className="text-sm text-red-600 dark:text-red-400" role="alert">
           {error}
         </p>
+      ) : null}
+      {!loaded && !error ? (
+        <AdminLoading label="Loading categories and tags" />
       ) : null}
       <div className="grid gap-4 xl:grid-cols-2">
         <TaxonomyList
@@ -142,7 +146,7 @@ export function TaxonomyAdmin() {
           value={category}
           onChange={setCategory}
           onCreate={createCategory}
-          onDelete={(slug) => void removeItem('Categories', slug)}
+          onDelete={(slug) => setPendingDelete({ kind: 'Categories', slug })}
           onUpdate={(slug, name) => void updateItem('Categories', slug, name)}
         />
         <TaxonomyList
@@ -151,10 +155,21 @@ export function TaxonomyAdmin() {
           value={tag}
           onChange={setTag}
           onCreate={createTag}
-          onDelete={(slug) => void removeItem('Tags', slug)}
+          onDelete={(slug) => setPendingDelete({ kind: 'Tags', slug })}
           onUpdate={(slug, name) => void updateItem('Tags', slug, name)}
         />
       </div>
+      <ConfirmDialog
+        confirmLabel="Delete permanently"
+        description={`Deleting this ${pendingDelete?.kind === 'Categories' ? 'category' : 'tag'} cannot be undone. Items in use may be protected by the server.`}
+        onClose={() => setPendingDelete(null)}
+        onConfirm={() =>
+          pendingDelete &&
+          void removeItem(pendingDelete.kind, pendingDelete.slug)
+        }
+        open={Boolean(pendingDelete)}
+        title="Delete taxonomy item?"
+      />
     </div>
   );
 }
