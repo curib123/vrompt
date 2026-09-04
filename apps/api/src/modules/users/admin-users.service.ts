@@ -6,6 +6,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { Socket } from 'node:net';
 import {
   AccountType,
   AuditActionType,
@@ -57,10 +58,12 @@ export class AdminUsersService {
 
   async system() {
     const startedAt = Date.now();
-    const [database, cache] = await Promise.allSettled([
+    const [database, cache, oracleServer, domain] = await Promise.allSettled([
       this.prisma.$queryRaw`SELECT 1`,
       this.redis.ping(),
-    ]);
+      this.checkOracleServer(),
+      this.checkDomain(),
+    ] as const);
     const databaseLatencyMs = Date.now() - startedAt;
     return {
       checkedAt: new Date().toISOString(),
@@ -73,6 +76,14 @@ export class AdminUsersService {
           latencyMs: databaseLatencyMs,
         },
         redis: { status: cache.status === 'fulfilled' ? 'up' : 'down' },
+        oracleServer:
+          oracleServer.status === 'fulfilled'
+            ? oracleServer.value
+            : { status: 'down' as const, latencyMs: null },
+        domain:
+          domain.status === 'fulfilled'
+            ? domain.value
+            : { status: 'down' as const, latencyMs: null },
       },
       integrations: {
         googleOAuth: Boolean(this.config.get<string>('GOOGLE_CLIENT_ID', '')),
@@ -83,6 +94,58 @@ export class AdminUsersService {
       },
       metrics: this.metrics.getSnapshot(),
     };
+  }
+
+  private checkOracleServer() {
+    const host = this.config.get<string>('ORACLE_HOST', '').trim();
+    if (!host) {
+      return Promise.resolve({
+        status: 'not_configured' as const,
+        latencyMs: null,
+      });
+    }
+
+    const port = this.config.get<number>('ORACLE_PORT', 22);
+    const startedAt = Date.now();
+    return new Promise<{
+      status: 'up' | 'down';
+      latencyMs: number;
+    }>((resolve) => {
+      const socket = new Socket();
+      const finish = (status: 'up' | 'down') => {
+        socket.destroy();
+        resolve({ status, latencyMs: Date.now() - startedAt });
+      };
+      socket.setTimeout(3_000);
+      socket.once('connect', () => finish('up'));
+      socket.once('timeout', () => finish('down'));
+      socket.once('error', () => finish('down'));
+      socket.connect(port, host);
+    });
+  }
+
+  private async checkDomain() {
+    const configuredUrl = this.config
+      .get<string>('VROMPT_PUBLIC_URL', '')
+      .trim();
+    const domain = this.config.get<string>('VROMPT_DOMAIN', '').trim();
+    if (!configuredUrl && !domain) {
+      return { status: 'not_configured' as const, latencyMs: null };
+    }
+
+    const baseUrl = configuredUrl || `https://${domain}`;
+    const startedAt = Date.now();
+    try {
+      const response = await fetch(`${baseUrl.replace(/\/$/, '')}/health`, {
+        signal: AbortSignal.timeout(5_000),
+      });
+      return {
+        status: response.ok ? ('up' as const) : ('down' as const),
+        latencyMs: Date.now() - startedAt,
+      };
+    } catch {
+      return { status: 'down' as const, latencyMs: Date.now() - startedAt };
+    }
   }
 
   async list(input: AdminUserQueryDto) {

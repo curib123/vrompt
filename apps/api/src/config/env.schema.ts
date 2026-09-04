@@ -19,6 +19,10 @@ export const envValidationSchema = Joi.object({
   REDIS_URL: Joi.string()
     .uri({ scheme: ['redis'] })
     .default('redis://localhost:6379'),
+  ORACLE_HOST: Joi.string().allow('').default(''),
+  ORACLE_PORT: Joi.number().port().default(22),
+  VROMPT_DOMAIN: Joi.string().hostname().allow('').default(''),
+  VROMPT_PUBLIC_URL: Joi.string().uri().allow('').default(''),
   WEB_ORIGIN: Joi.string().uri().default('http://localhost:3000'),
   JWT_ACCESS_SECRET: Joi.string()
     .min(32)
