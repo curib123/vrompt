@@ -185,6 +185,11 @@ Set `PLAYWRIGHT_EXECUTABLE_PATH` when using an existing local Chromium installat
 
 ## Production-shaped Docker stack
 
+The Oracle Cloud deployment workflow and one-time host setup are documented in
+[`docs/production-deployment.md`](docs/production-deployment.md). Releases are
+promoted through `development` and a pull request into `production`; the
+production VM does not build source code or merge branches.
+
 1. Copy `.env.production.example` to an ignored `.env.production` file.
 2. Set the domain, TLS paths, database credentials, OAuth credentials, JWT secret, storage credentials, and payment secrets.
 3. Validate the Compose configuration:
