@@ -231,7 +231,7 @@ export function AdminBillingView() {
           </button>
         </form>
         {discountError ? (
-          <p className="mt-3 text-sm text-red-600" role="alert">
+          <p className="mt-3 text-sm text-red-600 dark:text-red-300" role="alert">
             {discountError}
           </p>
         ) : null}
