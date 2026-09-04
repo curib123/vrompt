@@ -278,6 +278,14 @@ export interface AdminSystemResponse {
   dependencies: {
     database: { status: 'up' | 'down'; latencyMs: number };
     redis: { status: 'up' | 'down' };
+    oracleServer: {
+      status: 'up' | 'down' | 'not_configured';
+      latencyMs: number | null;
+    };
+    domain: {
+      status: 'up' | 'down' | 'not_configured';
+      latencyMs: number | null;
+    };
   };
   integrations: {
     googleOAuth: boolean;

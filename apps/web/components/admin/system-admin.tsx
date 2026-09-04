@@ -40,7 +40,7 @@ export function SystemAdmin() {
       </Card>
       {data ? (
         <>
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
             <Status
               label="Database"
               ok={data.dependencies.database.status === 'up'}
@@ -52,6 +52,14 @@ export function SystemAdmin() {
             />
             <Status label="Google OAuth" ok={data.integrations.googleOAuth} />
             <Status label="GitHub OAuth" ok={data.integrations.githubOAuth} />
+            <ExternalStatus
+              label="Oracle server"
+              check={data.dependencies.oracleServer}
+            />
+            <ExternalStatus
+              label="Production domain"
+              check={data.dependencies.domain}
+            />
           </div>
           <Card className="grid gap-4 sm:grid-cols-3">
             <Metric
@@ -90,6 +98,36 @@ export function SystemAdmin() {
         </Card>
       )}
     </div>
+  );
+}
+function ExternalStatus({
+  label,
+  check,
+}: {
+  label: string;
+  check: {
+    status: 'up' | 'down' | 'not_configured';
+    latencyMs: number | null;
+  };
+}) {
+  const ok = check.status === 'up';
+  const message =
+    check.status === 'not_configured'
+      ? 'Needs configuration'
+      : ok
+        ? 'Available'
+        : 'Unavailable';
+  return (
+    <Card>
+      <span
+        className={`inline-block size-2.5 rounded-full ${ok ? 'bg-emerald-500' : 'bg-amber-500'}`}
+      />
+      <p className="mt-4 font-semibold">{label}</p>
+      <p className="mt-1 text-xs text-brand-mid">
+        {message}
+        {check.latencyMs !== null ? ` · ${check.latencyMs} ms` : ''}
+      </p>
+    </Card>
   );
 }
 function Status({
