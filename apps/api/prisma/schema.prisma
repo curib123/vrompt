@@ -933,15 +933,20 @@ model PromptTag {
 }
 
 model Bookmark {
-  userId             String   @db.Uuid
-  promptRepositoryId String   @db.Uuid
-  createdAt          DateTime @default(now())
+  userId             String    @db.Uuid
+  promptRepositoryId String    @db.Uuid
+  createdAt          DateTime  @default(now())
+  lastUsedAt         DateTime?
+  useCount           Int       @default(0)
+  isFavorite         Boolean   @default(false)
+  isPinned           Boolean   @default(false)
 
   user             User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   promptRepository PromptRepository @relation(fields: [promptRepositoryId], references: [id], onDelete: Cascade)
 
   @@id([userId, promptRepositoryId])
   @@index([userId, createdAt])
+  @@index([userId, isPinned, isFavorite, lastUsedAt])
   @@index([promptRepositoryId, createdAt])
 }
 

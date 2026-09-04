@@ -36,7 +36,12 @@ export class BookmarksService {
       throw error;
     }
 
-    return { saved: true, saveCount: repository.saveCount + 1 };
+    return {
+      saved: true,
+      saveCount: repository.saveCount + 1,
+      isFavorite: false,
+      isPinned: false,
+    };
   }
 
   async remove(userId: string, slug: string) {
@@ -87,6 +92,10 @@ export class BookmarksService {
             : { createdAt: 'desc' },
         select: {
           createdAt: true,
+          lastUsedAt: true,
+          useCount: true,
+          isFavorite: true,
+          isPinned: true,
           promptRepository: {
             select: {
               id: true,
@@ -117,6 +126,54 @@ export class BookmarksService {
       total,
       hasNextPage: safePage * safePageSize < total,
     };
+  }
+
+  async use(userId: string, slug: string) {
+    const repository = await this.findReadableRepository(userId, slug);
+    const bookmark = await this.prismaService.bookmark.updateMany({
+      where: { userId, promptRepositoryId: repository.id },
+      data: { useCount: { increment: 1 }, lastUsedAt: new Date() },
+    });
+    if (bookmark.count !== 1) {
+      throw new NotFoundException('Save this prompt before using it again.');
+    }
+    return {
+      used: true,
+      useCount:
+        (
+          await this.prismaService.bookmark.findUnique({
+            where: {
+              userId_promptRepositoryId: {
+                userId,
+                promptRepositoryId: repository.id,
+              },
+            },
+            select: { useCount: true, lastUsedAt: true },
+          })
+        )?.useCount ?? 1,
+    };
+  }
+
+  async setFavorite(userId: string, slug: string, favorite: boolean) {
+    const repository = await this.findReadableRepository(userId, slug);
+    const result = await this.prismaService.bookmark.updateMany({
+      where: { userId, promptRepositoryId: repository.id },
+      data: { isFavorite: favorite },
+    });
+    if (result.count !== 1)
+      throw new NotFoundException('Save this prompt first.');
+    return { favorite };
+  }
+
+  async setPinned(userId: string, slug: string, pinned: boolean) {
+    const repository = await this.findReadableRepository(userId, slug);
+    const result = await this.prismaService.bookmark.updateMany({
+      where: { userId, promptRepositoryId: repository.id },
+      data: { isPinned: pinned },
+    });
+    if (result.count !== 1)
+      throw new NotFoundException('Save this prompt first.');
+    return { pinned };
   }
 
   private async findReadableRepository(userId: string, slug: string) {

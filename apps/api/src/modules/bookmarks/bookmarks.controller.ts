@@ -30,6 +30,37 @@ export class BookmarksController {
     return this.bookmarksService.remove(user.id, slug);
   }
 
+  @Post('prompt-repositories/:slug/use')
+  use(@Param('slug') slug: string, @CurrentUser() user: AuthenticatedUser) {
+    return this.bookmarksService.use(user.id, slug);
+  }
+
+  @Post('prompt-repositories/:slug/favorite')
+  favorite(
+    @Param('slug') slug: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.bookmarksService.setFavorite(user.id, slug, true);
+  }
+
+  @Delete('prompt-repositories/:slug/favorite')
+  unfavorite(
+    @Param('slug') slug: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.bookmarksService.setFavorite(user.id, slug, false);
+  }
+
+  @Post('prompt-repositories/:slug/pin')
+  pin(@Param('slug') slug: string, @CurrentUser() user: AuthenticatedUser) {
+    return this.bookmarksService.setPinned(user.id, slug, true);
+  }
+
+  @Delete('prompt-repositories/:slug/pin')
+  unpin(@Param('slug') slug: string, @CurrentUser() user: AuthenticatedUser) {
+    return this.bookmarksService.setPinned(user.id, slug, false);
+  }
+
   @Get('saved')
   list(
     @CurrentUser() user: AuthenticatedUser,

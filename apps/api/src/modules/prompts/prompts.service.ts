@@ -247,7 +247,13 @@ export class PromptsService {
           promptRepositoryId: repository.id,
         },
       },
-      select: { userId: true },
+      select: {
+        userId: true,
+        isFavorite: true,
+        isPinned: true,
+        useCount: true,
+        lastUsedAt: true,
+      },
     });
     const like = await this.prismaService.like.findUnique({
       where: {
@@ -263,6 +269,8 @@ export class PromptsService {
       ...repository,
       isSaved: Boolean(bookmark),
       isLiked: Boolean(like),
+      isFavorite: bookmark?.isFavorite ?? false,
+      isPinned: bookmark?.isPinned ?? false,
     };
   }
 
@@ -295,7 +303,13 @@ export class PromptsService {
             promptRepositoryId: repository.id,
           },
         },
-        select: { userId: true },
+        select: {
+          userId: true,
+          isFavorite: true,
+          isPinned: true,
+          useCount: true,
+          lastUsedAt: true,
+        },
       }),
       this.prismaService.like.findUnique({
         where: {
@@ -312,6 +326,8 @@ export class PromptsService {
       ...repository,
       isSaved: Boolean(bookmark),
       isLiked: Boolean(like),
+      isFavorite: bookmark?.isFavorite ?? false,
+      isPinned: bookmark?.isPinned ?? false,
     };
   }
 
