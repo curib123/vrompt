@@ -46,7 +46,7 @@ export class MetricsService {
       this.counters.responses2xx += 1;
     }
 
-    if (path.includes('/auth/') && statusCode >= 400) {
+    if (path.endsWith('/auth/staff/login') && statusCode >= 400) {
       this.counters.failedLogins += 1;
     }
 
