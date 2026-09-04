@@ -314,6 +314,37 @@ export class MonetizationService {
     });
   }
 
+  async deletePlan(id: string, actorId: string) {
+    return this.prisma.$transaction(async (tx) => {
+      const plan = await tx.billingPlan.findUnique({
+        where: { id },
+        include: {
+          _count: { select: { subscriptions: true, payments: true } },
+        },
+      });
+      if (!plan) throw new NotFoundException('Plan not found.');
+      if (plan.code === 'FREE')
+        throw new ConflictException(
+          'The fallback Free plan cannot be deleted.',
+        );
+      if (plan._count.subscriptions > 0 || plan._count.payments > 0)
+        throw new ConflictException(
+          'This plan has billing history. Deactivate it instead of deleting it.',
+        );
+      await tx.pricingHistory.create({
+        data: {
+          planId: id,
+          actorId,
+          changeType: 'PLAN_DELETED',
+          before: plan as unknown as Prisma.InputJsonValue,
+          after: Prisma.JsonNull,
+        },
+      });
+      await tx.billingPlan.delete({ where: { id } });
+      return { deleted: true, id };
+    });
+  }
+
   async createPromotion(input: UpsertPromotionDto, actorId: string) {
     const data = this.promotionData(input);
     return this.prisma.$transaction(async (tx) => {

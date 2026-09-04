@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   ParseUUIDPipe,
@@ -57,6 +58,15 @@ export class BillingAdminController {
     @CurrentUser() user: AuthenticatedUser,
   ) {
     return this.monetization.updatePlan(id, input, user.id);
+  }
+
+  @Delete('plans/:id')
+  @Roles(UserRole.ADMIN)
+  deletePlan(
+    @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.monetization.deletePlan(id, user.id);
   }
 
   @Post('promotions')
