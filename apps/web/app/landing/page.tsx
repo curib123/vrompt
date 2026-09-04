@@ -32,11 +32,11 @@ const problems = [
   ],
   [
     'Share them properly',
-    'A useful prompt should arrive with its source, history, and attribution intact.',
+    'A useful prompt should arrive with its history and credit intact.',
   ],
   [
     'See where they came from',
-    'Lineage makes it easier to learn from related prompts and Variants.',
+    'See which prompts inspired each other and learn from related work.',
   ],
 ] as const;
 
@@ -48,34 +48,28 @@ const realWorldProblems = [
 
 const workflow = [
   ['Find', 'Discover useful prompts by outcome, category, audience, or tool.'],
-  ['Save', 'Keep the prompts you want to use again in focused Collections.'],
+  ['Save', 'Keep the prompts you want to use again in focused Projects.'],
   ['Use', 'Copy a prompt and apply it quickly to the work in front of you.'],
+  ['Improve', 'Publish better updates while your earlier drafts stay visible.'],
   [
-    'Improve',
-    'Publish better Versions while the original history stays visible.',
-  ],
-  [
-    'Create Variant',
-    'Make an independent prompt based on another one, with attribution preserved.',
+    'Adapt this prompt',
+    'Make your own prompt from another one while keeping credit intact.',
   ],
   ['Share', 'Send a permanent Vrompt link that opens the exact public prompt.'],
 ] as const;
 
 const features = [
+  ['Prompts', 'Keep a prompt, its context, and its public home together.'],
   [
-    'Prompt Repositories',
-    'Keep a prompt, its context, and its public home together.',
-  ],
-  [
-    'Version History',
+    'History',
     'See how a prompt changed instead of guessing which draft is current.',
   ],
   [
-    'Create Variant',
-    'Start your own direction without overwriting the source prompt.',
+    'Adapt this prompt',
+    'Start your own direction without changing the original prompt.',
   ],
   [
-    'Variant Lineage',
+    'Based on / Inspired by',
     'Follow the relationship between an original and the ideas it inspired.',
   ],
   [
@@ -83,15 +77,15 @@ const features = [
     'Review real examples to understand how a prompt is meant to be used.',
   ],
   [
-    'Collections',
+    'Projects & folders',
     'Organize useful prompts around projects, workflows, and recurring tasks.',
   ],
   [
-    'Model Compatibility',
+    'Works with',
     'Record the models and tools a prompt is intended to work with.',
   ],
   [
-    'Audience Recommendations',
+    'Best for',
     'Find prompts relevant to how you work, whether you build, write, research, or design.',
   ],
   [
@@ -158,7 +152,7 @@ export default function LandingPage() {
           <SectionIntro
             eyebrow="The prompt problem"
             title="Prompts are everywhere. Your prompt library should not be."
-            text="Good AI prompts are scattered across old chats, notes, screenshots, documents, Reddit, Discord, and bookmarks. Vrompt brings them into one searchable repository."
+            text="Good AI prompts are scattered across old chats, notes, screenshots, documents, Reddit, Discord, and bookmarks. Vrompt brings them into one searchable home."
             id="problem-title"
           />
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -188,8 +182,8 @@ export default function LandingPage() {
         >
           <SectionIntro
             eyebrow="How Vrompt works"
-            title="One repository for the full prompt lifecycle."
-            text="Discover a useful prompt, save it for later, use it, improve it through Versions, or create an attributed Variant of your own."
+            title="One place to create, save, use, and improve prompts."
+            text="Discover a useful prompt, save it for later, use it, improve it, or adapt it into your own version."
             id="workflow-title"
           />
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -225,9 +219,9 @@ export default function LandingPage() {
           id="features"
         >
           <SectionIntro
-            eyebrow="Built like a repository"
-            title="Every prompt has a home, history, and source."
-            text="Vrompt keeps the prompt and its useful context together, so people can understand it, reuse it, improve it, and preserve credit."
+            eyebrow="Built for everyday work"
+            title="Every useful prompt has a home, context, and clear history."
+            text="Vrompt keeps your instructions and useful context together, so you can understand them, reuse them, improve them, and give credit where it belongs."
             id="features-title"
           />
           <div className="grid gap-x-8 gap-y-0 border-y border-[#E6E6E6] dark:border-[#292929] sm:grid-cols-2 lg:grid-cols-3">
@@ -272,7 +266,7 @@ export default function LandingPage() {
                 Find your next useful prompt.
               </h2>
               <p className="max-w-xl text-sm leading-7 text-brand-mid sm:text-base">
-                Search the repository, save what matters, and make it better.
+                Search your prompts, save what matters, and make it better.
               </p>
             </div>
             <div className="flex flex-col gap-3 sm:flex-row lg:flex-col">
@@ -324,7 +318,7 @@ function Hero() {
         <div className="grid gap-12 lg:grid-cols-[minmax(0,1fr)_minmax(19rem,0.72fr)] lg:items-center lg:gap-16">
           <div className="grid gap-7">
             <p className="font-mono text-xs font-semibold uppercase tracking-[0.24em] text-brand-mid">
-              Vrompt · AI prompt generator and repository
+              Vrompt · Your workspace for reusable AI prompts and workflows
             </p>
             <div className="grid gap-5">
               <h1
@@ -383,12 +377,12 @@ function Hero() {
 function HeroCard() {
   return (
     <div
-      aria-label="Example Vrompt prompt repository"
+      aria-label="Example saved Vrompt prompt"
       className="relative mx-auto w-full max-w-md rotate-1 rounded-[1.75rem] border border-[#D8D8D8] bg-[#0D0D0D] p-2.5 shadow-[0_32px_80px_rgba(13,13,13,0.2)] lg:rotate-2"
     >
       <div className="overflow-hidden rounded-[1.35rem] bg-white p-5 text-on-light sm:p-7">
         <div className="flex items-center justify-between border-b border-[#E6E6E6] pb-4 text-xs font-semibold">
-          <span>Prompt repository</span>
+          <span>Saved prompt</span>
           <span className="font-mono text-on-light-muted">v3</span>
         </div>
         <div className="grid gap-6 py-6">
@@ -405,14 +399,14 @@ function HeroCard() {
             recommendation.
           </p>
           <div className="rounded-2xl bg-[#F3F3F1] p-4 font-mono text-[0.68rem] leading-5 text-on-light-muted">
-            <span className="text-black">Goal:</span> Compare evidence and
+            <span className="text-black">Task:</span> Compare evidence and
             recommend...
             <br />
             <span className="text-black">History:</span> v1 → v2 → v3
           </div>
           <div className="flex items-center justify-between border-t border-[#E6E6E6] pt-5">
             <span className="text-xs font-medium text-on-light-muted">
-              Attribution preserved
+              Credit kept intact
             </span>
             <span className="rounded-full bg-black px-4 py-2 text-xs font-semibold text-white">
               Copy prompt
@@ -432,9 +426,9 @@ function VersionVariant() {
       id="version-vs-variant"
     >
       <SectionIntro
-        eyebrow="Version vs Variant"
+        eyebrow="History & adaptations"
         title="Improve the same prompt—or take it somewhere new."
-        text="The difference is simple: Versions update one prompt. Variants become independent prompts that still show where they began."
+        text="The difference is simple: update one prompt, or adapt it into an independent prompt while keeping its source clear."
         id="version-variant-title"
       />
       <div className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
@@ -453,9 +447,9 @@ function VersionVariant() {
               <span className="text-zinc-500 dark:text-zinc-300">→</span>
               <span>v3</span>
             </div>
-            <div className="pl-8 text-zinc-400">↓ Create Variant</div>
+            <div className="pl-8 text-zinc-400">↓ Adapt this prompt</div>
             <div className="flex items-center gap-3 pl-8">
-              <span>Variant v1</span>
+              <span>Adapted v1</span>
               <span className="text-zinc-500 dark:text-zinc-300">→</span>
               <span>v2</span>
             </div>
@@ -464,26 +458,25 @@ function VersionVariant() {
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
           <article className="rounded-[1.5rem] border border-[#E6E6E6] bg-white p-6 dark:border-[#292929] dark:bg-[#151515]">
             <p className="font-mono text-xs uppercase tracking-[0.18em] text-brand-mid">
-              Version
+              Update
             </p>
             <h3 className="mt-4 text-2xl font-semibold tracking-[-0.05em]">
               Update the same prompt.
             </h3>
             <p className="mt-2 text-sm leading-6 text-brand-mid">
-              Keep improving one repository while its earlier drafts remain
+              Keep improving one prompt while its earlier drafts remain
               available.
             </p>
           </article>
           <article className="rounded-[1.5rem] border border-[#E6E6E6] bg-white p-6 dark:border-[#292929] dark:bg-[#151515]">
             <p className="font-mono text-xs uppercase tracking-[0.18em] text-brand-mid">
-              Variant
+              Adapt this prompt
             </p>
             <h3 className="mt-4 text-2xl font-semibold tracking-[-0.05em]">
               Create a new independent prompt.
             </h3>
             <p className="mt-2 text-sm leading-6 text-brand-mid">
-              Build your own direction with source attribution and lineage
-              intact.
+              Build your own direction while keeping credit and origin clear.
             </p>
           </article>
         </div>
@@ -526,7 +519,7 @@ function SharingSection() {
             <span className="mb-2 block font-mono text-xs text-foreground">
               03
             </span>
-            Save, Comment, and Create Variant can request login when needed.
+            Save, comment, and adapt a prompt can request login when needed.
           </li>
         </ol>
       </div>

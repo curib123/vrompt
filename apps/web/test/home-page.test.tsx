@@ -32,8 +32,12 @@ describe('Landing page', () => {
     ).toHaveAttribute('href', '/explore');
     expect(
       screen.getByRole('heading', {
-        name: /every prompt has a home, history, and source/i,
+        name: /every useful prompt has a home, context, and clear history/i,
       }),
     ).toBeVisible();
+    expect(screen.getByText('Projects & folders')).toBeVisible();
+    expect(screen.getAllByText('Adapt this prompt').length).toBeGreaterThan(0);
+    expect(screen.queryByText('Prompt Repositories')).not.toBeInTheDocument();
+    expect(screen.queryByText('Create Variant')).not.toBeInTheDocument();
   });
 });
