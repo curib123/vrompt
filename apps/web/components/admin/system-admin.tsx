@@ -54,11 +54,17 @@ export function SystemAdmin() {
             <Status label="Google OAuth" ok={data.integrations.googleOAuth} />
             <Status label="GitHub OAuth" ok={data.integrations.githubOAuth} />
             <Status
-              label={`Storage (${data.integrations.storageDriver})`}
+              label={`Storage (${data.integrations.storageDriver ?? 'local'})`}
               ok
             />
-            <Status label="AI provider" ok={data.integrations.aiProvider} />
-            <Status label="PayMongo" ok={data.integrations.payMongo} />
+            <Status
+              label="AI provider"
+              ok={Boolean(data.integrations.aiProvider)}
+            />
+            <Status
+              label="PayMongo"
+              ok={Boolean(data.integrations.payMongo)}
+            />
             <ExternalStatus
               label="Oracle server"
               check={data.dependencies.oracleServer}
@@ -95,7 +101,11 @@ export function SystemAdmin() {
             />
             <Metric
               label="Memory usage"
-              value={`${Math.round(data.metrics.memory.rssBytes / 1024 / 1024)} MB`}
+              value={
+                data.metrics.memory
+                  ? `${Math.round(data.metrics.memory.rssBytes / 1024 / 1024)} MB`
+                  : 'Not reported'
+              }
             />
           </Card>
           <p className="text-xs text-brand-mid">
@@ -119,14 +129,15 @@ function ExternalStatus({
   check,
 }: {
   label: string;
-  check: {
+  check?: {
     status: 'up' | 'down' | 'not_configured';
     latencyMs: number | null;
   };
 }) {
-  const ok = check.status === 'up';
+  const status = check?.status ?? 'not_configured';
+  const ok = status === 'up';
   const message =
-    check.status === 'not_configured'
+    status === 'not_configured'
       ? 'Needs configuration'
       : ok
         ? 'Available'
@@ -139,7 +150,9 @@ function ExternalStatus({
       <p className="mt-4 font-semibold">{label}</p>
       <p className="mt-1 text-xs text-brand-mid">
         {message}
-        {check.latencyMs !== null ? ` · ${check.latencyMs} ms` : ''}
+        {check?.latencyMs !== null && check?.latencyMs !== undefined
+          ? ` · ${check.latencyMs} ms`
+          : ''}
       </p>
     </Card>
   );

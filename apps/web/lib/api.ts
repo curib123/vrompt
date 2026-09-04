@@ -278,11 +278,11 @@ export interface AdminSystemResponse {
   dependencies: {
     database: { status: 'up' | 'down'; latencyMs: number | null };
     redis: { status: 'up' | 'down'; latencyMs: number | null };
-    oracleServer: {
+    oracleServer?: {
       status: 'up' | 'down' | 'not_configured';
       latencyMs: number | null;
     };
-    domain: {
+    domain?: {
       status: 'up' | 'down' | 'not_configured';
       latencyMs: number | null;
     };
@@ -291,12 +291,12 @@ export interface AdminSystemResponse {
     googleOAuth: boolean;
     githubOAuth: boolean;
     cloudStorage: boolean;
-    storageDriver: string;
-    aiProvider: boolean;
-    payMongo: boolean;
+    storageDriver?: string;
+    aiProvider?: boolean;
+    payMongo?: boolean;
   };
   metrics: {
-    memory: {
+    memory?: {
       rssBytes: number;
       heapUsedBytes: number;
     };
