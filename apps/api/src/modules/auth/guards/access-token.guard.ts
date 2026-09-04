@@ -1,13 +1,17 @@
 import {
   CanActivate,
   ExecutionContext,
+  ForbiddenException,
+  HttpException,
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
+import { Reflector } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
-import { UserStatus } from '@prisma/client';
+import { UserRole, UserStatus } from '@prisma/client';
 
 import { PrismaService } from '../../prisma/prisma.service';
+import { ROLES_KEY } from '../decorators/roles.decorator';
 import type { AuthenticatedRequest } from '../auth.types';
 
 interface AccessTokenPayload {
@@ -19,6 +23,7 @@ export class AccessTokenGuard implements CanActivate {
   constructor(
     private readonly jwtService: JwtService,
     private readonly prismaService: PrismaService,
+    private readonly reflector: Reflector,
   ) {}
 
   async canActivate(context: ExecutionContext) {
@@ -50,6 +55,23 @@ export class AccessTokenGuard implements CanActivate {
         throw new UnauthorizedException('Authentication required');
       }
 
+      const allowedRoles = this.reflector.getAllAndOverride<UserRole[]>(
+        ROLES_KEY,
+        [context.getHandler(), context.getClass()],
+      );
+      const isStaff =
+        user.role === UserRole.ADMIN || user.role === UserRole.MODERATOR;
+      const isStaffAuthRoute = request.path.includes('/auth/');
+      if (
+        isStaff &&
+        !isStaffAuthRoute &&
+        !allowedRoles?.includes(user.role)
+      ) {
+        throw new ForbiddenException(
+          'Staff accounts are restricted to the control panel',
+        );
+      }
+
       request.user = {
         id: user.id,
         email: user.email,
@@ -60,7 +82,8 @@ export class AccessTokenGuard implements CanActivate {
         onboardingCompleted: user.onboardingCompleted,
       };
       return true;
-    } catch {
+    } catch (error) {
+      if (error instanceof HttpException) throw error;
       throw new UnauthorizedException('Invalid or expired access token');
     }
   }
