@@ -1,8 +1,12 @@
-import { Controller, Get } from '@nestjs/common';
+import { Controller, Get, UseGuards } from '@nestjs/common';
+import { UserRole } from '@prisma/client';
 import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 
 import { HealthResponseDto } from '../../common/dto/health-response.dto';
 import { MetricsService } from '../common/metrics.service';
+import { AccessTokenGuard } from '../auth/guards/access-token.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { RolesGuard } from '../auth/guards/roles.guard';
 
 import { HealthService } from './health.service';
 
@@ -22,6 +26,8 @@ export class HealthController {
   }
 
   @Get('metrics')
+  @UseGuards(AccessTokenGuard, RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.MODERATOR)
   @ApiOperation({
     summary: 'Aggregate application metrics without sensitive data',
   })
