@@ -16,14 +16,24 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { AccessTokenGuard } from '../auth/guards/access-token.guard';
 import { BillingService } from './billing.service';
 import { CreateCheckoutDto } from './dto/create-checkout.dto';
+import { MonetizationService } from './monetization.service';
 
 @Controller('billing')
 export class BillingController {
-  constructor(private readonly service: BillingService) {}
+  constructor(
+    private readonly service: BillingService,
+    private readonly monetization: MonetizationService,
+  ) {}
 
   @Get('plans')
   plans() {
-    return this.service.plans();
+    return this.monetization.publicPlans();
+  }
+
+  @Get('usage')
+  @UseGuards(AccessTokenGuard)
+  usage(@CurrentUser() user: AuthenticatedUser) {
+    return this.monetization.usage(user.id);
   }
 
   @Post('checkout')

@@ -10,9 +10,10 @@ import { AiEntitlementsService } from './ai-entitlements.service';
 import { AuthModule } from '../auth/auth.module';
 import { PromptsModule } from '../prompts/prompts.module';
 import { SettingsModule } from '../settings/settings.module';
+import { BillingModule } from '../billing/billing.module';
 
 @Module({
-  imports: [AuthModule, PromptsModule, SettingsModule],
+  imports: [AuthModule, BillingModule, PromptsModule, SettingsModule],
   controllers: [AiController, AiAdminController],
   providers: [
     AiGenerationService,

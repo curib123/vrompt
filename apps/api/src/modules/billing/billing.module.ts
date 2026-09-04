@@ -10,6 +10,7 @@ import {
 import { BillingAdminController } from './billing-admin.controller';
 import { BillingService } from './billing.service';
 import { PayMongoAdapter } from './paymongo.adapter';
+import { MonetizationService } from './monetization.service';
 
 @Module({
   imports: [AuthModule, PrismaModule, SettingsModule],
@@ -20,9 +21,10 @@ import { PayMongoAdapter } from './paymongo.adapter';
   ],
   providers: [
     BillingService,
+    MonetizationService,
     PayMongoAdapter,
     { provide: 'PAYMENT_GATEWAY', useExisting: PayMongoAdapter },
   ],
-  exports: [BillingService],
+  exports: [BillingService, MonetizationService],
 })
 export class BillingModule {}

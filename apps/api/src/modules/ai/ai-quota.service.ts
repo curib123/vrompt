@@ -1,4 +1,4 @@
-import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import { HttpException, HttpStatus, Injectable, Optional } from '@nestjs/common';
 import {
   AiGenerationMode,
   AiGenerationOperation,
@@ -7,10 +7,14 @@ import {
 } from '@prisma/client';
 
 import { PrismaService } from '../prisma/prisma.service';
+import { MonetizationService } from '../billing/monetization.service';
 
 @Injectable()
 export class AiQuotaService {
-  constructor(private readonly prismaService: PrismaService) {}
+  constructor(
+    private readonly prismaService: PrismaService,
+    @Optional() private readonly monetization?: MonetizationService,
+  ) {}
 
   async reserve(input: {
     subjectKey: string;
@@ -20,6 +24,15 @@ export class AiQuotaService {
     operation: AiGenerationOperation;
     limit: number | null;
   }) {
+    if (input.userId && this.monetization) {
+      await this.monetization.reserveUsage({
+        userId: input.userId,
+        featureKey: 'ai.generation',
+        requestKey: input.requestKey,
+        metadata: { mode: input.mode, operation: input.operation },
+      });
+      input.limit = null;
+    }
     const periodStart = new Date();
     periodStart.setUTCHours(0, 0, 0, 0);
     try {
