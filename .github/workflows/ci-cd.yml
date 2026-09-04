@@ -3,7 +3,7 @@ name: Vrompt CI/CD
 on:
   pull_request:
   push:
-    branches: [main]
+    branches: [development, production]
 
 concurrency:
   group: vrompt-${{ github.workflow }}-${{ github.ref }}
@@ -63,7 +63,7 @@ jobs:
 
   production:
     name: Build and publish production images
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/production'
     needs: quality
     runs-on: ubuntu-latest
     permissions:
@@ -72,8 +72,11 @@ jobs:
     env:
       IMAGE_PREFIX: ghcr.io/${{ github.repository_owner }}/vrompt
       IMAGE_TAG: ${{ github.sha }}
+      SITE_URL: ${{ vars.VROMPT_SITE_URL }}
     steps:
       - uses: actions/checkout@v4
+      - name: Require production site URL
+        run: test -n "$SITE_URL"
       - uses: docker/login-action@v3
         with:
           registry: ghcr.io
@@ -97,7 +100,9 @@ jobs:
         with:
           context: .
           file: infrastructure/docker/web.Dockerfile
-          build-args: NEXT_PUBLIC_API_BASE_URL=/api/v1
+          build-args: |
+            NEXT_PUBLIC_API_BASE_URL=/api/v1
+            NEXT_PUBLIC_SITE_URL=${{ env.SITE_URL }}
           push: true
           tags: ${{ env.IMAGE_PREFIX }}/web:${{ env.IMAGE_TAG }}
       - uses: docker/build-push-action@v6
@@ -109,28 +114,28 @@ jobs:
 
   deployment:
     name: Deploy production images
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/production'
     needs: production
     runs-on: ubuntu-latest
     env:
       IMAGE_PREFIX: ghcr.io/${{ github.repository_owner }}/vrompt
       IMAGE_TAG: ${{ github.sha }}
-      VPS_HOST: ${{ secrets.VPS_HOST }}
-      VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
-      VPS_USER: ${{ secrets.VPS_USER }}
+      DEPLOY_HOST: ${{ secrets.ORACLE_HOST || secrets.VPS_HOST }}
+      DEPLOY_SSH_KEY: ${{ secrets.ORACLE_SSH_KEY || secrets.VPS_SSH_KEY }}
+      DEPLOY_USER: ${{ secrets.ORACLE_USER || secrets.VPS_USER }}
     steps:
       - name: Report unconfigured deployment
-        if: env.VPS_HOST == '' || env.VPS_SSH_KEY == '' || env.VPS_USER == ''
-        run: echo "::notice::VPS deployment skipped because VPS_HOST, VPS_SSH_KEY, and VPS_USER are not all configured."
+        if: env.DEPLOY_HOST == '' || env.DEPLOY_SSH_KEY == '' || env.DEPLOY_USER == ''
+        run: echo "::notice::Oracle deployment skipped because ORACLE_HOST, ORACLE_SSH_KEY, and ORACLE_USER (or legacy VPS_* names) are not all configured."
       - name: Configure SSH
-        if: env.VPS_HOST != '' && env.VPS_SSH_KEY != '' && env.VPS_USER != ''
+        if: env.DEPLOY_HOST != '' && env.DEPLOY_SSH_KEY != '' && env.DEPLOY_USER != ''
         run: |
           install -m 700 -d ~/.ssh
-          printf '%s\n' "$VPS_SSH_KEY" > ~/.ssh/vrompt_deploy
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/vrompt_deploy
           chmod 600 ~/.ssh/vrompt_deploy
-          ssh-keyscan -H "$VPS_HOST" >> ~/.ssh/known_hosts
+          ssh-keyscan -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts
       - name: Deploy and verify
-        if: env.VPS_HOST != '' && env.VPS_SSH_KEY != '' && env.VPS_USER != ''
+        if: env.DEPLOY_HOST != '' && env.DEPLOY_SSH_KEY != '' && env.DEPLOY_USER != ''
         run: |
-          ssh -i ~/.ssh/vrompt_deploy "$VPS_USER@$VPS_HOST" \
-            "cd /srv/vrompt && IMAGE_TAG=$IMAGE_TAG VROMPT_IMAGE_PREFIX=$IMAGE_PREFIX ./infrastructure/deploy/deploy.sh"
+          ssh -i ~/.ssh/vrompt_deploy "$DEPLOY_USER@$DEPLOY_HOST" \
+            "cd /srv/vrompt && IMAGE_TAG=$IMAGE_TAG VROMPT_IMAGE_PREFIX=$IMAGE_PREFIX VROMPT_DEPLOY_BRANCH=production ./deploy.sh"
