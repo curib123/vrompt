@@ -9,7 +9,7 @@ import { createPageMetadata, siteConfig } from '@/lib/seo';
 export const metadata: Metadata = createPageMetadata({
   title: siteConfig.tagline,
   description:
-    'Generate structured, effective AI prompts from your goals, explore proven community prompts, and save, improve, or share what works.',
+    'Create, save, organize, improve, and reuse your best prompts across ChatGPT, Claude, Gemini, and other AI tools.',
   path: '/',
 });
 
@@ -331,16 +331,15 @@ function Hero() {
                 className="max-w-4xl text-[clamp(3.25rem,8vw,7.5rem)] font-semibold leading-[0.86] tracking-[-0.08em]"
                 id="hero-title"
               >
-                Structured AI prompts that work.
+                Turn repeated AI tasks into reusable workflows.
                 <span className="block text-zinc-500 dark:text-zinc-400">
-                  Generate them. Find them. Improve them.
+                  Create them. Use them. Make them better.
                 </span>
               </h1>
               <p className="max-w-2xl text-base leading-8 text-brand-mid sm:text-lg">
-                Turn your goal into a structured, effective AI prompt, then
-                discover, organize, and share proven prompts from the community.
-                Keep every Version, example, Variant, attribution, and update in
-                one place.
+                Create, save, organize, improve, and reuse your best prompts
+                across ChatGPT, Claude, Gemini, and other AI tools. Your best AI
+                workflows should not disappear inside old chats.
               </p>
             </div>
             <div className="flex flex-col gap-3 sm:flex-row">

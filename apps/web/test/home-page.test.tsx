@@ -13,17 +13,19 @@ describe('Badge', () => {
 });
 
 describe('Landing page', () => {
-  it('immediately explains that Vrompt is a prompt repository', () => {
+  it('immediately explains that Vrompt turns repeated tasks into workflows', () => {
     render(<LandingPage />);
 
     expect(
       screen.getByRole('heading', {
         level: 1,
-        name: /structured AI prompts that work.*generate them.*find them.*improve them/i,
+        name: /turn repeated AI tasks into reusable workflows.*create them.*use them.*make them better/i,
       }),
     ).toBeVisible();
     expect(
-      screen.getByText(/Turn your goal into a structured, effective AI prompt/i),
+      screen.getByText(
+        /Create, save, organize, improve, and reuse your best prompts/i,
+      ),
     ).toBeVisible();
     expect(
       screen.getByRole('link', { name: /explore prompts/i }),

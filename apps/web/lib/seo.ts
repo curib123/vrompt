@@ -2,16 +2,16 @@ import type { Metadata } from 'next';
 
 const fallbackSiteUrl = 'http://localhost:3000';
 const primaryTagline =
-  'Vrompt — Generate, Discover, and Improve AI Prompts That Work';
+  'Vrompt — Turn Repeated AI Tasks into Reusable Workflows';
 
 export const siteConfig = {
   name: 'Vrompt',
   tagline: primaryTagline,
   defaultTitle: primaryTagline,
   description:
-    'Generate structured, effective AI prompts from your goals, explore proven community prompts, and save, improve, or share what works.',
+    'Create, save, organize, improve, and reuse your best prompts across ChatGPT, Claude, Gemini, and other AI tools.',
   shortDescription:
-    'Vrompt helps people generate structured AI prompts, discover proven ideas, and save, improve, and share what works.',
+    'Vrompt is a workspace for reusable AI prompts and workflows.',
 } as const;
 
 export function getSiteUrl() {
