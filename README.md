@@ -25,6 +25,7 @@ infrastructure/
 docs/                  SEO and webmaster operations
 docker-compose.yml     Base local services
 docker-compose.dev.yml Local development overlay
+docker-compose.local.yml Local host-port overrides
 docker-compose.prod.yml Production-shaped stack
 docker-compose.migrate.yml One-shot production migration service
 docker-compose.deploy.yml Deployment image overlay
@@ -73,25 +74,26 @@ Docker development runs the API, web app, PostgreSQL, and Redis with source bind
 docker compose -p vrompt-dev \
   -f docker-compose.yml \
   -f docker-compose.dev.yml \
+  -f docker-compose.local.yml \
   up -d --build
 ```
 
 On PowerShell, use the same command as one line if preferred:
 
 ```powershell
-docker compose -p vrompt-dev -f docker-compose.yml -f docker-compose.dev.yml up -d --build
+docker compose -p vrompt-dev -f docker-compose.yml -f docker-compose.dev.yml -f docker-compose.local.yml up -d --build
 ```
 
-Open [http://localhost:3000](http://localhost:3000). Check service state with:
+Open [http://localhost:3001](http://localhost:3001). The API health endpoint is [http://localhost:4001/api/v1/health](http://localhost:4001/api/v1/health). Check service state with:
 
 ```bash
-docker compose -p vrompt-dev -f docker-compose.yml -f docker-compose.dev.yml ps
+docker compose -p vrompt-dev -f docker-compose.yml -f docker-compose.dev.yml -f docker-compose.local.yml ps
 ```
 
 Stop the stack without deleting its named database volume:
 
 ```bash
-docker compose -p vrompt-dev -f docker-compose.yml -f docker-compose.dev.yml down
+docker compose -p vrompt-dev -f docker-compose.yml -f docker-compose.dev.yml -f docker-compose.local.yml down
 ```
 
 Development data is stored in the named `vrompt-dev_vrompt-postgres-data` volume. Evidence files are stored in `storage/evidence` on the host. Do not use `down -v` unless you intentionally want to delete local database data.
@@ -104,6 +106,7 @@ The seed command creates the development catalog and demo data. Run it after Pos
 docker compose -p vrompt-dev \
   -f docker-compose.yml \
   -f docker-compose.dev.yml \
+  -f docker-compose.local.yml \
   --profile seed run --rm vrompt-seed
 ```
 
@@ -129,6 +132,8 @@ OAuth callback URLs must point to the API, not the web application. For local de
 http://localhost:4000/api/v1/auth/google/callback
 http://localhost:4000/api/v1/auth/github/callback
 ```
+
+When using the Docker local override, use port `4001` for the callback URLs because the API is published on that host port.
 
 ## Workspace commands
 
@@ -216,7 +221,7 @@ bash infrastructure/release/phase1-audit.sh
 Check the service logs:
 
 ```bash
-docker compose -p vrompt-dev -f docker-compose.yml -f docker-compose.dev.yml logs --tail 100 vrompt-api vrompt-web
+docker compose -p vrompt-dev -f docker-compose.yml -f docker-compose.dev.yml -f docker-compose.local.yml logs --tail 100 vrompt-api vrompt-web
 ```
 
 If a container name conflict occurs, inspect only Vrompt containers before removing stopped stale containers:
