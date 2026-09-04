@@ -99,11 +99,13 @@ export class BillingAdminController {
   }
 
   @Post('discounts')
+  @Roles(UserRole.ADMIN)
   createDiscount(@Body() input: CreateDiscountCodeDto) {
     return this.service.createDiscountCode(input);
   }
 
   @Patch('discounts/:id')
+  @Roles(UserRole.ADMIN)
   updateDiscount(
     @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
     @Body() input: UpdateDiscountCodeDto,
