@@ -20,11 +20,32 @@ export interface AuthUser {
 }
 
 export interface BillingPlan {
-  id: 'FREE' | 'PRO';
+  id: string;
   name: string;
+  description: string;
+  originalPrice: number;
   priceCentavos: number;
+  currency: string;
   billingPeriod: string;
-  features: string[];
+  billingInterval: 'DAY' | 'WEEK' | 'MONTH' | 'YEAR' | 'ONE_TIME';
+  intervalCount: number;
+  features: Array<{
+    key: string;
+    name: string;
+    unitLabel: string;
+    resetPeriod: 'DAILY' | 'MONTHLY';
+    limit: number | null;
+  }>;
+  promotion: {
+    name: string;
+    description: string | null;
+    discountType: 'PERCENTAGE' | 'FIXED_AMOUNT';
+    discountValue: number;
+    discountAmount: number;
+    startsAt: string;
+    endsAt: string;
+    timezone: string;
+  } | null;
 }
 
 export interface BillingPlansResponse {
@@ -92,6 +113,22 @@ export interface AiUsageResponse {
   resetAt: string;
   advancedTools: boolean;
   generationEnabled: boolean;
+}
+
+export interface FeatureUsageResponse {
+  plan: string;
+  usage: Array<{
+    featureKey: string;
+    featureName: string;
+    unitLabel: string;
+    resetPeriod: 'DAILY' | 'MONTHLY';
+    used: number;
+    limit: number | null;
+    remaining: number | null;
+    warning: boolean;
+    reached: boolean;
+    resetAt: string;
+  }>;
 }
 
 export interface AdminBillingOverview {
@@ -942,12 +979,16 @@ export function fetchAiUsage(accessToken?: string) {
   return apiRequest<AiUsageResponse>('/ai/usage', { accessToken });
 }
 
-export function startProCheckout(accessToken: string, discountCode?: string) {
+export function fetchFeatureUsage(accessToken: string) {
+  return apiRequest<FeatureUsageResponse>('/billing/usage', { accessToken });
+}
+
+export function startProCheckout(accessToken: string, discountCode?: string, planCode = 'PRO') {
   return apiRequest<CheckoutResponse>('/billing/checkout', {
     accessToken,
     headers: { 'idempotency-key': crypto.randomUUID() },
     method: 'POST',
-    body: discountCode ? JSON.stringify({ discountCode }) : undefined,
+    body: JSON.stringify({ planCode, discountCode: discountCode || undefined }),
   });
 }
 

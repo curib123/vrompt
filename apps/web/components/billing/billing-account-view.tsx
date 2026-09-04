@@ -9,20 +9,20 @@ import { Badge } from '@/components/ui/badge';
 import { Button, getButtonClasses } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { fetchAiUsage, fetchBillingSummary } from '@/lib/api';
-import type { AiUsageResponse, BillingSummaryResponse } from '@/lib/api';
+import { fetchBillingSummary, fetchFeatureUsage } from '@/lib/api';
+import type { BillingSummaryResponse, FeatureUsageResponse } from '@/lib/api';
 
 export function BillingAccountView() {
   const { accessToken, user } = useAuth();
   const [summary, setSummary] = useState<BillingSummaryResponse | null>(null);
-  const [usage, setUsage] = useState<AiUsageResponse | null>(null);
+  const [usage, setUsage] = useState<FeatureUsageResponse | null>(null);
   const [error, setError] = useState('');
 
   useEffect(() => {
     if (!accessToken) return;
     void Promise.all([
       fetchBillingSummary(accessToken),
-      fetchAiUsage(accessToken),
+      fetchFeatureUsage(accessToken),
     ])
       .then(([nextSummary, nextUsage]) => {
         setSummary(nextSummary);
@@ -76,26 +76,16 @@ export function BillingAccountView() {
           ) : null}
         </Card>
         <Card>
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <p className="text-sm text-brand-mid">AI generation today</p>
-              <h2 className="mt-2 text-3xl font-semibold">
-                {usage.plan === 'PRO' ? 'Unlimited' : `${usage.remaining} left`}
-              </h2>
-            </div>
-            <Badge>{usage.plan}</Badge>
+          <div className="flex items-center justify-between gap-3"><h2 className="text-xl font-semibold">Feature usage</h2><Badge>{usage.plan}</Badge></div>
+          <div className="mt-5 grid gap-5">
+            {usage.usage.map((item) => (
+              <div key={`${item.featureKey}-${item.resetPeriod}`}>
+                <div className="flex justify-between gap-3 text-sm"><span>{item.featureName} · {item.resetPeriod.toLowerCase()}</span><strong>{item.limit === null ? `${item.used} used · unlimited` : `${item.used} of ${item.limit} used`}</strong></div>
+                <div className="mt-2 h-2 overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800"><div className={`h-full rounded-full ${item.reached ? 'bg-red-600' : item.warning ? 'bg-amber-500' : 'bg-brand-mid'}`} style={{ width: `${item.limit ? Math.min((item.used / item.limit) * 100, 100) : 0}%` }} /></div>
+                <p className="mt-2 text-xs text-brand-mid">Resets {new Date(item.resetAt).toLocaleString()}. {item.reached ? 'Limit reached — upgrade for more usage.' : item.warning ? `${item.remaining} ${item.unitLabel} remaining — consider upgrading.` : ''}</p>
+              </div>
+            ))}
           </div>
-          <div className="mt-6 h-2 overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800">
-            <div
-              className="h-full rounded-full bg-brand-mid"
-              style={{
-                width: `${usage.limit ? Math.min((usage.used / usage.limit) * 100, 100) : 0}%`,
-              }}
-            />
-          </div>
-          <p className="mt-3 text-sm text-brand-mid">
-            Resets {new Date(usage.resetAt).toLocaleString()}.
-          </p>
         </Card>
       </div>
       {summary.latestPayment ? (
