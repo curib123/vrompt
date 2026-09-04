@@ -1,290 +1,234 @@
 # Vrompt
 
-Vrompt is the repository for AI prompts. This workspace contains the Phase 1 through Phase 30 MVP foundation: a TypeScript monorepo, a Next.js frontend shell, a NestJS API shell, a normalized Prisma/PostgreSQL data model, media storage adapters, Google-only authentication, user profiles, prompt organization, repository creation, repository detail pages, copy tracking, immutable prompt versions, Create Variant, Variant Lineage, saved prompt repositories, repository likes, community comments, creator follows, prompt collections, repository search, repository-first Explore, a repository-first homepage, a followed-creator activity feed, in-app notifications, repository activity history, user reporting, role-protected moderation, admin audit logs, an API security baseline, and labeled starter content.
+Vrompt is a monorepo for discovering, publishing, versioning, saving, and improving AI prompts. It provides a Next.js web application, a NestJS API, shared TypeScript packages, and Docker-based development and production environments.
 
-## Workspace layout
+## Repository structure
 
 ```text
 apps/
-  api/        NestJS API foundation
-  web/        Next.js frontend foundation
+  api/                 NestJS API, Prisma schema, migrations, and seeds
+  web/                 Next.js web application
 packages/
-  config/     Shared TypeScript and ESLint configuration
-  shared/     Shared runtime constants and utilities
-  types/      Shared TypeScript models
+  config/              Shared TypeScript and ESLint configuration
+  shared/              Shared runtime utilities
+  types/               Shared TypeScript types
 infrastructure/
-  docker/     Container definitions
-apps/api/prisma/
-              PostgreSQL schema, migrations, and seed infrastructure
-
-## Brand Identity
-
-Vrompt — Find AI Prompts That Work. Save Them. Make Them Better.
-
-Vrompt is a repository for AI prompts where people can discover prompts that
-work, save them, version them, and build better Variants. The visual system is
-monochrome and editorial: Inter for interface typography,
-near-black `#0D0D0D` for emphasis, charcoal `#1A1A1A`, mid-gray `#4D4D4D`,
-soft gray `#E6E6E6`, and white `#FFFFFF`.
+  docker/              API, web, and Nginx Dockerfiles/configuration
+  vps/                 Ubuntu/VPS bootstrap guidance
+  https/               TLS and certificate guidance
+  backups/             PostgreSQL backup and restore scripts
+  monitoring/          Production health and metrics checks
+  alpha/               Private alpha testing materials
+  beta/                Controlled beta operations materials
+  validation/          MVP validation materials
+  release/             Release audit and sign-off checks
+docs/                  SEO and webmaster operations
+docker-compose.yml     Base local services
+docker-compose.dev.yml Local development overlay
+docker-compose.prod.yml Production-shaped stack
+docker-compose.migrate.yml One-shot production migration service
+docker-compose.deploy.yml Deployment image overlay
 ```
 
-## Requirements
+## Technology
 
-- Node.js 20+
-- npm 10+
-- Docker Desktop for containerized development
+- Node.js 20 or newer and npm 10 or newer
+- TypeScript and Turborepo
+- Next.js and React
+- NestJS
+- Prisma and PostgreSQL
+- Redis
+- Docker Desktop with the Linux engine
 
-## Quick start
+## Quick start with Node.js
 
-1. Copy `.env.example` to `.env` if you want to override defaults.
-2. Install dependencies with `npm install`.
-3. Start both apps with `npm run dev`.
+1. Copy `.env.example` to `.env` and adjust values when needed.
+2. Install dependencies:
 
-## Workspace scripts
+   ```bash
+   npm install
+   ```
 
-- `npm run dev` runs the web and API apps together.
-- `npm run build` builds every workspace package.
-- `npm run lint` runs linting across the monorepo.
-- `npm run typecheck` runs TypeScript checks across the monorepo.
-- `npm run test` runs unit tests across the monorepo.
-- `npm run format` checks Prettier formatting.
+3. Start PostgreSQL and Redis, then initialize Prisma:
 
-### Database
+   ```bash
+   npm run prisma:generate --workspace @vrompt/api
+   npm run prisma:deploy --workspace @vrompt/api
+   npm run prisma:seed --workspace @vrompt/api
+   ```
 
-After PostgreSQL is available, initialize the schema with:
+4. Start the web and API applications:
 
-```bash
-npm run prisma:generate --workspace @vrompt/api
-npm run prisma:deploy --workspace @vrompt/api
-npm run prisma:seed --workspace @vrompt/api
-```
+   ```bash
+   npm run dev
+   ```
 
-### OAuth authentication
-
-Vrompt uses third-party OAuth sign-in only. Local email/password credentials are
-not supported. Google and GitHub are supported providers; each provider identity
-is stored separately so future account linking can be added without merging
-accounts by email.
-
-For Google, open the **same OAuth 2.0 Web client** whose client ID is in `.env`,
-then add this exact authorized redirect URI (including the port and path, with no
-trailing slash):
-
-`http://localhost:4000/api/v1/auth/google/callback`
-
-Set `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` in `.env`, then open Vrompt at
-`http://localhost:3000` rather than `127.0.0.1` or another hostname. The
-frontend page (`/auth/callback`) is not the provider redirect URI; the API
-receives the provider response and sends the user back to the frontend. Basic
-Google sign-in does not require a paid Google Cloud plan. Additional profile
-details can be added later inside Vrompt.
-
-For GitHub, create an OAuth App and set its authorization callback URL to:
-
-`http://localhost:4000/api/v1/auth/github/callback`
-
-Set `GITHUB_CLIENT_ID` and `GITHUB_CLIENT_SECRET` in `.env`. GitHub requests only
-the `read:user` and `user:email` scopes; if no verified provider email is
-available, Vrompt keeps the provider identity and uses an internal placeholder
-email rather than blocking sign-in or merging by email.
-
-For a deployed site, replace the local values with the public API callback URL,
-for example `https://api.example.com/api/v1/auth/google/callback`, and register
-that exact URL in the same Google OAuth client.
-
-### Staff control panel
-
-Administrators and moderators can sign in at `/staff/login` with separate
-credential-based staff accounts. Configure the bootstrap accounts with
-`ADMIN_BOOTSTRAP_EMAIL`, `ADMIN_BOOTSTRAP_USERNAME`,
-`ADMIN_BOOTSTRAP_PASSWORD`, `MODERATOR_BOOTSTRAP_EMAIL`,
-`MODERATOR_BOOTSTRAP_USERNAME`, and `MODERATOR_BOOTSTRAP_PASSWORD`. Passwords
-must contain at least 12 characters and are stored as salted scrypt hashes.
-Bootstrap credentials create the account and initial password; later password
-changes, suspension, and role changes are not overwritten when the API restarts.
-If either bootstrap identifier belongs to another account, startup fails instead
-of promoting that account. Use unique high-entropy passwords and HTTPS in every
-online environment.
-
-The role-aware control panel at `/admin` includes the moderation queue,
-audience management, analytics, and audit history. Administrators additionally
-receive user/staff and category/tag management.
-
-### User profiles
-
-Phase 7 adds public profiles at `/u/[username]` and signed-in profile editing at
-`/settings`. Profiles support display names, bios, websites, public repository
-and collection shelves, follower/following counts, and local avatar uploads.
-Local uploads are served by the API from `/media`; production storage can use
-the existing environment-aware adapter configuration.
-
-### Categories and tags
-
-Phase 8 seeds the official category set and exposes public category listing plus
-tag search/autocomplete. Signed-in users can create normalized tags, while
-category and tag edits are reserved for admins for future moderation tooling.
-
-### Prompt repositories
-
-Phase 9 adds repository creation with Version 1, metadata, variables, examples,
-visibility, safe slugs, and up to three evidence images. Phase 10 adds the
-repository detail screen at `/prompts/[id]/[slug]` (with permanent redirects
-from the legacy `/p/[slug]` route), including prompt, examples, version,
-activity, and Variant Lineage placeholders plus an accessible evidence viewer.
-Phase 11 records deduplicated copy events, and Phase 12 adds immutable versions,
-version history, basic comparison, and owner-only version publishing.
-Phase 13 adds the consistently named Create Variant flow with prefilled editing,
-creator ownership, attribution, and separate evidence for the new repository.
-Phase 14 adds a bounded, cycle-safe Variant Lineage view with original, source,
-child, and current repository relationships.
-Phase 15 adds authenticated Save and Remove actions, idempotent bookmark counting,
-and a paginated saved-repository library with newest and recently updated sorting.
-Phase 16 adds authenticated Like and Unlike actions, idempotent like counting,
-and viewer-specific liked state on repository detail pages.
-Phase 17 adds public comment threads with shallow replies, author-only editing
-and soft deletion, sanitized content, and Redis-backed creation throttling.
-Phase 18 adds follow and unfollow actions, self-follow prevention, public
-follower/following pagination, and viewer-specific profile follow state.
-Phase 19 adds collection CRUD and archive workflows, public/private visibility,
-duplicate-safe membership, ordering, and public collection detail pages.
-Phase 20 adds repository search across public prompt metadata, content, creators,
-categories, and tags with filters, sorting, pagination, and highlighted matches.
-Phase 21 adds repository-first Explore shelves for featured, popular, recently
-updated, copied, saved, and variant-rich repositories plus categories and collections.
-Phase 22 turns the public homepage into a discovery entry point with strong
-search, featured/popular/recent shelves, categories, collections, and create CTA.
-Phase 23 adds durable repository activity events and a paginated following-only
-feed for repository creation, versions, variants, and public collections.
-Phase 24 adds recipient-scoped in-app notifications, unread counts, read actions,
-and safe links for follows, likes, comments, replies, and variants.
-Phase 25 adds repository-scoped activity history for creation, published versions,
-and variants alongside the community discussion in the Activity tab.
-Phase 26 adds authenticated reports for repositories, comments, and users with
-moderator-owned statuses and recent duplicate-report suppression.
-Phase 27 adds moderator/admin report queues, hide/restore/suspend actions,
-evidence-image moderation support, and auditable moderation operations.
-Phase 28 adds admin-only, filterable, paginated audit-log viewing backed by the
-immutable administrative records created by moderation actions.
-Phase 29 adds strict CORS origin checks, security response headers, auth
-throttling, query-safe request logging, secure production cookies, and
-signature-validated evidence uploads with path-safe filenames.
-Phase 30 adds explicit real/starter/official account types, repeatable labeled
-starter accounts, repositories, variants, collections, official categories and
-tags, and discovery metric queries that exclude seeded accounts.
-Phase 31 improves mobile and tablet layouts, evidence upload affordances,
-responsive cards, tabs, dialogs, and touch targets. Phase 32 adds skip
-navigation, visible focus, keyboard tabs/menus, modal focus trapping, and
-screen-reader status/error announcements. Phase 33 adds behavioral backend
-coverage across the core domain and evidence/storage boundaries. Phase 34 adds
-an opt-in real-AppModule workflow test; run it with `RUN_INTEGRATION_TESTS=true`
-against an isolated test database using `npm run test:integration --workspace @vrompt/api`.
-Phase 35 adds a Playwright mobile browser journey covering Google-only sign-in,
-profile setup, prompt and version publishing, evidence invariants, search,
-copy/save/follow actions, variants, attribution, and notifications. Run it
-against the mocked API boundary with `START_E2E_SERVER=true npm run test:e2e
---workspace @vrompt/web`; set `PLAYWRIGHT_EXECUTABLE_PATH` when using an
-existing local Chromium binary.
-Phase 37 adds an Ubuntu VPS bootstrap, Docker log rotation, firewall and
-Fail2ban setup, automatic security updates, swap provisioning, and a
-non-root deployment runbook in `infrastructure/vps`.
-Phase 38 upgrades the edge to HTTPS-ready Nginx with HTTP redirect, TLS
-termination, security headers, API rate limiting, compression, safe static
-caching, WebSocket-compatible proxying, 16 MB upload limits, and a Certbot
-renewal runbook in `infrastructure/https`.
-Phase 39 adds PR quality gates with real database/cache services, immutable
-GHCR image publishing, one-shot Prisma migration images, SSH deployment and
-rollback scripts, and a health-gated GitHub Actions release workflow.
-Phase 40 adds encrypted off-VPS PostgreSQL backup, checksum verification,
-failure alerts, disposable restore testing, production restore safeguards, and
-Cloudinary asset recovery guidance in `infrastructure/backups`.
-
-Phase 41 adds aggregate API request, latency, authentication, evidence upload,
-and storage metrics, plus a public health check and VPS monitoring script in
-`infrastructure/monitoring`. Metrics intentionally exclude secrets and
-identifiers; counters reset when the API restarts.
-
-Phase 42 adds a privacy-conscious analytics ledger at `/api/v1/analytics` with
-allowlisted events, sanitized metadata, authenticated/anonymous capture, and a
-moderator/admin summary that excludes starter and official seeded accounts.
-
-Phase 43 adds a private alpha task plan, evidence-comprehension prompts, tester
-exit criteria, and a privacy-conscious feedback template in
-`infrastructure/alpha`.
-
-Phase 44 adds controlled-beta support intake, severity guidance, moderation and
-abuse handling, daily operator checks, rollback guidance, and a redacted report
-template in `infrastructure/beta`.
-
-Phase 45 adds the MVP validation runbook and a data-pending validation report
-template in `infrastructure/validation`, including cohort, conversion,
-retention, evidence comprehension, quality, and launch decision gates.
-
-Phase 46 adds the final launch audit command and release sign-off checklist in
-`infrastructure/release`. The audit distinguishes automated repository checks
-from external production prerequisites and does not claim launch readiness by
-itself.
-
-The development seed now creates exactly 1,000 public prompt repositories plus
-100 connected demo creators, versions, tags, variants, collections, follows,
-saves, likes, comments, notifications, activity, and analytics. Run it with
-`docker compose -f docker-compose.yml -f docker-compose.dev.yml --profile seed run --rm vrompt-seed`.
-
-## Search engine setup
-
-Production SEO operations, Search Console/Bing submission steps, proxy checks,
-and the `NEXT_PUBLIC_SITE_URL` requirement are documented in
-[`docs/seo-webmaster.md`](docs/seo-webmaster.md).
+The web application runs at [http://localhost:3000](http://localhost:3000). The API runs at [http://localhost:4000](http://localhost:4000), with its health endpoint at [http://localhost:4000/api/v1/health](http://localhost:4000/api/v1/health). Swagger is available at [http://localhost:4000/api/docs](http://localhost:4000/api/docs) when `SWAGGER_ENABLED=true`.
 
 ## Docker development
 
-Start the development stack with source bind mounts and watch mode:
+Docker development runs the API, web app, PostgreSQL, and Redis with source bind mounts and watch mode:
 
 ```bash
-docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
+docker compose -p vrompt-dev \
+  -f docker-compose.yml \
+  -f docker-compose.dev.yml \
+  up -d --build
 ```
 
-Development evidence is persisted at `./storage/evidence` on the host. Changes
-to `.ts`, `.tsx`, and CSS files are picked up without rebuilding the images;
-rebuild when dependencies, Dockerfiles, OS packages, or container configuration
-change.
-
-For the production-shaped stack, copy `.env.production.example` to an ignored
-production environment file, fill in all required secrets, and run:
-
-```bash
-docker compose --env-file .env.production -f docker-compose.prod.yml up -d --build
-```
-
-Production builds run compiled Next.js/NestJS runtimes as the non-root `node`
-user. Nginx is the only published service; PostgreSQL, Redis, web, and API are
-internal-only. Production evidence uses Cloudinary and is not stored in a Docker
-volume.
-
-This launches:
-
-- `vrompt-web`
-- `vrompt-api`
-- `vrompt-postgres`
-- `vrompt-redis`
-
-The API container applies checked-in migrations before starting the development server.
-
-### Windows prerequisite
-
-Docker Desktop's Linux engine requires WSL 2 and Virtual Machine Platform. If
-Docker reports `Virtual Machine Platform not enabled`, open PowerShell as
-Administrator in this directory and run:
+On PowerShell, use the same command as one line if preferred:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\infrastructure\docker\enable-wsl.ps1
+docker compose -p vrompt-dev -f docker-compose.yml -f docker-compose.dev.yml up -d --build
 ```
 
-Restart Windows after the script completes, then start Docker Desktop and run
-`docker compose up --build` again. If this computer is itself a virtual
-machine, nested virtualization must also be enabled by the host.
+Open [http://localhost:3000](http://localhost:3000). Check service state with:
 
-## Notes
+```bash
+docker compose -p vrompt-dev -f docker-compose.yml -f docker-compose.dev.yml ps
+```
 
-- Business features intentionally begin after this foundation.
-- PostgreSQL and Redis are exposed locally for development only.
-- The frontend is configured to call the API at `http://localhost:4000/api/v1` by default.
+Stop the stack without deleting its named database volume:
+
+```bash
+docker compose -p vrompt-dev -f docker-compose.yml -f docker-compose.dev.yml down
+```
+
+Development data is stored in the named `vrompt-dev_vrompt-postgres-data` volume. Evidence files are stored in `storage/evidence` on the host. Do not use `down -v` unless you intentionally want to delete local database data.
+
+### Development seed
+
+The seed command creates the development catalog and demo data. Run it after PostgreSQL is healthy:
+
+```bash
+docker compose -p vrompt-dev \
+  -f docker-compose.yml \
+  -f docker-compose.dev.yml \
+  --profile seed run --rm vrompt-seed
+```
+
+## Environment configuration
+
+Use `.env.example` for local development and `.env.production.example` as the production template. Never commit `.env`, `.env.production`, API keys, OAuth secrets, payment secrets, JWT secrets, or Cloudinary credentials.
+
+Important configuration groups include:
+
+| Group          | Variables                                                                   | Purpose                                |
+| -------------- | --------------------------------------------------------------------------- | -------------------------------------- |
+| Web            | `NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_API_BASE_URL`, `INTERNAL_API_BASE_URL` | Browser and server API routing         |
+| Data           | `DATABASE_URL`, `REDIS_URL`                                                 | PostgreSQL and Redis connections       |
+| AI             | `AI_API_KEY`, `AI_API_BASE_URL`, `AI_MODEL`                                 | AI generation provider and quotas      |
+| Authentication | `JWT_*`, `GOOGLE_*`, `GITHUB_*`                                             | Tokens and OAuth callbacks             |
+| Staff          | `ADMIN_BOOTSTRAP_*`, `MODERATOR_BOOTSTRAP_*`                                | Initial control-panel accounts         |
+| Media          | `MEDIA_STORAGE_DRIVER`, `MEDIA_STORAGE_LOCAL_DIR`, `CLOUDINARY_*`           | Local or Cloudinary evidence storage   |
+| Payments       | `PAYMONGO_*`                                                                | Pro subscription checkout and webhooks |
+
+OAuth callback URLs must point to the API, not the web application. For local development they are:
+
+```text
+http://localhost:4000/api/v1/auth/google/callback
+http://localhost:4000/api/v1/auth/github/callback
+```
+
+## Workspace commands
+
+Run commands from the repository root:
+
+```bash
+npm run dev          # Start all development workspaces
+npm run build        # Build all workspaces
+npm run lint         # Lint all workspaces
+npm run typecheck    # Type-check all workspaces
+npm run test         # Run all unit tests
+npm run format       # Check Prettier formatting
+npm run format:write # Apply Prettier formatting
+npm run clean        # Remove generated workspace output
+```
+
+Target an individual workspace with npm's workspace option:
+
+```bash
+npm run test --workspace @vrompt/api
+npm run test --workspace @vrompt/web
+npm run build --workspace @vrompt/api
+npm run build --workspace @vrompt/web
+```
+
+### API tests
+
+```bash
+npm test --workspace @vrompt/api
+npm run test:integration --workspace @vrompt/api
+```
+
+Integration tests require `RUN_INTEGRATION_TESTS=true` and an isolated test database. The integration test command uses `apps/api/test/jest-e2e.json`.
+
+### Web tests
+
+```bash
+npm test --workspace @vrompt/web
+npm run test:e2e --workspace @vrompt/web
+```
+
+The Playwright journey can start its own development server with:
+
+```bash
+START_E2E_SERVER=true npm run test:e2e --workspace @vrompt/web
+```
+
+Set `PLAYWRIGHT_EXECUTABLE_PATH` when using an existing local Chromium installation.
+
+## Production-shaped Docker stack
+
+1. Copy `.env.production.example` to an ignored `.env.production` file.
+2. Set the domain, TLS paths, database credentials, OAuth credentials, JWT secret, storage credentials, and payment secrets.
+3. Validate the Compose configuration:
+
+   ```bash
+   docker compose --env-file .env.production -f docker-compose.prod.yml config --quiet
+   ```
+
+4. Start the stack:
+
+   ```bash
+   docker compose --env-file .env.production -f docker-compose.prod.yml up -d --build
+   ```
+
+Production publishes only Nginx. PostgreSQL, Redis, the API, and the web runtime remain internal to the Compose network. Run migrations with the deployment workflow or the one-shot migration Compose configuration; do not manually rewrite checked-in Prisma migrations.
+
+Operational scripts and runbooks are under `infrastructure/`. The release audit is:
+
+```bash
+bash infrastructure/release/phase1-audit.sh
+```
+
+## API and application behavior
+
+- API routes are prefixed with `/api/v1`.
+- OAuth sign-in uses Google and GitHub provider identities; local user email/password authentication is not supported.
+- Staff accounts use the separate `/staff/login` flow.
+- The admin control panel is available at `/admin` for authorized staff.
+- Local evidence is served from `/media`; production can use Cloudinary.
+- Prompt repositories support immutable versions, variants, evidence images, collections, saves, likes, comments, follows, notifications, reporting, moderation, and audit history.
+
+## Troubleshooting
+
+Check the service logs:
+
+```bash
+docker compose -p vrompt-dev -f docker-compose.yml -f docker-compose.dev.yml logs --tail 100 vrompt-api vrompt-web
+```
+
+If a container name conflict occurs, inspect only Vrompt containers before removing stopped stale containers:
+
+```bash
+docker ps -a --filter name=vrompt
+```
+
+If a Docker build fails while resolving `deb.debian.org` or the Linux engine closes, restore Docker Desktop's Linux engine and BuildKit before retrying. A completed source build does not prove that the running container contains the current code; verify `docker compose ps` and the live health endpoint after recreation.
+
+For local development, avoid deleting volumes. The PostgreSQL volume contains application data, and `storage/evidence` contains uploaded local evidence.
+
+## License
+
+This repository is private and currently marked `UNLICENSED` in its package metadata.
