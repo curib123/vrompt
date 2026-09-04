@@ -166,6 +166,36 @@ export interface AdminBillingWebhookFailure {
   receivedAt: string;
 }
 
+export interface AdminBillingPlan {
+  id: string;
+  code: string;
+  name: string;
+  description: string;
+  originalPrice: number;
+  currency: string;
+  billingInterval: 'DAY' | 'WEEK' | 'MONTH' | 'YEAR' | 'ONE_TIME';
+  intervalCount: number;
+  isActive: boolean;
+  displayOrder: number;
+  limits: Array<{
+    id: string;
+    resetPeriod: 'DAILY' | 'MONTHLY';
+    limit: number | null;
+    warningAt: number;
+    feature: {
+      key: string;
+      name: string;
+      description: string | null;
+      unitLabel: string;
+    };
+  }>;
+}
+
+export interface AdminBillingConfiguration {
+  plans: AdminBillingPlan[];
+  promotions: unknown[];
+}
+
 export interface AudienceOption {
   id: string;
   name: string;
@@ -1106,4 +1136,24 @@ export function createAdminDiscount(
     method: 'POST',
     body: JSON.stringify(input),
   });
+}
+
+export function saveAdminBillingPlan(
+  accessToken: string,
+  input: Record<string, unknown>,
+  id?: string,
+) {
+  return apiRequest<AdminBillingPlan>(
+    id
+      ? `/admin/billing/plans/${encodeURIComponent(id)}`
+      : '/admin/billing/plans',
+    { accessToken, method: id ? 'PATCH' : 'POST', body: JSON.stringify(input) },
+  );
+}
+
+export function deleteAdminBillingPlan(accessToken: string, id: string) {
+  return apiRequest<{ deleted: true; id: string }>(
+    `/admin/billing/plans/${encodeURIComponent(id)}`,
+    { accessToken, method: 'DELETE' },
+  );
 }

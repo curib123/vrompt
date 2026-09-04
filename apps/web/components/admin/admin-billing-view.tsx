@@ -14,6 +14,8 @@ import type {
   AdminDiscountCode,
 } from '@/lib/api';
 import { createAdminDiscount } from '@/lib/api';
+import type { AdminBillingConfiguration } from '@/lib/api';
+import { BillingPlanManager } from './billing-plan-manager';
 
 export function AdminBillingView() {
   const { accessToken } = useAuth();
@@ -21,6 +23,8 @@ export function AdminBillingView() {
   const [payments, setPayments] = useState<AdminBillingPayment[]>([]);
   const [failures, setFailures] = useState<AdminBillingWebhookFailure[]>([]);
   const [discounts, setDiscounts] = useState<AdminDiscountCode[]>([]);
+  const [configuration, setConfiguration] =
+    useState<AdminBillingConfiguration | null>(null);
   const [discountError, setDiscountError] = useState('');
   const [discountBusy, setDiscountBusy] = useState(false);
   const [error, setError] = useState('');
@@ -41,13 +45,25 @@ export function AdminBillingView() {
       apiRequest<AdminDiscountCode[]>('/admin/billing/discounts', {
         accessToken,
       }),
+      apiRequest<AdminBillingConfiguration>('/admin/billing/configuration', {
+        accessToken,
+      }),
     ])
-      .then(([nextOverview, nextPayments, nextFailures, nextDiscounts]) => {
-        setOverview(nextOverview);
-        setPayments(nextPayments);
-        setFailures(nextFailures);
-        setDiscounts(nextDiscounts);
-      })
+      .then(
+        ([
+          nextOverview,
+          nextPayments,
+          nextFailures,
+          nextDiscounts,
+          nextConfiguration,
+        ]) => {
+          setOverview(nextOverview);
+          setPayments(nextPayments);
+          setFailures(nextFailures);
+          setDiscounts(nextDiscounts);
+          setConfiguration(nextConfiguration);
+        },
+      )
       .catch(() => setError('Billing operations could not be loaded.'));
   }, [accessToken]);
 
@@ -100,6 +116,12 @@ export function AdminBillingView() {
         <p className="text-sm text-red-600 dark:text-red-300" role="alert">
           {error}
         </p>
+      ) : null}
+      {configuration && accessToken ? (
+        <BillingPlanManager
+          accessToken={accessToken}
+          initialPlans={configuration.plans}
+        />
       ) : null}
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <Metric label="Free users" value={overview.users.free} />
@@ -231,7 +253,10 @@ export function AdminBillingView() {
           </button>
         </form>
         {discountError ? (
-          <p className="mt-3 text-sm text-red-600 dark:text-red-300" role="alert">
+          <p
+            className="mt-3 text-sm text-red-600 dark:text-red-300"
+            role="alert"
+          >
             {discountError}
           </p>
         ) : null}
