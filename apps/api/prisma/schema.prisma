@@ -683,6 +683,7 @@ model AIModel {
 }
 
 model GenerationPolicy {
+  allowedFeatures    String[]    @default(["chat"])
   id                 String      @id @default(uuid()) @db.Uuid
   planId             String      @db.Uuid
   plan               BillingPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
@@ -725,6 +726,7 @@ model Message {
   conversationId String           @db.Uuid
   conversation   Conversation     @relation(fields: [conversationId], references: [id], onDelete: Cascade)
   role           String           @db.VarChar(16)
+  artifacts      Json             @default("[]")
   content        String           @default("") @db.Text
   modelName      String?          @db.VarChar(160)
   provider       ModelProvider?
@@ -758,6 +760,7 @@ model Attachment {
   mimeType       String       @db.VarChar(80)
   size           Int
   storageKey     String       @unique @db.VarChar(255)
+  generated      Boolean      @default(false)
   createdAt      DateTime     @default(now())
 
   @@index([userId, conversationId])

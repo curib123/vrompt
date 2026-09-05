@@ -66,6 +66,10 @@ export class ChatService {
       throw new ForbiddenException(
         'This selection is not included in your plan.',
       );
+    if (!policy.allowedFeatures.includes(input.feature ?? 'chat'))
+      throw new ForbiddenException(
+        'This task is not included in your allowance.',
+      );
     if (input.content.length > policy.maxInputChars)
       throw new BadRequestException('Message exceeds your plan’s input limit.');
     const files = await this.files.forConversation(userId, conversationId);
@@ -90,7 +94,7 @@ export class ChatService {
       history = history.slice(0, index - 1);
     }
     const messages = [
-      ...history.map((m) => ({ role: m.role, content: m.content })),
+      ...history.map((m) => ({ role: m.role, content: m.content || '[Generated image in this conversation; image bytes are not attached to this request.]' })),
       { role: 'user', content: input.content },
     ];
     // Conservative UTF-8 byte ceiling avoids silently truncating conversation history.
@@ -103,10 +107,21 @@ export class ChatService {
       );
     const capabilities = [
       'text',
+      ...(input.feature === 'image_generation' ? ['image_generation'] : []),
       ...(files.some((f) => f.mimeType.startsWith('image/')) ? ['vision'] : []),
-      ...(files.some((f) => !f.mimeType.startsWith('image/')) ? ['files'] : []),
+      ...(files.some((f) => f.mimeType === 'application/pdf') ? ['files'] : []),
     ];
-    const available = await this.registry.available();
+    const available = (await this.registry.available()).filter(
+      (m) =>
+        !(
+          m.provider === 'MISTRAL' &&
+          files.some((f) => f.mimeType === 'application/pdf')
+        ) &&
+        !(
+          input.feature === 'image_generation' &&
+          !['OPENAI', 'GOOGLE', 'MISTRAL'].includes(m.provider)
+        ),
+    );
     const permitted = available.filter((m) =>
       input.mode === 'AUTO'
         ? policies.some((p) => p.bucket === 'AUTO')
@@ -155,6 +170,12 @@ export class ChatService {
       .digest('hex');
     await this.quota.reserve(userId, input.requestId, fingerprint, policy);
     let text = '';
+    const artifacts: {
+      id: string;
+      name: string;
+      mimeType: string;
+      size: number;
+    }[] = [];
     let status: GenerationStatus = 'FAILED';
     let assistantId: string | undefined;
     let actual = original;
@@ -206,8 +227,27 @@ export class ChatService {
               emit({ type: 'delta', text: delta });
             },
             usage,
+            {
+              feature: input.feature,
+              image: async (mimeType, base64) => {
+                consumed = true;
+                if (artifacts.length >= 4)
+                  throw new ProviderFailure('OUTPUT_LIMIT', false);
+                const artifact = await this.files.saveGenerated(
+                  userId,
+                  conversationId,
+                  mimeType,
+                  base64,
+                );
+                artifacts.push(artifact);
+                emit({ type: 'artifact', artifact });
+              },
+            },
           );
-          if (!text.trim()) throw new ProviderFailure('EMPTY_RESPONSE');
+          if (!text.trim() && !artifacts.length)
+            throw new ProviderFailure('EMPTY_RESPONSE');
+          if (input.feature === 'image_generation' && !artifacts.length)
+            throw new ProviderFailure('NO_IMAGE_RETURNED', false);
           attemptStatus = 'SUCCEEDED';
           status = 'SUCCEEDED';
           consumed = true;
@@ -221,7 +261,7 @@ export class ChatService {
               : 'NETWORK_ERROR';
           attemptStatus = combined.aborted
             ? 'CANCELLED'
-            : text
+            : text || artifacts.length
               ? 'INTERRUPTED'
               : 'FAILED';
           status = attemptStatus;
@@ -229,6 +269,7 @@ export class ChatService {
           failureReason = errorCategory;
           if (
             input.mode === 'MANUAL' ||
+            consumed ||
             text ||
             combined.aborted ||
             (error instanceof ProviderFailure && !error.retryable) ||
@@ -236,6 +277,12 @@ export class ChatService {
           )
             throw error;
         } finally {
+          if (
+            input.feature === 'image_generation' ||
+            (model.provider === 'GOOGLE' &&
+              model.capabilities.includes('image_generation'))
+          )
+            usage.raw.toolCostUnverified = true;
           if (!usage.reported) {
             usage.input = context;
             usage.output = Buffer.byteLength(text); // explicitly estimated, including failed attempts
@@ -268,11 +315,13 @@ export class ChatService {
       emit({
         type: 'error',
         message:
-          input.mode === 'MANUAL'
-            ? 'This model is temporarily unavailable. Use recommended alternative.'
-            : combined.aborted
-              ? 'Generation stopped.'
-              : 'No response was completed. Please try again.',
+          failureReason === 'NO_IMAGE_RETURNED'
+            ? 'The model returned no image. Try a different prompt or image-capable model.'
+            : input.mode === 'MANUAL'
+              ? 'This model is temporarily unavailable. Use recommended alternative.'
+              : combined.aborted
+                ? 'Generation stopped.'
+                : 'No response was completed. Please try again.',
       });
     } finally {
       await this.prisma.$transaction(async (tx) => {
@@ -283,6 +332,7 @@ export class ChatService {
             where: { id: assistantId },
             data: {
               content: text,
+              artifacts,
               status,
               modelName: actual.displayName,
               provider: actual.provider,
@@ -345,7 +395,7 @@ export class ChatService {
         additional: model.additionalPrices,
       },
       estimatedCost: estimateCost(model, usage),
-      costEstimated: !usage.reported,
+      costEstimated: !usage.reported || Boolean(usage.raw.toolCostUnverified),
       currency: model.currency,
       latencyMs,
       status,

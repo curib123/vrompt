@@ -182,6 +182,7 @@ export class QuotaService {
         );
         return {
           bucket: policy.bucket,
+          allowedFeatures: policy.allowedFeatures,
           dailyLimit: policy.dailyLimit + (daily?.extra ?? 0),
           monthlyLimit: policy.monthlyLimit + (monthly?.extra ?? 0),
           dailyRemaining: Math.max(

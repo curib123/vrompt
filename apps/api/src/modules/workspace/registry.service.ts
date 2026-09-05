@@ -31,6 +31,7 @@ export const modelSchema = Joi.object({
         'coding',
         'reasoning',
         'long_context',
+        'image_generation',
       ),
     )
     .min(1)
@@ -63,6 +64,10 @@ export const modelSchema = Joi.object({
     .default(null),
 });
 export const policySchema = Joi.object({
+  allowedFeatures: Joi.array()
+    .items(Joi.string().valid('chat', 'image_generation'))
+    .min(1)
+    .default(['chat']),
   planId: Joi.string().uuid().required(),
   bucket: Joi.string().max(80).required(),
   modelId: Joi.string().uuid().allow(null).default(null),
@@ -187,6 +192,14 @@ export class ModelRegistryService {
       modelSchema,
       input,
     );
+    if (
+      Array.isArray(data.capabilities) &&
+      data.capabilities.includes('image_generation') &&
+      !['OPENAI', 'GOOGLE', 'MISTRAL'].includes(data.provider)
+    )
+      throw new BadRequestException(
+        'Image generation is currently integrated for OpenAI, Google and Mistral only.',
+      );
     if (id && data.fallbackId === id)
       throw new BadRequestException('A model cannot fall back to itself');
     if (

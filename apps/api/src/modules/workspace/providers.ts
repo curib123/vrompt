@@ -1,6 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { AIModel, ModelProvider, Prisma } from '@prisma/client';
 
+export type ProviderOptions = {
+  feature?: 'chat' | 'image_generation';
+  image?: (mimeType: string, base64: string) => Promise<void>;
+};
 export type ProviderMessage = { role: string; content: string };
 export type ProviderFile = { name: string; mimeType: string; data: Buffer };
 export type NormalizedUsage = {
@@ -69,6 +73,7 @@ export interface AIProvider {
     signal: AbortSignal,
     delta: (text: string) => void,
     usage: NormalizedUsage,
+    options?: ProviderOptions,
   ): Promise<void>;
 }
 
@@ -107,6 +112,7 @@ export class OpenAIProvider implements AIProvider {
     signal: AbortSignal,
     delta: (text: string) => void,
     usage: NormalizedUsage,
+    options?: ProviderOptions,
   ) {
     const input: any[] = messages.map((m) => ({
       role: m.role,
@@ -144,6 +150,12 @@ export class OpenAIProvider implements AIProvider {
         max_output_tokens: maxOutput,
         stream: true,
         store: false,
+        ...(options?.feature === 'image_generation'
+          ? {
+              tools: [{ type: 'image_generation', output_format: 'png' }],
+              tool_choice: { type: 'image_generation' },
+            }
+          : {}),
       },
       signal,
     );
@@ -164,6 +176,14 @@ export class OpenAIProvider implements AIProvider {
           raw: u,
           reported: true,
         });
+      }
+      if (e.type === 'response.completed') {
+        for (const item of e.response?.output ?? []) {
+          if (item.type === 'image_generation_call' && item.result) {
+            usage.raw = { ...usage.raw, toolCostUnverified: true };
+            await options?.image?.('image/png', item.result);
+          }
+        }
       }
       if (e.type === 'response.completed' || e.type === 'response.incomplete')
         complete = true;
@@ -186,6 +206,7 @@ export class GoogleProvider implements AIProvider {
     signal: AbortSignal,
     delta: (text: string) => void,
     usage: NormalizedUsage,
+    options?: ProviderOptions,
   ) {
     const contents = messages.map((m) => ({
       role: m.role === 'assistant' ? 'model' : 'user',
@@ -206,14 +227,26 @@ export class GoogleProvider implements AIProvider {
     const body = await request(
       `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model.providerModelId)}:streamGenerateContent?alt=sse`,
       { 'x-goog-api-key': process.env.GOOGLE_AI_API_KEY! },
-      { contents, generationConfig: { maxOutputTokens: maxOutput } },
+      {
+        contents,
+        generationConfig: {
+          maxOutputTokens: maxOutput,
+          ...(options?.feature === 'image_generation'
+            ? { responseModalities: ['TEXT', 'IMAGE'] }
+            : {}),
+        },
+      },
       signal,
     );
     let complete = false;
     for await (const e of readEvents(body)) {
       if (e.error) throw new ProviderFailure('PROVIDER_ERROR');
-      for (const part of e.candidates?.[0]?.content?.parts ?? [])
+      for (const part of e.candidates?.[0]?.content?.parts ?? []) {
         if (part.text && !part.thought) delta(part.text);
+        if (part.inlineData?.data && options?.feature === 'image_generation') {
+          await options.image?.(part.inlineData.mimeType, part.inlineData.data);
+        }
+      }
       if (e.candidates?.[0]?.finishReason) complete = true;
       if (e.usageMetadata) {
         const u = e.usageMetadata;
@@ -243,7 +276,10 @@ export class AnthropicProvider implements AIProvider {
     signal: AbortSignal,
     delta: (text: string) => void,
     usage: NormalizedUsage,
+    options?: ProviderOptions,
   ) {
+    if (options?.feature === 'image_generation')
+      throw new ProviderFailure('UNSUPPORTED_FEATURE', false);
     const input: any[] = messages.map((m) => ({
       role: m.role,
       content: [{ type: 'text', text: m.content }],
@@ -313,6 +349,7 @@ export class MistralProvider implements AIProvider {
     signal: AbortSignal,
     delta: (text: string) => void,
     usage: NormalizedUsage,
+    options?: ProviderOptions,
   ) {
     const input: any[] = messages.map((m) => ({
       role: m.role,
@@ -334,11 +371,7 @@ export class MistralProvider implements AIProvider {
               url: `data:${file.mimeType};base64,${file.data.toString('base64')}`,
             },
           });
-        else
-          content.push({
-            type: 'text',
-            text: `File ${file.name} was attached but cannot be parsed by this model.`,
-          });
+        else throw new ProviderFailure('UNSUPPORTED_FILE', false);
       }
       last.content = content;
     }
@@ -350,7 +383,9 @@ export class MistralProvider implements AIProvider {
         messages: input,
         max_tokens: maxOutput,
         stream: true,
-        stream_options: { include_usage: true },
+        ...(options?.feature === 'image_generation'
+          ? { tools: [{ type: 'image_generation' }] }
+          : {}),
       },
       signal,
     );
@@ -360,16 +395,59 @@ export class MistralProvider implements AIProvider {
       const choice = event.choices?.[0];
       const content = choice?.delta?.content;
       if (typeof content === 'string') delta(content);
-      else if (Array.isArray(content))
-        for (const part of content)
-          if (typeof part?.text === 'string') delta(part.text);
+      else if (Array.isArray(content)) {
+        for (const part of content) {
+          if (part?.type === 'text' && typeof part.text === 'string')
+            delta(part.text);
+          if (
+            part?.type === 'tool_file' &&
+            part.tool === 'image_generation' &&
+            part.file_id
+          ) {
+            const response = await fetch(
+              `https://api.mistral.ai/v1/files/${encodeURIComponent(part.file_id)}/content`,
+              {
+                headers: {
+                  Authorization: `Bearer ${process.env.MISTRAL_API_KEY}`,
+                },
+                signal,
+                redirect: 'error',
+              },
+            );
+            if (!response.ok || !response.body)
+              throw new ProviderFailure('IMAGE_DOWNLOAD_FAILED');
+            const reader = response.body.getReader();
+            const chunks: Uint8Array[] = [];
+            let size = 0;
+            try {
+              while (true) {
+                const { value, done } = await reader.read();
+                if (done) break;
+                size += value.length;
+                if (size > 20_000_000) {
+                  await reader.cancel();
+                  throw new ProviderFailure('OUTPUT_LIMIT', false);
+                }
+                chunks.push(value);
+              }
+            } finally {
+              reader.releaseLock();
+            }
+            usage.raw.toolCostUnverified = true;
+            await options?.image?.(
+              'image/png',
+              Buffer.concat(chunks).toString('base64'),
+            );
+          }
+        }
+      }
       if (choice?.finish_reason) complete = true;
       if (event.usage) {
         const u = event.usage;
         Object.assign(usage, {
           input: u.prompt_tokens ?? 0,
           output: u.completion_tokens ?? 0,
-          raw: u,
+          raw: { ...usage.raw, ...u },
           reported: true,
         });
       }

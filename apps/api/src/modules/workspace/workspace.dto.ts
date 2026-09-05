@@ -18,6 +18,8 @@ export class SavedPromptDto {
   @IsString() @MinLength(1) @MaxLength(100000) content!: string;
 }
 export class SendMessageDto {
+  @IsOptional() @IsIn(['chat', 'image_generation']) feature?:
+    'chat' | 'image_generation';
   @IsUUID() requestId!: string;
   @IsString() @MinLength(1) @MaxLength(2000000) content!: string;
   @IsIn(['AUTO', 'MANUAL']) mode!: 'AUTO' | 'MANUAL';

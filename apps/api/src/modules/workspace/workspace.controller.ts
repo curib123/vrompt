@@ -87,7 +87,7 @@ export class WorkspaceController {
         orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
       }),
       attachments: await this.prisma.attachment.findMany({
-        where: { conversationId: id },
+        where: { conversationId: id, generated: false },
         select: { id: true, name: true, size: true, mimeType: true },
       }),
     };

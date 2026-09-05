@@ -53,6 +53,50 @@ export class AttachmentService {
     if (!file) throw new NotFoundException('File not found');
     return file;
   }
+  async saveGenerated(
+    userId: string,
+    conversationId: string,
+    mimeType: string,
+    base64: string,
+  ) {
+    if (base64.length > 28_000_000)
+      throw new BadRequestException('Generated image exceeds storage limit');
+    const extension =
+      mimeType === 'image/png'
+        ? '.png'
+        : mimeType === 'image/jpeg'
+          ? '.jpg'
+          : '';
+    if (!extension)
+      throw new BadRequestException('Unsupported generated image format');
+    const data = Buffer.from(base64, 'base64');
+    validateFile({
+      originalname: `image${extension}`,
+      mimetype: mimeType,
+      buffer: data,
+    } as Express.Multer.File);
+    const key = randomUUID();
+    await mkdir(this.root, { recursive: true });
+    await writeFile(resolve(this.root, key), data, { flag: 'wx', mode: 0o600 });
+    try {
+      return await this.prisma.attachment.create({
+        data: {
+          id: key,
+          storageKey: key,
+          userId,
+          conversationId,
+          generated: true,
+          name: `generated${extension}`,
+          mimeType,
+          size: data.length,
+        },
+        select: { id: true, name: true, mimeType: true, size: true },
+      });
+    } catch (error) {
+      await unlink(resolve(this.root, key));
+      throw error;
+    }
+  }
   async upload(
     userId: string,
     conversationId: string,
@@ -78,7 +122,9 @@ export class AttachmentService {
           }))
         )
           throw new NotFoundException('Conversation not found');
-        const count = await tx.attachment.count({ where: { conversationId } });
+        const count = await tx.attachment.count({
+          where: { conversationId, generated: false },
+        });
         if (count >= Math.max(...policies.map((p) => p.maxFiles)))
           throw new BadRequestException('Conversation file allowance reached.');
         return tx.attachment.create({
@@ -108,7 +154,7 @@ export class AttachmentService {
     conversationId: string,
   ): Promise<ProviderFile[]> {
     const files = await this.prisma.attachment.findMany({
-      where: { userId, conversationId },
+      where: { userId, conversationId, generated: false },
       orderBy: { createdAt: 'asc' },
     });
     return Promise.all(

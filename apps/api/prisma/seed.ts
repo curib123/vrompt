@@ -21,7 +21,7 @@ const modelSeed = [
     outputPrice: 0.6,
     maxContext: 128000,
     maxOutput: 4096,
-    capabilities: ['text', 'vision', 'files'],
+    capabilities: ['text', 'vision', 'files', 'image_generation'],
   },
   {
     provider: ModelProvider.GOOGLE,
@@ -66,7 +66,22 @@ const modelSeed = [
     outputPrice: 0.3,
     maxContext: 128000,
     maxOutput: 4096,
-    capabilities: ['text', 'coding', 'files'],
+    capabilities: ['text', 'coding', 'vision', 'image_generation'],
+  },
+  {
+    provider: ModelProvider.GOOGLE,
+    providerModelId: 'gemini-2.5-flash-image',
+    displayName: 'Gemini 2.5 Flash Image',
+    description: 'Image generation and editing with text and image inputs.',
+    qualityTier: 2,
+    routingPriority: 0,
+    routingCostScore: 5,
+    inputPrice: 0.3,
+    cachedInputPrice: 0.3,
+    outputPrice: 30,
+    maxContext: 32768,
+    maxOutput: 8192,
+    capabilities: ['text', 'vision', 'image_generation'],
   },
 ];
 
@@ -126,13 +141,15 @@ async function main() {
       update: {
         ...seed,
         enabled: true,
-        autoAvailable: index < 2,
+        autoAvailable:
+          index < 2 || seed.capabilities.includes('image_generation'),
         displayOrder: index,
       },
       create: {
         ...seed,
         enabled: true,
-        autoAvailable: index < 2,
+        autoAvailable:
+          index < 2 || seed.capabilities.includes('image_generation'),
         displayOrder: index,
       },
     });
@@ -152,6 +169,7 @@ async function main() {
         where: { planId_bucket: { planId: plan.id, bucket } },
         update: {
           modelId: bucket === 'AUTO' ? null : bucket,
+          allowedFeatures: ['chat', 'image_generation'],
           dailyLimit: plan.code === 'FREE' ? 20 : 200,
           monthlyLimit: plan.code === 'FREE' ? 200 : 5000,
           maxInputChars: plan.code === 'FREE' ? 12000 : 50000,
@@ -168,6 +186,7 @@ async function main() {
           planId: plan.id,
           bucket,
           modelId: bucket === 'AUTO' ? null : bucket,
+          allowedFeatures: ['chat', 'image_generation'],
           dailyLimit: plan.code === 'FREE' ? 20 : 200,
           monthlyLimit: plan.code === 'FREE' ? 200 : 5000,
           maxInputChars: plan.code === 'FREE' ? 12000 : 50000,
