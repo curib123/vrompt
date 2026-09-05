@@ -251,6 +251,7 @@ enum ActivityType {
 }
 
 model User {
+  projects Project[]
   id                  String         @id @default(uuid()) @db.Uuid
   email               String         @unique @db.VarChar(320)
   username            String         @unique @db.VarChar(32)
@@ -415,6 +416,11 @@ model BillingPayment {
 }
 
 model BillingPlan {
+  monthlyCredits Int @default(100)
+  maxProjects Int @default(0)
+  maxWorkflows Int @default(0)
+  maxWorkflowSteps Int @default(5)
+  projectContextChars Int @default(8000)
   id              String          @id @default(uuid()) @db.Uuid
   code            String          @unique @db.VarChar(50)
   legacyPlan      MembershipPlan?
@@ -647,6 +653,7 @@ enum GenerationStatus {
 }
 
 model AIModel {
+  creditCost Int @default(1)
   id               String             @id @default(uuid()) @db.Uuid
   provider         ModelProvider
   providerModelId  String             @db.VarChar(160)
@@ -708,6 +715,8 @@ model GenerationPolicy {
 }
 
 model Conversation {
+  projectId   String?      @db.Uuid
+  project     Project?     @relation(fields: [projectId], references: [id], onDelete: SetNull)
   id          String       @id @default(uuid()) @db.Uuid
   userId      String       @db.Uuid
   user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -739,6 +748,8 @@ model Message {
 }
 
 model SavedPrompt {
+  projectId String? @db.Uuid
+  project Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
   id        String   @id @default(uuid()) @db.Uuid
   userId    String   @db.Uuid
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -781,6 +792,7 @@ model UsageCounter {
 }
 
 model QuotaReservation {
+  creditUnits Int @default(0)
   id          String           @id @db.Uuid
   userId      String           @db.Uuid
   user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -828,4 +840,50 @@ model UsageRecord {
   @@index([userId, createdAt])
   @@index([requestId])
   @@index([modelId, createdAt])
+}
+
+model Project {
+  id String @id @default(uuid()) @db.Uuid
+  userId String @db.Uuid
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name String @db.VarChar(160)
+  instructions String @default("") @db.Text
+  context String @default("") @db.Text
+  preferredModelId String? @db.Uuid
+  archived Boolean @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  conversations Conversation[]
+  prompts SavedPrompt[]
+  workflows Workflow[]
+  @@index([userId, archived, updatedAt])
+}
+
+model Workflow {
+  id String @id @default(uuid()) @db.Uuid
+  projectId String @db.Uuid
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  name String @db.VarChar(160)
+  steps Json
+  enabled Boolean @default(true)
+  trigger Json @default("{\"type\":\"manual\"}")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  runs WorkflowRun[]
+  @@index([projectId, updatedAt])
+}
+
+model WorkflowRun {
+  id String @id @db.Uuid
+  workflowId String @db.Uuid
+  workflow Workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  conversationId String @db.Uuid
+  fingerprint String @db.VarChar(64)
+  steps Json
+  status GenerationStatus @default(RESERVED)
+  completedSteps Int @default(0)
+  error String? @db.VarChar(500)
+  createdAt DateTime @default(now())
+  finishedAt DateTime?
+  @@index([workflowId, status])
 }
