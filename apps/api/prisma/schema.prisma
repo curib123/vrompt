@@ -629,6 +629,7 @@ enum ModelProvider {
   OPENAI
   GOOGLE
   ANTHROPIC
+  MISTRAL
 }
 
 enum RoutingMode {

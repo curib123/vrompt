@@ -301,12 +301,90 @@ export class AnthropicProvider implements AIProvider {
   }
 }
 
+export class MistralProvider implements AIProvider {
+  available() {
+    return Boolean(process.env.MISTRAL_API_KEY);
+  }
+  async stream(
+    model: AIModel,
+    messages: ProviderMessage[],
+    files: ProviderFile[],
+    maxOutput: number,
+    signal: AbortSignal,
+    delta: (text: string) => void,
+    usage: NormalizedUsage,
+  ) {
+    const input: any[] = messages.map((m) => ({
+      role: m.role,
+      content: m.content,
+    }));
+    if (files.length) {
+      const last = input[input.length - 1];
+      const content: any[] = [{ type: 'text', text: last.content }];
+      for (const file of files) {
+        if (file.mimeType === 'text/plain')
+          content.push({
+            type: 'text',
+            text: `File ${file.name}:\n${file.data.toString('utf8')}`,
+          });
+        else if (file.mimeType.startsWith('image/'))
+          content.push({
+            type: 'image_url',
+            image_url: {
+              url: `data:${file.mimeType};base64,${file.data.toString('base64')}`,
+            },
+          });
+        else
+          content.push({
+            type: 'text',
+            text: `File ${file.name} was attached but cannot be parsed by this model.`,
+          });
+      }
+      last.content = content;
+    }
+    const body = await request(
+      'https://api.mistral.ai/v1/chat/completions',
+      { Authorization: `Bearer ${process.env.MISTRAL_API_KEY}` },
+      {
+        model: model.providerModelId,
+        messages: input,
+        max_tokens: maxOutput,
+        stream: true,
+        stream_options: { include_usage: true },
+      },
+      signal,
+    );
+    let complete = false;
+    for await (const event of readEvents(body)) {
+      if (event.error) throw new ProviderFailure('PROVIDER_ERROR');
+      const choice = event.choices?.[0];
+      const content = choice?.delta?.content;
+      if (typeof content === 'string') delta(content);
+      else if (Array.isArray(content))
+        for (const part of content)
+          if (typeof part?.text === 'string') delta(part.text);
+      if (choice?.finish_reason) complete = true;
+      if (event.usage) {
+        const u = event.usage;
+        Object.assign(usage, {
+          input: u.prompt_tokens ?? 0,
+          output: u.completion_tokens ?? 0,
+          raw: u,
+          reported: true,
+        });
+      }
+    }
+    if (!complete) throw new ProviderFailure('INTERRUPTED_STREAM');
+  }
+}
+
 @Injectable()
 export class ProviderRegistry {
   private readonly providers: Record<ModelProvider, AIProvider> = {
     OPENAI: new OpenAIProvider(),
     GOOGLE: new GoogleProvider(),
     ANTHROPIC: new AnthropicProvider(),
+    MISTRAL: new MistralProvider(),
   };
   get(provider: ModelProvider) {
     return this.providers[provider];

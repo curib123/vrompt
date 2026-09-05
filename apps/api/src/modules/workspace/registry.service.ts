@@ -12,7 +12,9 @@ const money = Joi.number().min(0).max(1000000).required();
 const integer = (max: number) =>
   Joi.number().integer().min(1).max(max).required();
 export const modelSchema = Joi.object({
-  provider: Joi.string().valid('OPENAI', 'GOOGLE', 'ANTHROPIC').required(),
+  provider: Joi.string()
+    .valid('OPENAI', 'GOOGLE', 'ANTHROPIC', 'MISTRAL')
+    .required(),
   providerModelId: Joi.string()
     .pattern(/^[a-zA-Z0-9._:/-]+$/)
     .max(160)

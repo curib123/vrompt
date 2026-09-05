@@ -4,6 +4,7 @@ import {
   emptyUsage,
   estimateCost,
   GoogleProvider,
+  MistralProvider,
   OpenAIProvider,
   readEvents,
 } from './providers';
@@ -67,6 +68,16 @@ describe('Provider protocol normalization', () => {
         },
         { type: 'message_delta', usage: { output_tokens: 4 } },
         { type: 'message_stop' },
+      ],
+    ],
+    [
+      new MistralProvider(),
+      [
+        { choices: [{ delta: { content: 'answer' } }] },
+        {
+          choices: [{ finish_reason: 'stop', delta: { content: '' } }],
+          usage: { prompt_tokens: 10, completion_tokens: 4 },
+        },
       ],
     ],
   ] as const)(

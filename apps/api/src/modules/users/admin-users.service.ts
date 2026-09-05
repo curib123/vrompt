@@ -104,6 +104,7 @@ export class AdminUsersService {
           'OPENAI_API_KEY',
           'GOOGLE_AI_API_KEY',
           'ANTHROPIC_API_KEY',
+          'MISTRAL_API_KEY',
         ].some((key) => Boolean(this.config.get<string>(key, '').trim())),
         payMongo: Boolean(
           this.config.get<string>('PAYMONGO_SECRET_KEY', '').trim() &&

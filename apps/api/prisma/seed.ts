@@ -53,6 +53,21 @@ const modelSeed = [
     maxOutput: 4096,
     capabilities: ['text', 'vision', 'files'],
   },
+  {
+    provider: ModelProvider.MISTRAL,
+    providerModelId: 'mistral-small-latest',
+    displayName: 'Mistral Small',
+    description: 'Efficient general-purpose chat for everyday tasks.',
+    qualityTier: 2,
+    routingPriority: 15,
+    routingCostScore: 0.16,
+    inputPrice: 0.1,
+    cachedInputPrice: 0.03,
+    outputPrice: 0.3,
+    maxContext: 128000,
+    maxOutput: 4096,
+    capabilities: ['text', 'coding', 'files'],
+  },
 ];
 
 async function main() {
