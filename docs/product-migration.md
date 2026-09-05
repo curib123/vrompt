@@ -54,9 +54,18 @@ Private workspace routes are noindex. Admin routes are separate and role-guarded
 
 ## Operational configuration
 
-No assumed model IDs, prices or production allowances. Administrators configure
-verified provider IDs, capabilities, prices, limits and effective dates before
-enabling models. Credentials remain environment-only. Providers without credentials
-are unavailable, never simulated. UTC calendar days/months define usage resets.
+The seed provides development starter models and Free/Pro allowances so a fresh
+environment is usable. Review provider IDs, prices, capabilities, limits and
+effective dates before enabling models in production. Credentials remain
+environment-only. Providers without credentials are unavailable, never simulated.
+UTC calendar days/months define usage resets.
 Cancelled/partial requests retain accounting; provider usage absent after disconnect
 must be marked estimated/unknown rather than reported as a verified zero expense.
+
+For an existing database, take and restore-test a PostgreSQL dump and back up the
+private evidence directory before applying migration `0024_retire_prompt_product`.
+The migration copies current prompt text to private Saved Prompts, then refuses to
+drop populated legacy tables unless the migration connection has
+`vrompt.legacy_backup_verified=true` (for example through a PostgreSQL connection
+`options` parameter). If the migration is run manually with `SET LOCAL`, mark the
+migration applied with Prisma only after the SQL completes successfully.
