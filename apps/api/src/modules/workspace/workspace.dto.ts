@@ -10,10 +10,12 @@ import {
   ArrayMaxSize,
 } from 'class-validator';
 export class ConversationDto {
+  @IsOptional() @IsUUID() projectId?: string | null;
   @IsOptional() @IsString() @MinLength(1) @MaxLength(160) title?: string;
   @IsOptional() @IsBoolean() archived?: boolean;
 }
 export class SavedPromptDto {
+  @IsOptional() @IsUUID() projectId?: string | null;
   @IsString() @MinLength(1) @MaxLength(160) title!: string;
   @IsString() @MinLength(1) @MaxLength(100000) content!: string;
 }

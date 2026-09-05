@@ -152,11 +152,21 @@ export class AttachmentService {
   async forConversation(
     userId: string,
     conversationId: string,
+    selectedIds?: string[],
   ): Promise<ProviderFile[]> {
     const files = await this.prisma.attachment.findMany({
-      where: { userId, conversationId, generated: false },
+      where: {
+        userId,
+        conversationId,
+        generated: false,
+        ...(selectedIds ? { id: { in: selectedIds } } : {}),
+      },
       orderBy: { createdAt: 'asc' },
     });
+    if (selectedIds && files.length !== new Set(selectedIds).size)
+      throw new BadRequestException(
+        'One or more selected files are unavailable.',
+      );
     return Promise.all(
       files.map(async (file) => ({
         name: file.name,
