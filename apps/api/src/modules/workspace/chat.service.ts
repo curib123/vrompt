@@ -94,7 +94,12 @@ export class ChatService {
       history = history.slice(0, index - 1);
     }
     const messages = [
-      ...history.map((m) => ({ role: m.role, content: m.content || '[Generated image in this conversation; image bytes are not attached to this request.]' })),
+      ...history.map((m) => ({
+        role: m.role,
+        content:
+          m.content ||
+          '[Generated image in this conversation; image bytes are not attached to this request.]',
+      })),
       { role: 'user', content: input.content },
     ];
     // Conservative UTF-8 byte ceiling avoids silently truncating conversation history.
