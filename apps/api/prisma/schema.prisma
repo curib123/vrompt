@@ -886,6 +886,7 @@ model WorkflowRun {
   completedSteps Int @default(0)
   error String? @db.VarChar(500)
   createdAt DateTime @default(now())
+  startedAt DateTime?
   finishedAt DateTime?
   @@index([workflowId, status])
 }

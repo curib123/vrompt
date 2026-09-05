@@ -128,7 +128,7 @@ export class WorkflowsService {
     const fingerprint = createHash('sha256')
       .update(JSON.stringify({ id, input: data.input }))
       .digest('hex');
-    const run = await this.prisma.$transaction(async (tx) => {
+    const claim = await this.prisma.$transaction(async (tx) => {
       await tx.$queryRaw`SELECT id FROM "User" WHERE id = ${userId}::uuid FOR UPDATE`;
       const existing = await tx.workflowRun.findUnique({
         where: { id: data.requestId },
@@ -136,7 +136,7 @@ export class WorkflowsService {
       if (existing) {
         if (existing.workflowId !== id || existing.fingerprint !== fingerprint)
           throw new ConflictException('Request ID already used.');
-        return existing;
+        return { run: existing, execute: false };
       }
       // No run can exceed 20 steps of the hard 600-second generation ceiling.
       await tx.workflowRun.updateMany({
@@ -171,22 +171,22 @@ export class WorkflowsService {
       const conversation = await tx.conversation.create({
         data: { userId, projectId: workflow.projectId, title: workflow.name },
       });
-      return tx.workflowRun.create({
+      const created = await tx.workflowRun.create({
         data: {
           id: data.requestId,
           workflowId: id,
           conversationId: conversation.id,
           fingerprint,
           steps: workflow.steps as Prisma.InputJsonValue,
+          startedAt: new Date(),
         },
       });
+      return { run: created, execute: true };
     });
-    // A duplicate request returns its recorded state and never repeats provider calls.
-    const claimed = await this.prisma.workflowRun.updateMany({
-      where: { id: run.id, status: 'RESERVED', error: null },
-      data: { error: 'Executing' },
-    });
-    if (!claimed.count) return run;
+    // Only the transaction that creates the run may call providers.
+    // Repeated request IDs return the existing run without executing again.
+    if (!claim.execute) return claim.run;
+    const run = claim.run;
     let previous = data.input;
     try {
       for (const step of steps) {
