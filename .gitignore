@@ -17,6 +17,8 @@ apps/api/dist/
 apps/api/coverage/
 apps/api/storage/
 storage/
+private-chat-files/
+apps/api/private-chat-files/
 
 # shared packages
 packages/*/dist/

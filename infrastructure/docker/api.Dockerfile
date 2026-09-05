@@ -48,6 +48,7 @@ COPY --from=build --chown=node:node /workspace/apps/api/dist ./apps/api/dist
 COPY --from=build --chown=node:node /workspace/apps/api/prisma ./apps/api/prisma
 
 RUN mkdir -p /app/storage && chown node:node /app/storage
+RUN mkdir -p /var/lib/vrompt/private-chat-files && chown node:node /var/lib/vrompt/private-chat-files
 
 USER node
 

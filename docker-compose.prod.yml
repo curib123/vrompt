@@ -83,7 +83,7 @@ services:
       GOOGLE_AI_API_KEY: ${GOOGLE_AI_API_KEY:-}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       MISTRAL_API_KEY: ${MISTRAL_API_KEY:-}
-      CHAT_STORAGE_DIR: ${CHAT_STORAGE_DIR:-./private-chat-files}
+      CHAT_STORAGE_DIR: /var/lib/vrompt/private-chat-files
       JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:?JWT_ACCESS_SECRET is required}
       JWT_ACCESS_TTL_SECONDS: ${JWT_ACCESS_TTL_SECONDS:-900}
       JWT_REFRESH_TTL_SECONDS: ${JWT_REFRESH_TTL_SECONDS:-604800}
@@ -105,6 +105,8 @@ services:
       CLOUDINARY_CLOUD_NAME: ${CLOUDINARY_CLOUD_NAME:?CLOUDINARY_CLOUD_NAME is required}
       CLOUDINARY_API_KEY: ${CLOUDINARY_API_KEY:?CLOUDINARY_API_KEY is required}
       CLOUDINARY_API_SECRET: ${CLOUDINARY_API_SECRET:?CLOUDINARY_API_SECRET is required}
+    volumes:
+      - vrompt-private-files:/var/lib/vrompt/private-chat-files
     expose:
       - '4000'
     depends_on:
@@ -173,6 +175,7 @@ services:
       retries: 5
 
 volumes:
+  vrompt-private-files:
   vrompt-postgres-prod-data:
   vrompt-redis-prod-data:
 
