@@ -1,3 +1,8 @@
-import { AdminConfiguration } from '@/components/workspace/pages';
-export const metadata = { title: 'Plans & allowances', robots: { index: false } };
-export default function Page() { return <AdminConfiguration />; }
+import { AdminRegistry } from '@/components/admin/configuration';
+export const metadata = {
+  title: 'Plans & allowances',
+  robots: { index: false },
+};
+export default function Page() {
+  return <AdminRegistry plans />;
+}

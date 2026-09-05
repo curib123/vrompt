@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { AppProviders } from '@/components/providers/app-providers';
 import './globals.css';
 import './workspace.css';
+import './brand.css';
 
 const themeInitScript = `
   (() => {

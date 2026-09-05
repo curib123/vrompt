@@ -19,8 +19,7 @@ export default function StaffLoginPage() {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    if (!isLoading && user && ['ADMIN', 'MODERATOR'].includes(user.role))
-      router.replace('/admin' as Route);
+    if (!isLoading && user?.role === 'ADMIN') router.replace('/admin' as Route);
   }, [isLoading, router, user]);
 
   async function submit(event: React.FormEvent) {
@@ -29,8 +28,7 @@ export default function StaffLoginPage() {
     setError('');
     try {
       const signedIn = await staffLogin(email, password);
-      if (!['ADMIN', 'MODERATOR'].includes(signedIn.role))
-        throw new Error('Staff access required');
+      if (signedIn.role !== 'ADMIN') throw new Error('Staff access required');
       router.replace('/admin' as Route);
     } catch (loginError) {
       setError(
@@ -47,13 +45,13 @@ export default function StaffLoginPage() {
         <BrandLockup compact />
         <div>
           <p className="font-mono text-xs uppercase tracking-[0.22em] text-brand-mid">
-            Secure staff access
+            Administrator access
           </p>
           <h1 className="mt-3 text-4xl font-semibold tracking-[-0.06em]">
             Control panel
           </h1>
           <p className="mt-3 text-sm leading-7 text-brand-mid">
-            Sign in with an administrator or moderator account.
+            Sign in with your administrator account.
           </p>
         </div>
         <form className="grid gap-4" onSubmit={submit}>
@@ -93,7 +91,7 @@ export default function StaffLoginPage() {
           Role-aware operations
         </p>
         <h2 className="mt-5 text-4xl font-semibold tracking-[-0.06em] sm:text-5xl">
-          Moderate safely. Manage flexibly.
+          A clear view. Complete control.
         </h2>
         <p className="mt-5 max-w-md text-sm leading-7 text-zinc-300">
           Manage people, model configuration, billing and usage while keeping

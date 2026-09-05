@@ -154,11 +154,18 @@ export class AttachmentService {
     conversationId: string,
     selectedIds: string[] = [],
   ): Promise<ProviderFile[]> {
-    const conversation = selectedIds.length ? await this.prisma.conversation.findFirst({ where: { id: conversationId, userId }, select: { projectId: true } }) : null;
+    const conversation = selectedIds.length
+      ? await this.prisma.conversation.findFirst({
+          where: { id: conversationId, userId },
+          select: { projectId: true },
+        })
+      : null;
     const files = await this.prisma.attachment.findMany({
       where: {
         userId,
-        ...(conversation?.projectId ? { conversation: { projectId: conversation.projectId } } : { conversationId }),
+        ...(conversation?.projectId
+          ? { conversation: { projectId: conversation.projectId } }
+          : { conversationId }),
         generated: false,
         ...(selectedIds ? { id: { in: selectedIds } } : {}),
       },

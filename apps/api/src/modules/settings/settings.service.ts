@@ -30,7 +30,7 @@ export const SETTING_DEFINITIONS: Record<string, Definition> = {
     maxLength: 40,
   },
   'branding.tagline': {
-    defaultValue: 'One account. One subscription. Multiple AI models.',
+    defaultValue: 'Multiple AIs. A smarter you.',
     group: 'Branding',
     isPublic: true,
     label: 'Tagline',
@@ -46,6 +46,46 @@ export const SETTING_DEFINITIONS: Record<string, Definition> = {
     description: 'Optional message shown above public content.',
     type: 'string',
     maxLength: 240,
+  },
+  'content.heroDescription': {
+    defaultValue:
+      'Use multiple leading AI models from one account. Auto chooses for you, or select one manually anytime.',
+    group: 'Content',
+    isPublic: true,
+    label: 'Homepage description',
+    description: 'Supporting text beneath the main homepage headline.',
+    type: 'string',
+    maxLength: 320,
+  },
+  'workspace.writePrompt': {
+    defaultValue:
+      'Help me write a thoughtful email. Ask me about the recipient and what I want to say.',
+    group: 'Workspace',
+    isPublic: true,
+    label: 'Writing starter',
+    description: 'Prompt inserted by the Write shortcut.',
+    type: 'string',
+    maxLength: 2000,
+  },
+  'workspace.analyzePrompt': {
+    defaultValue:
+      'Help me analyze a problem. Ask me for the context and the outcome I need.',
+    group: 'Workspace',
+    isPublic: true,
+    label: 'Analysis starter',
+    description: 'Prompt inserted by the Analyze shortcut.',
+    type: 'string',
+    maxLength: 2000,
+  },
+  'workspace.createPrompt': {
+    defaultValue:
+      'Help me brainstorm ideas for a project. Ask me what I am creating and who it is for.',
+    group: 'Workspace',
+    isPublic: true,
+    label: 'Creative starter',
+    description: 'Prompt inserted by the Create shortcut.',
+    type: 'string',
+    maxLength: 2000,
   },
   'features.registrationEnabled': {
     defaultValue: true,
@@ -117,7 +157,12 @@ export class SettingsService {
   }
 
   async update(actorId: string, key: string, value: unknown) {
-    const definition = SETTING_DEFINITIONS[key];
+    const definition = Object.prototype.hasOwnProperty.call(
+      SETTING_DEFINITIONS,
+      key,
+    )
+      ? SETTING_DEFINITIONS[key]
+      : undefined;
     if (!definition) throw new NotFoundException('Setting not found');
     const normalized = this.validate(definition, value);
     const setting = await this.prisma.siteSetting.upsert({
@@ -137,11 +182,11 @@ export class SettingsService {
   }
 
   async reset(actorId: string, key: string) {
-    if (!SETTING_DEFINITIONS[key])
+    if (!Object.prototype.hasOwnProperty.call(SETTING_DEFINITIONS, key))
       throw new NotFoundException('Setting not found');
     await this.prisma.siteSetting.deleteMany({ where: { key } });
     await this.audit(actorId, AuditActionType.SETTING_RESET, key);
-    return { key, value: SETTING_DEFINITIONS[key].defaultValue };
+    return { key, value: SETTING_DEFINITIONS[key]!.defaultValue };
   }
 
   private async values(publicOnly: boolean) {
@@ -168,11 +213,15 @@ export class SettingsService {
   ): Prisma.InputJsonValue {
     if (typeof value !== definition.type)
       throw new BadRequestException(`Value must be ${definition.type}`);
-    if (typeof value === 'string')
-      return value.trim().slice(0, definition.maxLength ?? 500);
+    if (typeof value === 'string') {
+      const normalized = value.trim();
+      if (normalized.length > (definition.maxLength ?? 500))
+        throw new BadRequestException('Text exceeds the allowed length');
+      return normalized;
+    }
     if (
       typeof value === 'number' &&
-      (!Number.isFinite(value) ||
+      (!Number.isSafeInteger(value) ||
         value < (definition.minValue ?? 1) ||
         value > (definition.maxValue ?? 3650))
     )

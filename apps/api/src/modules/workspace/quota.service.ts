@@ -30,21 +30,34 @@ export class QuotaService implements OnModuleInit, OnModuleDestroy {
   private reconciling = false;
   constructor(private readonly prisma: PrismaService) {}
   onModuleInit() {
-    this.timer = setInterval(() => { void this.reconcileExpired().catch(() => {}); }, 60_000);
+    this.timer = setInterval(() => {
+      void this.reconcileExpired().catch(() => {});
+    }, 60_000);
     this.timer.unref();
   }
-  onModuleDestroy() { clearInterval(this.timer); }
+  onModuleDestroy() {
+    clearInterval(this.timer);
+  }
   async reconcileExpired() {
     if (this.reconciling) return;
     this.reconciling = true;
     try {
-      const stale = await this.prisma.quotaReservation.findMany({ where: { status: 'RESERVED', expiresAt: { lt: new Date() } }, take: 100 });
-      for (const reservation of stale) await this.prisma.$transaction(async tx => {
-        await tx.$queryRaw`SELECT id FROM "User" WHERE id = ${reservation.userId}::uuid FOR UPDATE`;
-        await this.finalizeIn(tx, reservation.id, 'INTERRUPTED', true);
-        await tx.message.updateMany({ where: { generationId: reservation.id, status: 'RESERVED' }, data: { status: 'INTERRUPTED' } });
+      const stale = await this.prisma.quotaReservation.findMany({
+        where: { status: 'RESERVED', expiresAt: { lt: new Date() } },
+        take: 100,
       });
-    } finally { this.reconciling = false; }
+      for (const reservation of stale)
+        await this.prisma.$transaction(async (tx) => {
+          await tx.$queryRaw`SELECT id FROM "User" WHERE id = ${reservation.userId}::uuid FOR UPDATE`;
+          await this.finalizeIn(tx, reservation.id, 'INTERRUPTED', true);
+          await tx.message.updateMany({
+            where: { generationId: reservation.id, status: 'RESERVED' },
+            data: { status: 'INTERRUPTED' },
+          });
+        });
+    } finally {
+      this.reconciling = false;
+    }
   }
 
   async policies(userId: string) {

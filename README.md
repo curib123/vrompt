@@ -84,7 +84,7 @@ On PowerShell, use the same command as one line if preferred:
 docker compose -p vrompt-dev -f docker-compose.yml -f docker-compose.dev.yml -f docker-compose.local.yml up -d --build
 ```
 
-Open [http://localhost:3001](http://localhost:3001). The API health endpoint is [http://localhost:4001/api/v1/health](http://localhost:4001/api/v1/health). Check service state with:
+Open [http://localhost:3100](http://localhost:3100). The API health endpoint is [http://localhost:3200/api/v1/health](http://localhost:3200/api/v1/health). Check service state with:
 
 ```bash
 docker compose -p vrompt-dev -f docker-compose.yml -f docker-compose.dev.yml -f docker-compose.local.yml ps
@@ -112,19 +112,45 @@ docker compose -p vrompt-dev \
 
 ## Environment configuration
 
+### Brand interface and administration
+
+The responsive interface uses the Vrompt brand palette, a local Inter variable font, and light/dark appearance. Sign-in opens in a modal over the current screen; `/login` opens the same modal directly. Google/GitHub OAuth retains a validated internal return path.
+
+- `/admin/settings`: persisted branding, announcements, registration, prompt starters, and administrator password changes.
+- `/admin/models`: model capabilities, availability, pricing, fallback, and Auto routing policies.
+- `/admin/plans`: plan prices, workspace limits, and daily/monthly generation allowances.
+- `/admin/users`: searchable accounts, administrator creation, role/status changes, and password reset.
+- `/admin/billing`, `/admin/analytics`, `/admin/audit`: payment/webhook monitoring, currency-separated costs, and recorded changes.
+- `/settings`: persisted display name, default model, and message-send behavior; appearance is saved per device.
+
+Apply migration `0032_workspace_preferences` before using the new account preferences:
+
+```bash
+npm run prisma:generate --workspace @vrompt/api
+npm run prisma:deploy --workspace @vrompt/api
+```
+
+The application supports active USER and ADMIN roles. Legacy moderator records remain available for historical data, but cannot sign in or use protected endpoints. An administrator can explicitly reassign a legacy account from Users. No accounts are automatically promoted.
+
+Public model cards come from `/api/v1/catalog/models`. A model appears only when enabled, within its availability dates, outside maintenance, and backed by configured provider credentials. Plan-specific access is still enforced separately. The reference artwork's Llama logo does not imply a Meta provider integration; supported adapters are OpenAI, Google, Anthropic, and Mistral.
+
+When the browser API URL is omitted, Next.js proxies `/api/v1` to `INTERNAL_API_BASE_URL`, defaulting to the local API on port 4000. OAuth and payment providers require valid server credentials and callbacks before live use.
+
+Browser regressions run with `npm run test:e2e --workspace @vrompt/web` against the running web app. They use intercepted API fixtures to test UI behavior without provider calls. `apps/api/test/workspace.live.cjs` additionally checks a running API against an explicitly isolated local database named `vrompt_review`; it requires `DATABASE_URL`, `JWT_ACCESS_SECRET`, `REVIEW_ADMIN_EMAIL`, and `REVIEW_ADMIN_PASSWORD`. It creates test records and must never target an operational database.
+
 Use `.env.example` for local development and `.env.production.example` as the production template. Never commit `.env`, `.env.production`, API keys, OAuth secrets, payment secrets, JWT secrets, or Cloudinary credentials.
 
 Important configuration groups include:
 
-| Group          | Variables                                                                   | Purpose                                |
-| -------------- | --------------------------------------------------------------------------- | -------------------------------------- |
-| Web            | `NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_API_BASE_URL`, `INTERNAL_API_BASE_URL` | Browser and server API routing         |
-| Data           | `DATABASE_URL`, `REDIS_URL`                                                 | PostgreSQL and Redis connections       |
+| Group          | Variables                                                                                         | Purpose                                 |
+| -------------- | ------------------------------------------------------------------------------------------------- | --------------------------------------- |
+| Web            | `NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_API_BASE_URL`, `INTERNAL_API_BASE_URL`                       | Browser and server API routing          |
+| Data           | `DATABASE_URL`, `REDIS_URL`                                                                       | PostgreSQL and Redis connections        |
 | AI             | `OPENAI_API_KEY`, `GOOGLE_AI_API_KEY`, `ANTHROPIC_API_KEY`, `MISTRAL_API_KEY`, `CHAT_STORAGE_DIR` | Server-side providers and private files |
-| Authentication | `JWT_*`, `GOOGLE_*`, `GITHUB_*`                                             | Tokens and OAuth callbacks             |
-| Staff          | `ADMIN_BOOTSTRAP_*`, `MODERATOR_BOOTSTRAP_*`                                | Initial control-panel accounts         |
-| Media          | `MEDIA_STORAGE_DRIVER`, `MEDIA_STORAGE_LOCAL_DIR`, `CLOUDINARY_*`           | Local or Cloudinary evidence storage   |
-| Payments       | `PAYMONGO_*`                                                                | Pro subscription checkout and webhooks |
+| Authentication | `JWT_*`, `GOOGLE_*`, `GITHUB_*`                                                                   | Tokens and OAuth callbacks              |
+| Staff          | `ADMIN_BOOTSTRAP_*`, `MODERATOR_BOOTSTRAP_*`                                                      | Initial control-panel accounts          |
+| Media          | `MEDIA_STORAGE_DRIVER`, `MEDIA_STORAGE_LOCAL_DIR`, `CLOUDINARY_*`                                 | Local or Cloudinary evidence storage    |
+| Payments       | `PAYMONGO_*`                                                                                      | Pro subscription checkout and webhooks  |
 
 OAuth callback URLs must point to the API, not the web application. For local development they are:
 
@@ -133,7 +159,7 @@ http://localhost:4000/api/v1/auth/google/callback
 http://localhost:4000/api/v1/auth/github/callback
 ```
 
-When using the Docker local override, use port `4001` for the callback URLs because the API is published on that host port.
+When using the Docker local override, use port `3200` for the callback URLs because the API is published on that host port.
 
 ## Workspace commands
 

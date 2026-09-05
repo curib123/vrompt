@@ -9,7 +9,7 @@ import { AuditQueryDto } from './dto/audit-query.dto';
 
 @Controller('admin/audit')
 @UseGuards(AccessTokenGuard, RolesGuard)
-@Roles(UserRole.MODERATOR, UserRole.ADMIN)
+@Roles(UserRole.ADMIN)
 export class AuditController {
   constructor(private readonly auditService: AuditService) {}
 

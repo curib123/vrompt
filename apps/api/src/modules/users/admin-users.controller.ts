@@ -3,6 +3,7 @@ import {
   Controller,
   Get,
   Param,
+  ParseUUIDPipe,
   Patch,
   Post,
   Query,
@@ -26,7 +27,7 @@ export class AdminUsersController {
   constructor(private readonly service: AdminUsersService) {}
 
   @Get('dashboard')
-  @Roles(UserRole.ADMIN, UserRole.MODERATOR)
+  @Roles(UserRole.ADMIN)
   dashboard() {
     return this.service.dashboard();
   }
@@ -56,7 +57,7 @@ export class AdminUsersController {
   @Roles(UserRole.ADMIN)
   update(
     @CurrentUser() actor: AuthenticatedUser,
-    @Param('userId') userId: string,
+    @Param('userId', ParseUUIDPipe) userId: string,
     @Body() input: UpdateAdminUserDto,
   ) {
     return this.service.update(actor.id, userId, input);

@@ -14,13 +14,23 @@ import {
 } from '@/lib/api';
 import { GeneratedImage } from './generated-image';
 import type { Project } from './projects';
+import { BrandMark } from '@/components/brand/brand-mark';
+import { ProviderIcon } from '@/components/brand/provider-icon';
+import { useSiteSettings } from '@/components/providers/site-settings-provider';
+import { Icon } from '@/components/ui/icon';
+import { starterTasks } from '@/components/brand/landing';
+import type { Preferences } from './preferences';
+import { SignInButton } from '@/components/providers/auth-dialog-provider';
 export function Chat() {
-  const { accessToken } = useAuth();
+  const { accessToken, user } = useAuth();
+  const { settings } = useSiteSettings();
   const router = useRouter();
   const params = useSearchParams();
   const id = params.get('id');
   const [projects, setProjects] = useState<Project[]>([]);
   const [projectId, setProjectId] = useState(params.get('project') ?? '');
+  const [preferences, setPreferences] = useState<Preferences>();
+  const createdNavigation = useRef<string | null>(null);
   const [selectedFiles, setSelectedFiles] = useState<string[]>([]);
   const [feature, setFeature] = useState<'chat' | 'image_generation'>('chat');
   const [models, setModels] = useState<Model[]>([]);
@@ -85,21 +95,33 @@ export function Chat() {
     void apiRequest<Project[]>('/workspace/projects', { accessToken })
       .then(setProjects)
       .catch((e) => setError(e.message));
+    // Hydrate the workspace from the authenticated API.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void refresh().catch((e) => setError(e.message));
+    void apiRequest<Preferences>('/workspace/preferences', { accessToken })
+      .then(setPreferences)
+      .catch((e) => setError(e.message));
   }, [accessToken]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
-    if (!accessToken) return;
-    let current = true;
-    setError('');
-    setSelected('AUTO');
     const inserted = sessionStorage.getItem('vrompt-insert-prompt');
+    // Synchronize a prompt handed off through browser session storage.
     if (inserted) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setText(inserted);
       sessionStorage.removeItem('vrompt-insert-prompt');
     }
+    if (!accessToken) return;
+    if (createdNavigation.current === id && id) {
+      createdNavigation.current = null;
+      return;
+    }
+    let current = true;
+    setError('');
+    setSelected('AUTO');
     if (!id) {
       setMessages([]);
       setFiles([]);
+      setSelectedFiles([]);
       setTitle('New conversation');
       return;
     }
@@ -123,6 +145,17 @@ export function Chat() {
     };
   }, [id, accessToken]);
   useEffect(() => {
+    // Apply persisted defaults only to a new conversation.
+    if (!id && preferences) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setSelected(
+        models.some((model) => model.id === preferences.defaultModelId)
+          ? preferences.defaultModelId!
+          : 'AUTO',
+      );
+    }
+  }, [id, preferences, models]);
+  useEffect(() => {
     bottom.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
   useEffect(() => () => abort.current?.abort(), []);
@@ -136,6 +169,7 @@ export function Chat() {
         projectId: projectId || null,
       }),
     });
+    createdNavigation.current = c.id;
     router.replace(`/chat?id=${c.id}`);
     return c.id;
   }
@@ -277,7 +311,7 @@ export function Chat() {
     }
   }
   return (
-    <div className="chat-page">
+    <div className={`chat-page ${!messages.length ? 'chat-is-new' : ''}`}>
       <header className="chat-toolbar">
         <div>
           <select
@@ -305,97 +339,154 @@ export function Chat() {
         </div>
         <span className="muted">{usage?.plan ?? 'Your workspace'}</span>
       </header>
-      {accessToken ? (
+      <details className="chat-options">
+        <summary>
+          <Icon name="settings" /> Conversation options
+        </summary>
+        {accessToken ? (
+          <div className="chat-toolbar">
+            <label>
+              Project{' '}
+              <select
+                disabled={busy}
+                value={projectId}
+                onChange={async (e) => {
+                  const next = e.target.value;
+                  try {
+                    if (id)
+                      await apiRequest(`/workspace/conversations/${id}`, {
+                        accessToken,
+                        method: 'PATCH',
+                        body: JSON.stringify({ projectId: next || null }),
+                      });
+                    setProjectId(next);
+                  } catch (e) {
+                    setError((e as Error).message);
+                  }
+                }}
+              >
+                <option value="">Personal workspace</option>
+                {projects
+                  .filter((p) => !p.archived)
+                  .map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name}
+                    </option>
+                  ))}
+              </select>
+            </label>
+          </div>
+        ) : (
+          <p className="usage-hint">
+            Temporary chat ·{' '}
+            <SignInButton>Sign in to continue and save</SignInButton>
+          </p>
+        )}
         <div className="chat-toolbar">
           <label>
-            Project{' '}
+            Task{' '}
             <select
+              aria-label="Choose task"
+              value={feature}
               disabled={busy}
-              value={projectId}
-              onChange={async (e) => {
-                const next = e.target.value;
-                try {
-                  if (id)
-                    await apiRequest(`/workspace/conversations/${id}`, {
-                      accessToken,
-                      method: 'PATCH',
-                      body: JSON.stringify({ projectId: next || null }),
-                    });
-                  setProjectId(next);
-                } catch (e) {
-                  setError((e as Error).message);
-                }
-              }}
-            >
-              <option value="">Personal workspace</option>
-              {projects
-                .filter((p) => !p.archived)
-                .map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}
-                  </option>
-                ))}
-            </select>
-          </label>
-        </div>
-      ) : (
-        <p className="usage-hint">
-          Temporary chat · <a href="/login">Sign up to continue and save</a>
-        </p>
-      )}
-      <div className="chat-toolbar">
-        <label>
-          Task{' '}
-          <select
-            aria-label="Choose task"
-            value={feature}
-            disabled={busy}
-            onChange={(e) =>
-              setFeature(e.target.value as 'chat' | 'image_generation')
-            }
-          >
-            <option value="chat">Chat</option>
-            <option
-              value="image_generation"
-              disabled={
-                !allowance?.allowedFeatures?.includes('image_generation') ||
-                (selected !== 'AUTO' &&
-                  !models
-                    .find((m) => m.id === selected)
-                    ?.capabilities.includes('image_generation'))
+              onChange={(e) =>
+                setFeature(e.target.value as 'chat' | 'image_generation')
               }
             >
-              Generate image
-            </option>
-          </select>
-        </label>
-        <span className="muted">
-          {selected === 'AUTO'
-            ? 'Auto selects a model that supports this task.'
-            : models.find((m) => m.id === selected)?.capabilities.join(', ')}
-        </span>
-      </div>
+              <option value="chat">Chat</option>
+              <option
+                value="image_generation"
+                disabled={
+                  !allowance?.allowedFeatures?.includes('image_generation') ||
+                  (selected !== 'AUTO' &&
+                    !models
+                      .find((m) => m.id === selected)
+                      ?.capabilities.includes('image_generation'))
+                }
+              >
+                Generate image
+              </option>
+            </select>
+          </label>
+          <span className="muted">
+            {selected === 'AUTO'
+              ? 'Auto selects a model that supports this task.'
+              : models.find((m) => m.id === selected)?.capabilities.join(', ')}
+          </span>
+        </div>
+      </details>
       <div className="chat-scroll">
         {!messages.length ? (
           <section className="chat-welcome">
-            <span className="spark">✳</span>
+            <BrandMark className="welcome-mark" />
             <p className="eyebrow">ONE WORKSPACE. MORE POSSIBILITIES.</p>
-            <h1>What’s on your mind?</h1>
+            <h1>
+              {user
+                ? `Hello, ${preferences?.displayName || user.username}.`
+                : 'A little help. A lot of possibility.'}
+            </h1>
             <p className="muted">
-              Start with Auto. We’ll choose an appropriate model for your task.
-              <br />
-              Prefer a particular model? Switch anytime.
+              The right AI for <span className="teal-text">every task.</span>
             </p>
-            <div className="suggestions">
-              {[
-                'Help me write a thoughtful email',
-                'Explain a difficult concept simply',
-                'Plan my week with clear priorities',
-                'Review my code and suggest improvements',
-              ].map((s) => (
-                <button key={s} onClick={() => setText(s)}>
-                  {s}
-                  <span aria-hidden="true"> ↗</span>
+            <div className="available-models">
+              <button
+                className={`model-choice ${selected === 'AUTO' ? 'selected' : ''}`}
+                disabled={busy}
+                onClick={() => {
+                  setSelected('AUTO');
+                  setFeature('chat');
+                }}
+              >
+                <ProviderIcon provider="auto" />
+                <span>
+                  <strong>Auto</strong>
+                  <small>Best for your task</small>
+                </span>
+              </button>
+              {models.map((model) => (
+                <button
+                  className={`model-choice ${selected === model.id ? 'selected' : ''}`}
+                  key={model.id}
+                  disabled={busy}
+                  onClick={() => {
+                    setSelected(model.id);
+                    setFeature('chat');
+                  }}
+                >
+                  <ProviderIcon provider={model.provider} />
+                  <span>
+                    <strong>{model.displayName}</strong>
+                    <small>
+                      {model.description || model.provider.toLowerCase()}
+                    </small>
+                  </span>
+                </button>
+              ))}
+            </div>
+            <div className="task-cards">
+              {starterTasks.map((task) => (
+                <button
+                  key={task.key}
+                  onClick={() => {
+                    setText(
+                      String(
+                        settings[`workspace.${task.key}Prompt`] ||
+                          `Help me ${task.title.toLowerCase()}.`,
+                      ),
+                    );
+                    document
+                      .querySelector<HTMLTextAreaElement>('.composer textarea')
+                      ?.focus();
+                  }}
+                >
+                  <span className={`task-icon ${task.key}`}>
+                    <Icon name={task.icon} />
+                  </span>
+                  <span>
+                    <strong>{task.title}</strong>
+                    <small>{task.detail}</small>
+                  </span>
+                  <span className="task-arrow">↗</span>
                 </button>
               ))}
             </div>
@@ -521,9 +612,10 @@ export function Chat() {
                     accessToken: accessToken!,
                     method: 'DELETE',
                   })
-                    .then(() =>
-                      setFiles((old) => old.filter((x) => x.id !== f.id)),
-                    )
+                    .then(() => {
+                      setFiles((old) => old.filter((x) => x.id !== f.id));
+                      setSelectedFiles((old) => old.filter((x) => x !== f.id));
+                    })
                     .catch((e) => setError(e.message))
                 }
               >
@@ -533,7 +625,7 @@ export function Chat() {
           ))}
           <textarea
             aria-label="Message"
-            placeholder="Ask anything…"
+            placeholder="What would you like to work on?"
             value={text}
             disabled={busy}
             onChange={(e) => setText(e.target.value)}
@@ -552,6 +644,7 @@ export function Chat() {
             onKeyDown={(e) => {
               if (
                 e.key === 'Enter' &&
+                preferences?.sendOnEnter !== false &&
                 !e.shiftKey &&
                 !e.nativeEvent.isComposing
               ) {
@@ -577,7 +670,7 @@ export function Chat() {
                 disabled={busy || !accessToken || !allowance?.maxFiles}
                 onClick={() => upload.current?.click()}
               >
-                ＋ Attach
+                <Icon name="attach" /> Attach
               </button>
               <select
                 aria-label="Insert saved prompt"

@@ -67,7 +67,6 @@ export class AuthService implements OnModuleInit {
 
   async onModuleInit() {
     await this.bootstrapStaffAccount('ADMIN');
-    await this.bootstrapStaffAccount('MODERATOR');
   }
 
   async authenticateStaff(email: string, password: string) {
@@ -76,7 +75,7 @@ export class AuthService implements OnModuleInit {
       where: {
         user: {
           email: normalizedEmail,
-          role: { in: [UserRole.ADMIN, UserRole.MODERATOR] },
+          role: UserRole.ADMIN,
           status: UserStatus.ACTIVE,
         },
       },
@@ -364,7 +363,7 @@ export class AuthService implements OnModuleInit {
       );
       const username = await this.uniqueUsername(
         transaction,
-          identity.displayName || identity.providerUsername || 'account',
+        identity.displayName || identity.providerUsername || 'account',
         identity.providerUserId,
       );
 
@@ -410,7 +409,10 @@ export class AuthService implements OnModuleInit {
       !existingToken ||
       existingToken.revokedAt ||
       existingToken.expiresAt <= now ||
-      existingToken.user.status !== UserStatus.ACTIVE
+      existingToken.user.status !== UserStatus.ACTIVE ||
+      !([UserRole.USER, UserRole.ADMIN] as UserRole[]).includes(
+        existingToken.user.role,
+      )
     ) {
       throw new UnauthorizedException('Invalid or expired refresh token');
     }

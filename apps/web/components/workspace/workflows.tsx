@@ -49,6 +49,8 @@ export function Workflows() {
   useEffect(() => {
     if (!accessToken) return;
     void Promise.all([
+      // Hydrate workflows from the authenticated API.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       load(),
       apiRequest<Project[]>('/workspace/projects', { accessToken }).then(
         setProjects,

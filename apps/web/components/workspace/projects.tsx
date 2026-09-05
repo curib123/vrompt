@@ -43,6 +43,8 @@ export function Projects() {
   }
   useEffect(() => {
     if (accessToken) {
+      // Hydrate projects from the authenticated API.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       void load().catch((e) => setError(e.message));
       void apiRequest<Model[]>('/workspace/models', { accessToken })
         .then(setModels)

@@ -1,6 +1,20 @@
-import { envValidationSchema } from './env.schema';
+import { envValidationSchema, validateEnvironment } from './env.schema';
 
 describe('environment validation', () => {
+  it('does not retain secrets in startup validation errors', () => {
+    try {
+      validateEnvironment({
+        ADMIN_BOOTSTRAP_EMAIL: 'invalid',
+        GOOGLE_CLIENT_SECRET: 'private-test-credential',
+      });
+      throw new Error('Expected validation to fail');
+    } catch (error) {
+      expect(error).toBeInstanceOf(Error);
+      expect((error as Error).message).toContain('ADMIN_BOOTSTRAP_EMAIL');
+      expect((error as Error).message).not.toContain('private-test-credential');
+      expect(error).not.toHaveProperty('_original');
+    }
+  });
   it('rejects the development JWT secret in production', () => {
     const result = envValidationSchema.validate({
       NODE_ENV: 'production',

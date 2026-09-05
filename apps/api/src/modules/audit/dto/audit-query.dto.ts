@@ -1,4 +1,13 @@
-import { IsIn, IsOptional, IsString, MaxLength } from 'class-validator';
+import {
+  IsIn,
+  IsInt,
+  IsOptional,
+  IsString,
+  Max,
+  MaxLength,
+  Min,
+} from 'class-validator';
+import { Type } from 'class-transformer';
 
 export class AuditQueryDto {
   @IsOptional()
@@ -38,8 +47,16 @@ export class AuditQueryDto {
   actor?: string;
 
   @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(1000000)
   page?: number;
 
   @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(100)
   pageSize?: number;
 }

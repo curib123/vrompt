@@ -23,6 +23,6 @@ export class CreateStaffUserDto {
   @MaxLength(128)
   password!: string;
 
-  @IsIn(['ADMIN', 'MODERATOR'])
-  role!: 'ADMIN' | 'MODERATOR';
+  @IsIn(['ADMIN'])
+  role!: 'ADMIN';
 }

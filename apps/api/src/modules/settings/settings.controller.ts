@@ -45,5 +45,4 @@ export class AdminSettingsController {
   ) {
     return this.service.reset(actor.id, key);
   }
-
 }

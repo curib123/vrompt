@@ -30,7 +30,6 @@ export class BillingController {
     return this.monetization.publicPlans();
   }
 
-
   @Post('checkout')
   @UseGuards(AccessTokenGuard)
   checkout(

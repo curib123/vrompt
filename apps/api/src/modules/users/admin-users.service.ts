@@ -43,7 +43,7 @@ export class AdminUsersService {
         this.prisma.aIModel.count({ where: { enabled: true } }),
         this.prisma.savedPrompt.count(),
         this.prisma.user.count({
-          where: { role: { in: [UserRole.ADMIN, UserRole.MODERATOR] } },
+          where: { role: UserRole.ADMIN },
         }),
       ]);
     return {
@@ -97,8 +97,7 @@ export class AdminUsersService {
       integrations: {
         googleOAuth: Boolean(this.config.get<string>('GOOGLE_CLIENT_ID', '')),
         githubOAuth: Boolean(this.config.get<string>('GITHUB_CLIENT_ID', '')),
-        cloudStorage:
-          storageDriver === 'cloudinary',
+        cloudStorage: storageDriver === 'cloudinary',
         storageDriver,
         aiProvider: [
           'OPENAI_API_KEY',
@@ -108,7 +107,7 @@ export class AdminUsersService {
         ].some((key) => Boolean(this.config.get<string>(key, '').trim())),
         payMongo: Boolean(
           this.config.get<string>('PAYMONGO_SECRET_KEY', '').trim() &&
-            this.config.get<string>('PAYMONGO_WEBHOOK_SECRET', '').trim(),
+          this.config.get<string>('PAYMONGO_WEBHOOK_SECRET', '').trim(),
         ),
       },
       metrics: this.metrics.getSnapshot(),

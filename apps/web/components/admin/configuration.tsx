@@ -1,0 +1,789 @@
+'use client';
+import { useState, type FormEvent } from 'react';
+import { Modal } from '@/components/ui/modal';
+import { ProviderIcon } from '@/components/brand/provider-icon';
+import { apiRequest } from '@/lib/api';
+import { useAdminResource } from './use-admin-resource';
+
+type Values = Record<string, unknown>;
+type RecordItem = Values & {
+  id: string;
+  displayName?: string;
+  name?: string;
+  provider?: string;
+  enabled?: boolean;
+  isActive?: boolean;
+  planId?: string;
+  bucket?: string;
+};
+type Configuration = {
+  models: RecordItem[];
+  plans: RecordItem[];
+  policies: RecordItem[];
+};
+type Field = {
+  key: string;
+  label: string;
+  type?: 'number' | 'checkbox' | 'textarea';
+  min?: number;
+  max?: number;
+  step?: string;
+  options?: string[];
+};
+const modelFields: Field[] = [
+  { key: 'displayName', label: 'Display name' },
+  {
+    key: 'provider',
+    label: 'Provider',
+    options: ['OPENAI', 'GOOGLE', 'ANTHROPIC', 'MISTRAL'],
+  },
+  { key: 'providerModelId', label: 'Provider model ID' },
+  { key: 'category', label: 'Category' },
+  { key: 'description', label: 'Description', type: 'textarea' },
+  { key: 'enabled', label: 'Enabled', type: 'checkbox' },
+  { key: 'maintenance', label: 'Maintenance mode', type: 'checkbox' },
+  {
+    key: 'manualAvailable',
+    label: 'Available for manual selection',
+    type: 'checkbox',
+  },
+  { key: 'autoAvailable', label: 'Available to Auto', type: 'checkbox' },
+  {
+    key: 'inputPrice',
+    label: 'Input price (USD / million tokens)',
+    type: 'number',
+    min: 0,
+    step: 'any',
+  },
+  {
+    key: 'cachedInputPrice',
+    label: 'Cached input price (USD / million tokens)',
+    type: 'number',
+    min: 0,
+    step: 'any',
+  },
+  {
+    key: 'outputPrice',
+    label: 'Output price (USD / million tokens)',
+    type: 'number',
+    min: 0,
+    step: 'any',
+  },
+  {
+    key: 'creditCost',
+    label: 'Credits per generation',
+    type: 'number',
+    min: 1,
+    max: 100000,
+  },
+  {
+    key: 'maxContext',
+    label: 'Context token limit',
+    type: 'number',
+    min: 1,
+    max: 10000000,
+  },
+  {
+    key: 'maxOutput',
+    label: 'Output token limit',
+    type: 'number',
+    min: 1,
+    max: 1000000,
+  },
+  {
+    key: 'qualityTier',
+    label: 'Quality tier (1–4)',
+    type: 'number',
+    min: 1,
+    max: 4,
+  },
+  {
+    key: 'routingPriority',
+    label: 'Routing priority (0–100)',
+    type: 'number',
+    min: 0,
+    max: 100,
+  },
+  {
+    key: 'routingCostScore',
+    label: 'Routing cost score',
+    type: 'number',
+    min: 0,
+    step: 'any',
+  },
+  { key: 'displayOrder', label: 'Display order', type: 'number' },
+];
+const planFields: Field[] = [
+  { key: 'name', label: 'Plan name' },
+  { key: 'code', label: 'Plan code' },
+  { key: 'description', label: 'Description', type: 'textarea' },
+  {
+    key: 'originalPrice',
+    label: 'Price in minor currency units (e.g. 100 = 1.00)',
+    type: 'number',
+    min: 0,
+  },
+  { key: 'currency', label: 'Currency (ISO code)' },
+  {
+    key: 'billingInterval',
+    label: 'Billing interval',
+    options: ['DAY', 'WEEK', 'MONTH', 'YEAR', 'ONE_TIME'],
+  },
+  { key: 'intervalCount', label: 'Interval count', type: 'number', min: 1 },
+  { key: 'isActive', label: 'Available for subscription', type: 'checkbox' },
+  {
+    key: 'monthlyCredits',
+    label: 'Monthly credits',
+    type: 'number',
+    min: 0,
+    max: 10000000,
+  },
+  {
+    key: 'maxProjects',
+    label: 'Maximum projects',
+    type: 'number',
+    min: 0,
+    max: 200,
+  },
+  {
+    key: 'maxWorkflows',
+    label: 'Maximum workflows',
+    type: 'number',
+    min: 0,
+    max: 200,
+  },
+  {
+    key: 'maxWorkflowSteps',
+    label: 'Steps per workflow',
+    type: 'number',
+    min: 1,
+    max: 20,
+  },
+  {
+    key: 'projectContextChars',
+    label: 'Project context characters',
+    type: 'number',
+    min: 0,
+    max: 32000,
+  },
+  { key: 'displayOrder', label: 'Display order', type: 'number' },
+];
+const policyFields: Field[] = [
+  { key: 'enabled', label: 'Policy enabled', type: 'checkbox' },
+  { key: 'dailyLimit', label: 'Daily generations', type: 'number', min: 0 },
+  { key: 'monthlyLimit', label: 'Monthly generations', type: 'number', min: 0 },
+  {
+    key: 'maxInputChars',
+    label: 'Maximum input characters',
+    type: 'number',
+    min: 1,
+  },
+  { key: 'maxContext', label: 'Context token limit', type: 'number', min: 1 },
+  { key: 'maxOutput', label: 'Output token limit', type: 'number', min: 1 },
+  {
+    key: 'maxFiles',
+    label: 'Files per request',
+    type: 'number',
+    min: 0,
+    max: 10,
+  },
+  {
+    key: 'maxFileBytes',
+    label: 'Bytes per file',
+    type: 'number',
+    min: 1,
+    max: 20000000,
+  },
+  {
+    key: 'maxDurationSeconds',
+    label: 'Request timeout (seconds)',
+    type: 'number',
+    min: 1,
+    max: 600,
+  },
+  {
+    key: 'concurrency',
+    label: 'Concurrent requests per user',
+    type: 'number',
+    min: 1,
+    max: 10,
+  },
+  {
+    key: 'ratePerMinute',
+    label: 'Requests per minute',
+    type: 'number',
+    min: 1,
+    max: 120,
+  },
+];
+const capabilities = [
+  'text',
+  'vision',
+  'files',
+  'coding',
+  'reasoning',
+  'long_context',
+  'image_generation',
+  'prompt_caching',
+];
+type Kind = 'model' | 'plan' | 'policy';
+const defaults: Record<Kind, Values> = {
+  model: {
+    displayName: '',
+    provider: 'OPENAI',
+    providerModelId: '',
+    category: 'general',
+    description: '',
+    enabled: false,
+    maintenance: false,
+    manualAvailable: true,
+    autoAvailable: false,
+    inputPrice: 0,
+    cachedInputPrice: 0,
+    outputPrice: 0,
+    creditCost: 1,
+    maxContext: 16000,
+    maxOutput: 2000,
+    qualityTier: 1,
+    routingPriority: 0,
+    routingCostScore: 0,
+    displayOrder: 0,
+    capabilities: ['text'],
+  },
+  plan: {
+    name: '',
+    code: '',
+    description: '',
+    originalPrice: 0,
+    currency: 'USD',
+    billingInterval: 'MONTH',
+    intervalCount: 1,
+    isActive: false,
+    monthlyCredits: 0,
+    maxProjects: 0,
+    maxWorkflows: 0,
+    maxWorkflowSteps: 1,
+    projectContextChars: 0,
+    displayOrder: 0,
+    limits: [],
+  },
+  policy: {
+    planId: '',
+    bucket: 'AUTO',
+    enabled: false,
+    dailyLimit: 0,
+    monthlyLimit: 0,
+    maxInputChars: 16000,
+    maxContext: 16000,
+    maxOutput: 2000,
+    maxFiles: 0,
+    maxFileBytes: 1000000,
+    maxDurationSeconds: 60,
+    concurrency: 1,
+    ratePerMinute: 10,
+    allowedFeatures: ['chat'],
+    routing: {
+      allowedModelIds: [],
+      attemptTimeoutSeconds: 30,
+      maxAttempts: 3,
+      minimumQualityTier: 1,
+      costWeight: 1,
+      rules: [],
+    },
+  },
+};
+
+function Editor({
+  kind,
+  item,
+  config,
+  accessToken,
+  onSaved,
+  onClose,
+}: {
+  kind: Kind;
+  item?: RecordItem;
+  config: Configuration;
+  accessToken: string;
+  onSaved: () => void;
+  onClose: () => void;
+}) {
+  const fields =
+    kind === 'model'
+      ? modelFields
+      : kind === 'plan'
+        ? planFields
+        : policyFields;
+  const [values, setValues] = useState<Values>({ ...defaults[kind], ...item });
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const [advanced, setAdvanced] = useState(
+    JSON.stringify(
+      kind === 'plan'
+        ? (item?.limits ?? [])
+        : kind === 'policy'
+          ? (item?.routing ?? defaults.policy.routing)
+          : (item?.additionalPrices ?? {}),
+      null,
+      2,
+    ),
+  );
+  const set = (key: string, value: unknown) =>
+    setValues((old) => ({ ...old, [key]: value }));
+  async function save(e: FormEvent) {
+    e.preventDefault();
+    if (busy) return;
+    setError('');
+    try {
+      const body = Object.fromEntries(
+        fields.map((field) => [field.key, values[field.key]]),
+      );
+      if (kind === 'model')
+        Object.assign(body, {
+          capabilities: values.capabilities,
+          currency: 'USD',
+          fallbackId: values.fallbackId || null,
+          additionalPrices: JSON.parse(advanced),
+          ...(item?.effectiveFrom ? { effectiveFrom: item.effectiveFrom } : {}),
+          effectiveUntil: values.effectiveUntil || null,
+        });
+      if (kind === 'plan') body.limits = JSON.parse(advanced);
+      if (kind === 'policy')
+        Object.assign(body, {
+          planId: values.planId,
+          bucket: values.bucket,
+          modelId: values.bucket === 'AUTO' ? null : values.bucket,
+          allowedFeatures: values.allowedFeatures,
+          routing: JSON.parse(advanced),
+        });
+      setBusy(true);
+      const path =
+        kind === 'plan'
+          ? '/admin/billing/plans'
+          : `/admin/workspace/${kind === 'model' ? 'models' : 'policies'}`;
+      await apiRequest(
+        `${path}${item && kind !== 'policy' ? `/${item.id}` : ''}`,
+        {
+          accessToken,
+          method: item && kind !== 'policy' ? 'PATCH' : 'POST',
+          body: JSON.stringify(body),
+        },
+      );
+      onSaved();
+    } catch (e) {
+      setError(
+        e instanceof SyntaxError
+          ? 'The advanced configuration must contain valid JSON.'
+          : (e as Error).message,
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+  const selected = (key: string) => (values[key] as string[]) ?? [];
+  return (
+    <form onSubmit={save} className="config-editor">
+      <fieldset disabled={busy}>
+        {kind === 'policy' && (
+          <div className="form-grid">
+            <label>
+              Plan
+              <select
+                aria-label="Plan"
+                required
+                value={String(values.planId)}
+                disabled={Boolean(item)}
+                onChange={(e) => set('planId', e.target.value)}
+              >
+                <option value="">Choose a plan</option>
+                {config.plans.map((plan) => (
+                  <option key={plan.id} value={plan.id}>
+                    {plan.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Model selection
+              <select
+                aria-label="Model selection"
+                value={String(values.bucket)}
+                disabled={Boolean(item)}
+                onChange={(e) => set('bucket', e.target.value)}
+              >
+                <option value="AUTO">Auto</option>
+                {config.models.map((model) => (
+                  <option key={model.id} value={model.id}>
+                    {model.displayName}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+        )}
+        <div className="form-grid">
+          {fields.map((field) => (
+            <label key={field.key}>
+              {field.label}
+              {field.type === 'checkbox' ? (
+                <input
+                  type="checkbox"
+                  checked={Boolean(values[field.key])}
+                  onChange={(e) => set(field.key, e.target.checked)}
+                />
+              ) : field.options ? (
+                <select
+                  aria-label={field.label}
+                  value={String(values[field.key] ?? '')}
+                  onChange={(e) => set(field.key, e.target.value)}
+                >
+                  {field.options.map((option) => (
+                    <option key={option}>{option}</option>
+                  ))}
+                </select>
+              ) : field.type === 'textarea' ? (
+                <textarea
+                  rows={3}
+                  value={String(values[field.key] ?? '')}
+                  onChange={(e) => set(field.key, e.target.value)}
+                />
+              ) : (
+                <input
+                  required
+                  type={field.type ?? 'text'}
+                  min={field.min}
+                  max={field.max}
+                  step={field.step ?? '1'}
+                  value={String(values[field.key] ?? '')}
+                  onChange={(e) =>
+                    set(
+                      field.key,
+                      field.type === 'number'
+                        ? e.target.value === ''
+                          ? ''
+                          : Number(e.target.value)
+                        : e.target.value,
+                    )
+                  }
+                />
+              )}
+            </label>
+          ))}
+        </div>
+        {kind !== 'plan' && (
+          <fieldset className="capability-fieldset">
+            <legend>
+              {kind === 'model' ? 'Capabilities' : 'Allowed tasks'}
+            </legend>
+            {(kind === 'model'
+              ? capabilities
+              : ['chat', 'image_generation']
+            ).map((capability) => {
+              const key = kind === 'model' ? 'capabilities' : 'allowedFeatures';
+              return (
+                <label key={capability}>
+                  <input
+                    type="checkbox"
+                    checked={selected(key).includes(capability)}
+                    onChange={(e) =>
+                      set(
+                        key,
+                        e.target.checked
+                          ? [...selected(key), capability]
+                          : selected(key).filter(
+                              (value) => value !== capability,
+                            ),
+                      )
+                    }
+                  />
+                  {capability.replaceAll('_', ' ')}
+                </label>
+              );
+            })}
+          </fieldset>
+        )}
+        {kind === 'model' && (
+          <label className="config-label">
+            Fallback model
+            <select
+              value={String(values.fallbackId || '')}
+              onChange={(e) => set('fallbackId', e.target.value)}
+            >
+              <option value="">No fallback</option>
+              {config.models
+                .filter((model) => model.id !== item?.id)
+                .map((model) => (
+                  <option key={model.id} value={model.id}>
+                    {model.displayName}
+                  </option>
+                ))}
+            </select>
+          </label>
+        )}
+        {kind === 'policy' && (
+          <fieldset className="capability-fieldset">
+            <legend>Auto model pool</legend>
+            {config.models.map((model) => {
+              let routing: { allowedModelIds?: string[] };
+              try {
+                routing = JSON.parse(advanced);
+              } catch {
+                return null;
+              }
+              return (
+                <label key={model.id}>
+                  <input
+                    type="checkbox"
+                    checked={
+                      routing.allowedModelIds?.includes(model.id) ?? false
+                    }
+                    onChange={(e) =>
+                      setAdvanced(
+                        JSON.stringify(
+                          {
+                            ...routing,
+                            allowedModelIds: e.target.checked
+                              ? [...(routing.allowedModelIds ?? []), model.id]
+                              : (routing.allowedModelIds ?? []).filter(
+                                  (id) => id !== model.id,
+                                ),
+                          },
+                          null,
+                          2,
+                        ),
+                      )
+                    }
+                  />
+                  {model.displayName}
+                </label>
+              );
+            })}
+          </fieldset>
+        )}
+        <details className="advanced-config">
+          <summary>
+            {kind === 'plan'
+              ? 'Feature limits'
+              : kind === 'policy'
+                ? 'Advanced routing rules'
+                : 'Additional provider pricing'}
+          </summary>
+          <p className="muted">
+            {kind === 'plan'
+              ? 'Optional feature limits as JSON: featureKey, featureName, resetPeriod (DAILY or MONTHLY), and limit. Generation allowances are configured separately below.'
+              : kind === 'policy'
+                ? 'Configure attempt timeouts, maximum attempts, quality, cost weight, and task rules. The server validates these settings before saving.'
+                : 'Optional cache pricing as JSON, for example {"cacheWriteInputPrice": 0}.'}
+          </p>
+          <textarea
+            aria-label="Advanced configuration"
+            rows={8}
+            value={advanced}
+            onChange={(e) => setAdvanced(e.target.value)}
+          />
+        </details>
+        {error && (
+          <p className="error-banner" role="alert">
+            {error}
+          </p>
+        )}
+        <div className="form-actions">
+          <button type="button" className="secondary-button" onClick={onClose}>
+            Cancel
+          </button>
+          <button className="primary-button">
+            {busy ? 'Saving…' : 'Save configuration'}
+          </button>
+        </div>
+      </fieldset>
+    </form>
+  );
+}
+
+export function AdminRegistry({ plans = false }: { plans?: boolean }) {
+  const resource = useAdminResource<Configuration>(
+    '/admin/workspace/configuration',
+  );
+  const planResource = useAdminResource<{ plans: RecordItem[] }>(
+    '/admin/billing/configuration',
+  );
+  const [editing, setEditing] = useState<{ kind: Kind; item?: RecordItem }>();
+  const [notice, setNotice] = useState('');
+  const config = resource.data;
+  const planItems = planResource.data?.plans;
+  // Normalize nested feature records from the billing API into its write DTO.
+  function editPlan(plan: RecordItem) {
+    const limits = (
+      (plan.limits ?? []) as {
+        feature: {
+          key: string;
+          name: string;
+          description: string;
+          unitLabel: string;
+        };
+        resetPeriod: string;
+        limit: number | null;
+        warningAt: number;
+      }[]
+    ).map((limit) => ({
+      featureKey: limit.feature.key,
+      featureName: limit.feature.name,
+      description: limit.feature.description,
+      unitLabel: limit.feature.unitLabel,
+      resetPeriod: limit.resetPeriod,
+      limit: limit.limit,
+      warningAt: limit.warningAt,
+    }));
+    setEditing({ kind: 'plan', item: { ...plan, limits } });
+  }
+  return (
+    <div className="content-page">
+      <p className="eyebrow">WORKSPACE CONFIGURATION</p>
+      <h1>{plans ? 'Plans & allowances' : 'Models & routing'}</h1>
+      <p className="muted">
+        {plans
+          ? 'Set subscription pricing, workspace capacity, and generation allowances for each plan.'
+          : 'Manage model availability, capabilities, costs, and selection. Provider credentials stay on the server.'}
+      </p>
+      {(resource.error || (plans && planResource.error)) && (
+        <p className="error-banner" role="alert">
+          {resource.error || planResource.error}
+        </p>
+      )}
+      {notice && (
+        <p className="success-banner" role="status">
+          {notice}
+        </p>
+      )}
+      <div className="admin-toolbar">
+        <button
+          className="primary-button"
+          disabled={!config || (plans && !planItems)}
+          onClick={() => setEditing({ kind: plans ? 'plan' : 'model' })}
+        >
+          + Add {plans ? 'plan' : 'model'}
+        </button>
+        <button
+          className="secondary-button"
+          onClick={() => {
+            resource.refresh();
+            planResource.refresh();
+          }}
+        >
+          Refresh
+        </button>
+      </div>
+      {resource.loading && (
+        <p role="status" className="muted">
+          Loading configuration…
+        </p>
+      )}
+      <div className="panel">
+        {(plans ? planItems : config?.models)?.map((item) => (
+          <div className="row" key={item.id}>
+            <div className="registry-name">
+              {!plans && <ProviderIcon provider={item.provider ?? ''} />}
+              <div>
+                <strong>{plans ? item.name : item.displayName}</strong>
+                <p className="muted">
+                  {plans
+                    ? `${item.currency} ${(Number(item.originalPrice) / 100).toFixed(2)} · ${String(item.monthlyCredits)} monthly credits`
+                    : `${item.provider} · ${String(item.providerModelId)}`}
+                </p>
+              </div>
+            </div>
+            <div className="row-actions">
+              <span
+                className={`status-badge ${(plans ? item.isActive : item.enabled) ? 'active' : ''}`}
+              >
+                {(plans ? item.isActive : item.enabled)
+                  ? 'Enabled'
+                  : 'Disabled'}
+              </span>
+              <button
+                className="secondary-button"
+                onClick={() =>
+                  plans ? editPlan(item) : setEditing({ kind: 'model', item })
+                }
+              >
+                Edit
+              </button>
+            </div>
+          </div>
+        ))}
+        {!(plans ? planItems : config?.models)?.length && !resource.loading && (
+          <p className="muted">
+            No {plans ? 'plans' : 'models'} configured yet.
+          </p>
+        )}
+      </div>
+      <div className="admin-toolbar">
+        <h2>Generation allowances</h2>
+        <button
+          className="secondary-button"
+          disabled={!config?.plans.length}
+          onClick={() => setEditing({ kind: 'policy' })}
+        >
+          + Add allowance
+        </button>
+      </div>
+      <div className="panel">
+        {config?.policies.map((policy) => (
+          <div className="row" key={policy.id}>
+            <div>
+              <strong>
+                {config.plans.find((plan) => plan.id === policy.planId)?.name ??
+                  'Plan'}{' '}
+                ·{' '}
+                {policy.bucket === 'AUTO'
+                  ? 'Auto'
+                  : (config.models.find((model) => model.id === policy.bucket)
+                      ?.displayName ?? 'Model')}
+              </strong>
+              <p className="muted">
+                {String(policy.dailyLimit)} daily ·{' '}
+                {String(policy.monthlyLimit)} monthly ·{' '}
+                {policy.enabled ? 'Enabled' : 'Disabled'}
+              </p>
+            </div>
+            <button
+              className="secondary-button"
+              onClick={() => setEditing({ kind: 'policy', item: policy })}
+            >
+              Edit allowance
+            </button>
+          </div>
+        ))}
+        {!config?.policies.length && (
+          <p className="muted">
+            Add a policy to give a plan access to Auto or a specific model.
+          </p>
+        )}
+      </div>
+      <Modal
+        open={Boolean(editing)}
+        title={`${editing?.item ? 'Edit' : 'Add'} ${editing?.kind ?? 'configuration'}`}
+        description="Changes are validated and saved to the workspace configuration."
+        onClose={() => setEditing(undefined)}
+        className="max-w-3xl"
+      >
+        {editing && config && (
+          <Editor
+            key={`${editing.kind}-${editing.item?.id ?? 'new'}`}
+            kind={editing.kind}
+            item={editing.item}
+            config={config}
+            accessToken={resource.accessToken!}
+            onClose={() => setEditing(undefined)}
+            onSaved={() => {
+              setEditing(undefined);
+              setNotice('Configuration saved.');
+              resource.refresh();
+              planResource.refresh();
+            }}
+          />
+        )}
+      </Modal>
+    </div>
+  );
+}

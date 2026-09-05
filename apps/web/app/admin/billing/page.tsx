@@ -1,2 +1,4 @@
-import { BillingPage } from '@/components/workspace/pages';
-export default function Page() { return <BillingPage />; }
+import { AdminBilling } from '@/components/admin/billing';
+export default function Page() {
+  return <AdminBilling />;
+}

@@ -1,5 +1,18 @@
 import * as Joi from 'joi';
 
+export function validateEnvironment(configuration: Record<string, unknown>) {
+  const { error, value } = envValidationSchema.validate(configuration, {
+    abortEarly: false,
+    allowUnknown: true,
+  });
+  // Raw Joi errors keep the entire environment, including credentials, in _original.
+  if (error)
+    throw new Error(
+      `Invalid environment configuration: ${error.details.map((detail) => `${detail.path.join('.')} (${detail.type})`).join(', ')}`,
+    );
+  return value as Record<string, unknown>;
+}
+
 export const envValidationSchema = Joi.object({
   NODE_ENV: Joi.string()
     .valid('development', 'test', 'production')

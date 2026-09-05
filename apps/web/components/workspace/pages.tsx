@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/components/providers/auth-provider';
+import { useAuthDialog } from '@/components/providers/auth-dialog-provider';
 import {
   apiRequest,
   type Conversation,
@@ -10,7 +11,6 @@ import {
   type Usage,
   type Model,
 } from '@/lib/api';
-import { useTheme } from '@/components/theme/theme-provider';
 
 export function Conversations() {
   const { accessToken } = useAuth();
@@ -108,6 +108,8 @@ export function SavedPrompts() {
     );
   }
   useEffect(() => {
+    // Hydrate saved prompts from the authenticated API.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (accessToken) void load().catch((e) => setError(e.message));
   }, [accessToken]); // eslint-disable-line react-hooks/exhaustive-deps
   async function save(e: React.FormEvent) {
@@ -283,157 +285,25 @@ export function UsagePage() {
     </div>
   );
 }
-export function SettingsPage() {
-  const { user } = useAuth();
-  const { theme, setTheme } = useTheme();
-  return (
-    <div className="content-page">
-      <h1>Settings</h1>
-      <section className="panel">
-        <h2>Your account</h2>
-        <p>{user?.email}</p>
-        <p className="muted">
-          Sign-in is managed through your connected Google or GitHub account.
-        </p>
-      </section>
-      <section className="panel">
-        <label>
-          Appearance{' '}
-          <select
-            value={theme}
-            onChange={(e) =>
-              setTheme(e.target.value as 'system' | 'light' | 'dark')
-            }
-          >
-            <option value="system">Use device setting</option>
-            <option value="light">Light</option>
-            <option value="dark">Dark</option>
-          </select>
-        </label>
-      </section>
-    </div>
-  );
-}
-
-export function AdminOverview() {
-  const { accessToken } = useAuth();
-  const [data, setData] = useState<Record<string, unknown>>();
-  useEffect(() => {
-    if (accessToken)
-      void apiRequest<Record<string, unknown>>('/admin/dashboard', {
-        accessToken,
-      })
-        .then(setData)
-        .catch(() => {});
-  }, [accessToken]);
-  return (
-    <div className="content-page">
-      <p className="eyebrow">ADMINISTRATION</p>
-      <h1>Workspace operations</h1>
-      <p className="muted">
-        Configure models and allowances, then monitor provider cost, reliability
-        and revenue.
-      </p>
-      <section className="feature-grid">
-        <div className="panel">
-          <h2>{String(data?.users ?? '—')}</h2>
-          <p className="muted">Active users</p>
-        </div>
-        <div className="panel">
-          <h2>{String(data?.generations ?? '—')}</h2>
-          <p className="muted">Recorded generations</p>
-        </div>
-        <div className="panel">
-          <h2>{String(data?.models ?? '—')}</h2>
-          <p className="muted">Enabled models</p>
-        </div>
-      </section>
-      <p>
-        <Link className="primary-button" href="/admin/models">
-          Configure models and routing
-        </Link>
-      </p>
-    </div>
-  );
-}
-export function AdminConfiguration() {
-  const { accessToken } = useAuth();
-  const [data, setData] = useState<{
-    models: Model[];
-    plans: { id: string; name: string }[];
-    policies: {
-      id: string;
-      bucket: string;
-      dailyLimit: number;
-      monthlyLimit: number;
-    }[];
-  }>();
-  const [error, setError] = useState('');
-  useEffect(() => {
-    if (accessToken)
-      void apiRequest<typeof data>('/admin/workspace/configuration', {
-        accessToken,
-      })
-        .then(setData)
-        .catch((e) => setError(e.message));
-  }, [accessToken]);
-  return (
-    <div className="content-page">
-      <h1>Models & routing</h1>
-      <p className="muted">
-        Models are disabled until provider credentials, prices, capabilities and
-        plan policies are configured.
-      </p>
-      {error && <p className="error-banner">{error}</p>}
-      <section className="panel">
-        <h2>Model registry</h2>
-        {data?.models.map((m) => (
-          <div className="row" key={m.id}>
-            <span>
-              <strong>{m.displayName}</strong>
-              <br />
-              <small>
-                {m.provider} · {m.capabilities.join(', ')}
-              </small>
-            </span>
-            <span>
-              {m.enabled ? 'Enabled' : 'Disabled'}
-              {m.maintenance ? ' · Maintenance' : ''}
-            </span>
-          </div>
-        ))}
-        {!data?.models.length && (
-          <p className="muted">No model is configured yet.</p>
-        )}
-      </section>
-      <section className="panel">
-        <h2>Allowance policies</h2>
-        {data?.policies.map((p) => (
-          <div className="row" key={p.id}>
-            <span>{p.bucket}</span>
-            <span>
-              {p.dailyLimit}/day · {p.monthlyLimit}/month
-            </span>
-          </div>
-        ))}
-      </section>
-      <p className="muted">
-        Use the protected admin API to add or edit registry entries. Changes are
-        audit logged.
-      </p>
-    </div>
-  );
-}
 export function AdminAnalytics() {
   const { accessToken } = useAuth();
+  const [error, setError] = useState('');
   const [data, setData] = useState<{
     costs: {
       provider: string;
       modelName: string;
+      currency: string;
       _sum: { estimatedCost: string | null };
       _count: number;
     }[];
     activeSubscriptions: number;
+    contribution: {
+      currency: string;
+      revenue: number;
+      aiCost: number;
+      contributionProfit: number;
+      margin: number | null;
+    }[];
     note: string;
   }>();
   useEffect(() => {
@@ -442,11 +312,38 @@ export function AdminAnalytics() {
         accessToken,
       })
         .then(setData)
-        .catch(() => {});
+        .catch((e: Error) => setError(e.message));
   }, [accessToken]);
   return (
     <div className="content-page">
       <h1>Costs & revenue</h1>
+      {error && (
+        <p className="error-banner" role="alert">
+          {error}
+        </p>
+      )}
+      <div className="feature-grid">
+        {data?.contribution.map((item) => (
+          <section className="panel" key={item.currency}>
+            <p className="eyebrow">{item.currency} · Last 30 days</p>
+            <h2>{item.revenue.toFixed(2)}</h2>
+            <p className="muted">Cash received</p>
+            <div className="row">
+              <span>AI cost</span>
+              <strong>{item.aiCost.toFixed(4)}</strong>
+            </div>
+            <div className="row">
+              <span>Contribution</span>
+              <strong>{item.contributionProfit.toFixed(2)}</strong>
+            </div>
+            <p className="muted">
+              {item.margin === null
+                ? 'No revenue recorded'
+                : `${(item.margin * 100).toFixed(1)}% contribution margin`}
+            </p>
+          </section>
+        ))}
+      </div>
       <p className="muted">
         Last 30 days. Provider costs are tracked separately from customer-facing
         generations.
@@ -463,7 +360,9 @@ export function AdminAnalytics() {
               <br />
               <small>{c._count} records</small>
             </span>
-            <span>{c._sum.estimatedCost ?? '0'} cost units</span>
+            <span>
+              {c.currency} {Number(c._sum.estimatedCost ?? 0).toFixed(4)}
+            </span>
           </div>
         ))}
       </section>
@@ -487,6 +386,7 @@ type Billing = {
   latestPayment: { status: string; amount: number; currency: string } | null;
 };
 export function BillingPage({ pricing = false }: { pricing?: boolean }) {
+  const { openLogin } = useAuthDialog();
   const { accessToken } = useAuth();
   const [plans, setPlans] = useState<Plan[]>([]);
   const [billing, setBilling] = useState<Billing>();
@@ -504,7 +404,7 @@ export function BillingPage({ pricing = false }: { pricing?: boolean }) {
   }, [accessToken]);
   async function checkout(planCode: string) {
     if (!accessToken) {
-      window.location.assign('/login');
+      openLogin('/billing');
       return;
     }
     setBusy(true);

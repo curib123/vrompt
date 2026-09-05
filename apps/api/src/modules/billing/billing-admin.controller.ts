@@ -29,7 +29,7 @@ import {
 
 @Controller('admin/billing')
 @UseGuards(AccessTokenGuard, RolesGuard)
-@Roles(UserRole.MODERATOR, UserRole.ADMIN)
+@Roles(UserRole.ADMIN)
 export class BillingAdminController {
   constructor(
     private readonly service: BillingService,

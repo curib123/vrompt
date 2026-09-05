@@ -1,4 +1,6 @@
 import { Module } from '@nestjs/common';
+import { CatalogController } from './catalog.controller';
+import { PreferencesController } from './preferences.controller';
 import { ProjectsService } from './projects.service';
 import { ProjectsController } from './projects.controller';
 import { WorkflowsService } from './workflows.service';
@@ -18,6 +20,8 @@ import {
 @Module({
   imports: [AuthModule],
   controllers: [
+    CatalogController,
+    PreferencesController,
     WorkspaceController,
     WorkspaceAdminController,
     ProjectsController,

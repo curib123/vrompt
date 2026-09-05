@@ -55,18 +55,20 @@ export class AccessTokenGuard implements CanActivate {
         throw new UnauthorizedException('Authentication required');
       }
 
+      if (user.role !== UserRole.USER && user.role !== UserRole.ADMIN)
+        throw new ForbiddenException(
+          'This account role is no longer supported',
+        );
+
       const allowedRoles = this.reflector.getAllAndOverride<UserRole[]>(
         ROLES_KEY,
         [context.getHandler(), context.getClass()],
       );
-      const isStaff =
-        user.role === UserRole.ADMIN || user.role === UserRole.MODERATOR;
+      if (allowedRoles?.length && !allowedRoles.includes(user.role))
+        throw new ForbiddenException('Insufficient permissions');
+      const isStaff = user.role === UserRole.ADMIN;
       const isStaffAuthRoute = request.path.includes('/auth/');
-      if (
-        isStaff &&
-        !isStaffAuthRoute &&
-        !allowedRoles?.includes(user.role)
-      ) {
+      if (isStaff && !isStaffAuthRoute && !allowedRoles?.includes(user.role)) {
         throw new ForbiddenException(
           'Staff accounts are restricted to the control panel',
         );

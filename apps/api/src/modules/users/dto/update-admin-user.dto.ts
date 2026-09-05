@@ -8,8 +8,8 @@ import {
 
 export class UpdateAdminUserDto {
   @IsOptional()
-  @IsIn(['USER', 'MODERATOR', 'ADMIN'])
-  role?: 'USER' | 'MODERATOR' | 'ADMIN';
+  @IsIn(['USER', 'ADMIN'])
+  role?: 'USER' | 'ADMIN';
 
   @IsOptional()
   @IsIn(['ACTIVE', 'SUSPENDED'])

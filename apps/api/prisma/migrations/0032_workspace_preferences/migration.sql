@@ -1,0 +1,1 @@
+ALTER TABLE "Profile" ADD COLUMN "preferences" JSONB NOT NULL DEFAULT '{}';
