@@ -197,6 +197,8 @@ enum ModerationActionType {
 }
 
 enum AuditTargetType {
+  MODEL
+  GENERATION_POLICY
   REPOSITORY
   COMMENT
   USER
@@ -211,6 +213,8 @@ enum AuditTargetType {
 }
 
 enum AuditActionType {
+  MODEL_CONFIGURED
+  GENERATION_POLICY_CONFIGURED
   PROMPT_HIDDEN
   PROMPT_RESTORED
   COMMENT_HIDDEN
@@ -288,6 +292,12 @@ model User {
   usageBuckets          FeatureUsageBucket[]
   usageEvents           FeatureUsageEvent[]
   promotionRedemptions  PromotionRedemption[]
+  conversations         Conversation[]
+  savedPrompts          SavedPrompt[]
+  chatReservations      QuotaReservation[]
+  chatCounters          UsageCounter[]
+  chatUsage             UsageRecord[]
+  attachments           Attachment[]
 
   @@index([status, createdAt])
 }
@@ -660,6 +670,7 @@ model BillingPlan {
   subscriptions BillingSubscription[]
   payments      BillingPayment[]
   priceHistory  PricingHistory[]
+  generationPolicies GenerationPolicy[]
 
   @@index([isActive, displayOrder])
 }
@@ -1098,4 +1109,196 @@ model AuditLog {
   @@index([action, createdAt])
   @@index([targetType, targetId, createdAt])
   @@index([actorId, createdAt])
+}
+
+enum ModelProvider {
+  OPENAI
+  GOOGLE
+  ANTHROPIC
+}
+
+enum RoutingMode {
+  AUTO
+  MANUAL
+  FALLBACK
+}
+
+enum GenerationStatus {
+  RESERVED
+  SUCCEEDED
+  FAILED
+  CANCELLED
+  INTERRUPTED
+}
+
+model AIModel {
+  id String @id @default(uuid()) @db.Uuid
+  provider ModelProvider
+  providerModelId String @db.VarChar(160)
+  displayName String @db.VarChar(100)
+  description String @default("") @db.VarChar(500)
+  category String @default("general") @db.VarChar(40)
+  capabilities String[] @default(["text"])
+  enabled Boolean @default(false)
+  manualAvailable Boolean @default(true)
+  autoAvailable Boolean @default(false)
+  maintenance Boolean @default(false)
+  displayOrder Int @default(0)
+  qualityTier Int @default(1)
+  routingPriority Int @default(0)
+  routingCostScore Decimal @default(1) @db.Decimal(12,6)
+  inputPrice Decimal @db.Decimal(18,8)
+  cachedInputPrice Decimal @db.Decimal(18,8)
+  outputPrice Decimal @db.Decimal(18,8)
+  additionalPrices Json @default("{}")
+  currency String @default("USD") @db.Char(3)
+  maxContext Int
+  maxOutput Int
+  fallbackId String? @db.Uuid
+  fallback AIModel? @relation("ModelFallback", fields: [fallbackId], references: [id], onDelete: SetNull)
+  fallbackFor AIModel[] @relation("ModelFallback")
+  effectiveFrom DateTime @default(now())
+  effectiveUntil DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  policies GenerationPolicy[]
+  @@unique([provider, providerModelId])
+  @@index([enabled, maintenance, displayOrder])
+}
+
+model GenerationPolicy {
+  id String @id @default(uuid()) @db.Uuid
+  planId String @db.Uuid
+  plan BillingPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+  bucket String @db.VarChar(80)
+  modelId String? @db.Uuid
+  model AIModel? @relation(fields: [modelId], references: [id], onDelete: Cascade)
+  dailyLimit Int
+  monthlyLimit Int
+  maxInputChars Int
+  maxContext Int
+  maxOutput Int
+  maxFiles Int
+  maxFileBytes Int
+  maxDurationSeconds Int
+  concurrency Int
+  ratePerMinute Int
+  enabled Boolean @default(true)
+  routing Json @default("{}")
+  updatedAt DateTime @updatedAt
+  @@unique([planId, bucket])
+}
+
+model Conversation {
+  id String @id @default(uuid()) @db.Uuid
+  userId String @db.Uuid
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title String @default("New conversation") @db.VarChar(160)
+  archived Boolean @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  messages Message[]
+  attachments Attachment[]
+  @@index([userId, archived, updatedAt])
+}
+
+model Message {
+  id String @id @default(uuid()) @db.Uuid
+  conversationId String @db.Uuid
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  role String @db.VarChar(16)
+  content String @default("") @db.Text
+  modelName String? @db.VarChar(160)
+  provider ModelProvider?
+  routingMode RoutingMode?
+  generationId String? @unique @db.Uuid
+  status GenerationStatus @default(SUCCEEDED)
+  createdAt DateTime @default(now())
+  @@index([conversationId, createdAt])
+}
+
+model SavedPrompt {
+  id String @id @default(uuid()) @db.Uuid
+  userId String @db.Uuid
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title String @db.VarChar(160)
+  content String @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([userId, updatedAt])
+}
+
+model Attachment {
+  id String @id @default(uuid()) @db.Uuid
+  userId String @db.Uuid
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  conversationId String @db.Uuid
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  name String @db.VarChar(200)
+  mimeType String @db.VarChar(80)
+  size Int
+  storageKey String @unique @db.VarChar(255)
+  createdAt DateTime @default(now())
+  @@index([userId, conversationId])
+}
+
+model UsageCounter {
+  id String @id @default(uuid()) @db.Uuid
+  userId String @db.Uuid
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bucket String @db.VarChar(80)
+  periodStart DateTime
+  period UsageResetPeriod
+  used Int @default(0)
+  reserved Int @default(0)
+  extra Int @default(0)
+  @@unique([userId, bucket, period, periodStart])
+}
+
+model QuotaReservation {
+  id String @id @db.Uuid
+  userId String @db.Uuid
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bucket String @db.VarChar(80)
+  fingerprint String @db.VarChar(64)
+  dayStart DateTime
+  monthStart DateTime
+  status GenerationStatus @default(RESERVED)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  finalizedAt DateTime?
+  @@index([userId, status, expiresAt])
+}
+
+model UsageRecord {
+  id String @id @default(uuid()) @db.Uuid
+  userId String @db.Uuid
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+  requestId String @db.Uuid
+  subscriptionId String? @db.Uuid
+  conversationId String? @db.Uuid
+  messageId String? @db.Uuid
+  provider ModelProvider
+  modelId String @db.Uuid
+  providerModelId String @db.VarChar(160)
+  modelName String @db.VarChar(160)
+  routingMode RoutingMode
+  originalModelId String? @db.Uuid
+  fallbackReason String? @db.VarChar(100)
+  inputTokens Int @default(0)
+  cachedInputTokens Int @default(0)
+  outputTokens Int @default(0)
+  reasoningTokens Int @default(0)
+  providerUsage Json
+  pricingSnapshot Json
+  estimatedCost Decimal @db.Decimal(18,8)
+  costEstimated Boolean @default(false)
+  currency String @db.Char(3)
+  latencyMs Int
+  status GenerationStatus
+  errorCategory String? @db.VarChar(100)
+  createdAt DateTime @default(now())
+  @@index([userId, createdAt])
+  @@index([requestId])
+  @@index([modelId, createdAt])
 }
