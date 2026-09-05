@@ -1,46 +1,31 @@
-# Vrompt MVP Validation Report
+# Vrompt Workspace MVP Validation Report
 
 Status: `pending real data`
 Validation window (UTC):
 Report owner:
 Build/commit:
 
-## Cohort
+## Cohort and product metrics
 
 - Invited alpha testers:
 - Completed alpha testers:
-- Beta eligible actors:
-- Seeded activity excluded: `STARTER`, `OFFICIAL`
-- Anonymous activity treatment:
+- Active users:
+- Conversations:
+- Completed generations:
+- Seven-day returning users:
+- Provider failure rate:
+- Quota-limit errors:
+- Paid conversions:
 
-## Product Metrics
-
-| Metric                   | Numerator | Denominator | Result | Target/decision |
-| ------------------------ | --------: | ----------: | -----: | --------------- |
-| Activation               |           |             |        |                 |
-| Creation conversion      |           |             |        |                 |
-| Collaboration conversion |           |             |        |                 |
-| 7-day retention          |           |             |        |                 |
-| Evidence comprehension   |           |             |        |                 |
-
-## Evidence Understanding
-
-Record the anonymized response counts from the alpha interview questions:
-
-- Testers who understood that evidence supports a prompt claim:
-- Testers who understood evidence is not an automatic quality guarantee:
-- Testers who could identify missing or misleading evidence:
-- Most common misunderstanding:
-- Product change to test next:
-
-## Quality And Safety
+## Quality and safety
 
 - S1 defects opened / closed:
 - S2 defects opened / closed:
 - Private-content or authorization incidents:
 - Data-loss incidents:
-- Unsafe media or misleading-evidence reports:
+- Unsafe-file reports:
 - Backup restore rehearsal result:
+- Usage/cost reconciliation result:
 
 ## Decision
 
@@ -50,5 +35,5 @@ Record the anonymized response counts from the alpha interview questions:
 - Next experiment:
 - Owner and due date:
 
-No result in this document should be marked as passing until its source query,
-sample, and review date are recorded.
+No result should be marked as passing until its source, sample, and review date
+are recorded.

@@ -1,34 +1,29 @@
-# Phase 43 Alpha Test
+# Private Alpha Test
 
-Run a private alpha with 5-10 invited creators before opening Vrompt to a
-broader audience. Recruit a mix of prompt authors and prompt users; do not use
-only internal builders. Each tester should receive a short consent note,
-temporary support contact, and a task sheet.
+Run a private alpha with 5-10 invited users before opening Vrompt to a broader
+audience. Give each tester a temporary support contact and a task sheet.
 
-## Test Tasks
+## Test tasks
 
-1. Sign in with Google and confirm the profile can be edited.
-2. Find a prompt with search and open its repository page.
-3. Copy a prompt, save it, like it, and explain what each action changed.
-4. Create a prompt with a draft, publish it, then publish a second version.
-5. Add evidence images with useful alt text and explain what the evidence proves.
-6. Create a Variant from an existing public prompt and check the lineage.
-7. Create a collection, add a prompt, and check its visibility.
-8. Follow a creator, post a comment, and inspect notifications.
-9. Report a problem prompt or comment and describe what should happen next.
-10. Try an unauthorized/private URL and confirm no private content is exposed.
+1. Sign in with Google and open `/chat`.
+2. Send a request with Auto and confirm streaming output appears incrementally.
+3. Select an enabled model manually and compare the response.
+4. Stop a response, then regenerate a completed assistant message.
+5. Upload a supported PDF, PNG, or JPEG; confirm it is private and removable.
+6. Try an unsupported or oversized file and confirm it is rejected safely.
+7. Save a reusable prompt, insert it into chat, and edit it later.
+8. Rename and delete a conversation; confirm its files are deleted too.
+9. Review daily/monthly usage and test the allowance message at the limit.
+10. Open another user's conversation URL and confirm no private content is exposed.
 
 ## Observe
 
-Ask testers to narrate what they expect before each task. Record task success,
-time-to-completion, confusing labels, accessibility barriers, and defects using
-`feedback-template.md`. Do not record prompt content, OAuth tokens, private
-screenshots, or personal data that is not required to reproduce a defect.
+Record task success, time-to-completion, confusing labels, accessibility barriers,
+provider failures, and quota errors using `feedback-template.md`. Never record
+tokens, passwords, private chat content, or unredacted screenshots.
 
-## Exit Criteria
+## Exit criteria
 
-- At least 5 testers complete the core discovery, creation, evidence, and social tasks.
-- No open blocker involving authentication, private visibility, authorization, data loss, or unsafe media handling.
-- Evidence is understood as supporting material, not an unverified quality guarantee.
-- Every severity-1 or severity-2 issue has an owner, reproduction steps, and a release decision.
-- The team reviews analytics only in aggregate and excludes `STARTER`/`OFFICIAL` activity.
+- At least five testers complete the core chat, files, privacy, and usage tasks.
+- No unresolved authentication, authorization, private-content, data-loss, or unsafe-file blocker.
+- Every S1/S2 issue has reproduction steps, an owner, and a release decision.

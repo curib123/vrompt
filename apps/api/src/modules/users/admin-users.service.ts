@@ -100,7 +100,11 @@ export class AdminUsersService {
         cloudStorage:
           storageDriver === 'cloudinary',
         storageDriver,
-        aiProvider: Boolean(this.config.get<string>('AI_API_KEY', '').trim()),
+        aiProvider: [
+          'OPENAI_API_KEY',
+          'GOOGLE_AI_API_KEY',
+          'ANTHROPIC_API_KEY',
+        ].some((key) => Boolean(this.config.get<string>(key, '').trim())),
         payMongo: Boolean(
           this.config.get<string>('PAYMONGO_SECRET_KEY', '').trim() &&
             this.config.get<string>('PAYMONGO_WEBHOOK_SECRET', '').trim(),

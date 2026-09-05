@@ -46,11 +46,10 @@ services:
       DATABASE_URL: postgresql://postgres:postgres@vrompt-postgres:5432/vrompt
       REDIS_URL: redis://vrompt-redis:6379
       WEB_ORIGIN: http://localhost:3100
-      AI_API_KEY: ${AI_API_KEY:-}
-      AI_API_BASE_URL: ${AI_API_BASE_URL:-https://api.openai.com/v1}
-      AI_MODEL: ${AI_MODEL:-gpt-5-mini}
-      AI_REQUEST_TIMEOUT_MS: ${AI_REQUEST_TIMEOUT_MS:-60000}
-      AI_MAX_OUTPUT_TOKENS: ${AI_MAX_OUTPUT_TOKENS:-1600}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      GOOGLE_AI_API_KEY: ${GOOGLE_AI_API_KEY:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      CHAT_STORAGE_DIR: ${CHAT_STORAGE_DIR:-./private-chat-files}
       JWT_ACCESS_SECRET: local-docker-access-secret-change-me
       JWT_ACCESS_TTL_SECONDS: '900'
       JWT_REFRESH_TTL_SECONDS: '604800'

@@ -1,6 +1,6 @@
 # Vrompt Alpha Feedback
 
-Tester ID: <!-- use a random ID, not an email -->
+Tester ID: <!-- random ID, not an email -->
 Date:
 Device/browser:
 Task number:
@@ -9,17 +9,15 @@ Task number:
 
 - Outcome: `success` / `partial` / `blocked`
 - Time spent:
-- What did you expect?
-- What happened?
-- Was the evidence easy to understand? Why or why not?
+- Expected result:
+- Actual result:
+- Provider/model selected:
 
 ## Issue
 
 - Severity: `S1 blocker` / `S2 high` / `S3 medium` / `S4 low`
 - Reproduction steps:
-- Expected result:
-- Actual result:
-- Safe reproduction reference: <!-- no tokens, private prompt text, or personal data -->
+- Safe reproduction reference: <!-- no tokens, private chat text, or personal data -->
 
 ## Follow-up
 

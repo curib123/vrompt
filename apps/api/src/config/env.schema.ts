@@ -100,23 +100,6 @@ export const envValidationSchema = Joi.object({
       is: 'cloudinary',
       then: Joi.string().min(1).required(),
     }),
-  AI_API_BASE_URL: Joi.string().uri().default('https://api.openai.com/v1'),
-  AI_API_KEY: Joi.string().allow('').default(''),
-  AI_MODEL: Joi.string().min(1).default('gpt-5-mini'),
-  AI_REQUEST_TIMEOUT_MS: Joi.number()
-    .integer()
-    .min(1000)
-    .max(120000)
-    .default(60000),
-  AI_PUBLIC_GUEST_DAILY_LIMIT: Joi.number().integer().min(0).default(3),
-  AI_PUBLIC_FREE_DAILY_LIMIT: Joi.number().integer().min(0).default(10),
-  AI_INTERNAL_DAILY_LIMIT: Joi.number().integer().min(0).default(50),
-  AI_MAX_OUTPUT_TOKENS: Joi.number()
-    .integer()
-    .min(128)
-    .max(16000)
-    .default(1600),
-  AI_RATE_LIMIT_PER_MINUTE: Joi.number().integer().min(1).default(5),
   PAYMONGO_API_BASE_URL: Joi.string()
     .uri({ scheme: ['https'] })
     .default('https://api.paymongo.com'),

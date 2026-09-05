@@ -7,8 +7,8 @@ import {
 describe('OAuth return paths', () => {
   beforeEach(() => window.sessionStorage.clear());
 
-  it('preserves a safe public prompt path through OAuth', () => {
-    const path = '/prompts/repository-id/writing-helper?intent=save';
+  it('preserves a safe workspace path through OAuth', () => {
+    const path = '/chat?conversation=workspace-id';
     expect(rememberOAuthReturnPath(path)).toBe(path);
     expect(consumeOAuthReturnPath()).toBe(path);
     expect(consumeOAuthReturnPath()).toBeNull();

@@ -1,6 +1,6 @@
 # Vrompt
 
-Vrompt is a monorepo for discovering, publishing, versioning, saving, and improving AI prompts. It provides a Next.js web application, a NestJS API, shared TypeScript packages, and Docker-based development and production environments.
+Vrompt is a monorepo for a private, multi-model AI workspace. It provides a Next.js chat application, a NestJS API, configurable model routing, usage controls, billing, shared TypeScript packages, and Docker-based development and production environments.
 
 ## Repository structure
 
@@ -96,11 +96,11 @@ Stop the stack without deleting its named database volume:
 docker compose -p vrompt-dev -f docker-compose.yml -f docker-compose.dev.yml -f docker-compose.local.yml down
 ```
 
-Development data is stored in the named `vrompt-dev_vrompt-postgres-data` volume. Evidence files are stored in `storage/evidence` on the host. Do not use `down -v` unless you intentionally want to delete local database data.
+Development data is stored in the named `vrompt-dev_vrompt-postgres-data` volume. Private chat attachments are stored in the configured chat storage directory. Do not use `down -v` unless you intentionally want to delete local database data.
 
 ### Development seed
 
-The seed command creates the development catalog and demo data. Run it after PostgreSQL is healthy:
+The seed command creates starter Free/Pro plans, provider models, Auto fallback, and generation policies. Run it after PostgreSQL is healthy:
 
 ```bash
 docker compose -p vrompt-dev \
@@ -120,7 +120,7 @@ Important configuration groups include:
 | -------------- | --------------------------------------------------------------------------- | -------------------------------------- |
 | Web            | `NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_API_BASE_URL`, `INTERNAL_API_BASE_URL` | Browser and server API routing         |
 | Data           | `DATABASE_URL`, `REDIS_URL`                                                 | PostgreSQL and Redis connections       |
-| AI             | `AI_API_KEY`, `AI_API_BASE_URL`, `AI_MODEL`                                 | AI generation provider and quotas      |
+| AI             | `OPENAI_API_KEY`, `GOOGLE_AI_API_KEY`, `ANTHROPIC_API_KEY`, `CHAT_STORAGE_DIR` | Server-side providers and private files |
 | Authentication | `JWT_*`, `GOOGLE_*`, `GITHUB_*`                                             | Tokens and OAuth callbacks             |
 | Staff          | `ADMIN_BOOTSTRAP_*`, `MODERATOR_BOOTSTRAP_*`                                | Initial control-panel accounts         |
 | Media          | `MEDIA_STORAGE_DRIVER`, `MEDIA_STORAGE_LOCAL_DIR`, `CLOUDINARY_*`           | Local or Cloudinary evidence storage   |
@@ -163,25 +163,13 @@ npm run build --workspace @vrompt/web
 
 ```bash
 npm test --workspace @vrompt/api
-npm run test:integration --workspace @vrompt/api
 ```
-
-Integration tests require `RUN_INTEGRATION_TESTS=true` and an isolated test database. The integration test command uses `apps/api/test/jest-e2e.json`.
 
 ### Web tests
 
 ```bash
 npm test --workspace @vrompt/web
-npm run test:e2e --workspace @vrompt/web
 ```
-
-The Playwright journey can start its own development server with:
-
-```bash
-START_E2E_SERVER=true npm run test:e2e --workspace @vrompt/web
-```
-
-Set `PLAYWRIGHT_EXECUTABLE_PATH` when using an existing local Chromium installation.
 
 ## Production-shaped Docker stack
 
@@ -218,8 +206,9 @@ bash infrastructure/release/phase1-audit.sh
 - OAuth sign-in uses Google and GitHub provider identities; local user email/password authentication is not supported.
 - Staff accounts use the separate `/staff/login` flow.
 - The admin control panel is available at `/admin` for authorized staff.
-- Local evidence is served from `/media`; production can use Cloudinary.
-- Prompt repositories support immutable versions, variants, evidence images, collections, saves, likes, comments, follows, notifications, reporting, moderation, and audit history.
+- Chat attachments are private and validated before storage. Configure `CHAT_STORAGE_DIR` for local files or provide a production storage adapter.
+- Workspace routes include `/chat`, `/conversations`, `/saved-prompts`, `/usage`, `/settings`, and `/billing`; staff use the separate `/admin` control panel.
+- Provider credentials remain server-side. Models, prices, capabilities, fallback, and plan allowances are configured through the protected workspace administration API.
 
 ## Troubleshooting
 
@@ -237,7 +226,7 @@ docker ps -a --filter name=vrompt
 
 If a Docker build fails while resolving `deb.debian.org` or the Linux engine closes, restore Docker Desktop's Linux engine and BuildKit before retrying. A completed source build does not prove that the running container contains the current code; verify `docker compose ps` and the live health endpoint after recreation.
 
-For local development, avoid deleting volumes. The PostgreSQL volume contains application data, and `storage/evidence` contains uploaded local evidence.
+For local development, avoid deleting volumes. The PostgreSQL volume contains application data, and the private chat storage directory contains uploaded attachments.
 
 ## License
 

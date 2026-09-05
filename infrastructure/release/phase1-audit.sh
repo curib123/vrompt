@@ -58,10 +58,10 @@ if grep -Eq '^[[:space:]]*-?[[:space:]]*5432:' docker-compose.prod.yml ||
   fail 'production Compose exposes PostgreSQL or Redis ports'
 fi
 
-if grep -q 'MEDIA_STORAGE_DRIVER: cloudinary' docker-compose.prod.yml; then
-  printf 'OK: production Compose selects Cloudinary evidence storage\n'
+if grep -q 'CHAT_STORAGE_DIR:' docker-compose.prod.yml; then
+  printf 'OK: production Compose configures private chat storage\n'
 else
-  warn 'production Compose does not hard-code Cloudinary; verify MEDIA_STORAGE_DRIVER=cloudinary in .env.production'
+  warn 'production Compose does not configure private chat storage explicitly; verify CHAT_STORAGE_DIR in .env.production'
 fi
 
 printf 'Automated launch audit: %s failure(s), %s warning(s)\n' "$failures" "$warnings"

@@ -1,25 +1,29 @@
 # Vrompt Beta Report
 
-Reporter ID:
-Date/time (UTC):
-Page or flow:
-Device/browser:
+Release commit:
+Window (UTC):
+Report owner:
 
-## Description
+## Usage
 
-- Expected:
-- Actual:
-- Reproduction steps:
-- Severity: `S1` / `S2` / `S3` / `S4`
+- Active users:
+- Conversations:
+- Completed generations:
+- Provider failure rate:
+- Quota or billing errors:
 
-## Privacy Check
+## Quality and safety
 
-- No token, password, OAuth code, private prompt text, or personal data attached: `yes` / `no`
-- Redacted reproduction reference:
+- S1 defects opened / closed:
+- S2 defects opened / closed:
+- Private-content or authorization incidents:
+- Data-loss incidents:
+- Unsafe-file reports:
+- Backup restore result:
 
-## Resolution
+## Decision
 
-- Owner:
-- Status: `triaged` / `mitigated` / `fixed` / `not reproducible` / `won't fix`
-- Release or incident reference:
-- Retest result:
+- Recommendation: `continue` / `ship` / `pause and fix`
+- Evidence:
+- Known limitations:
+- Next experiment and owner:
