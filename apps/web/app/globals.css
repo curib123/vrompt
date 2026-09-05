@@ -13,41 +13,56 @@
   --color-brand-soft: var(--brand-soft);
   --color-brand-paper: var(--brand-paper);
   --color-on-dark: #ffffff;
-  --color-on-dark-muted: #bdbdbd;
-  --color-on-light: #0d0d0d;
-  --color-on-light-muted: #4d4d4d;
+  --color-on-dark-muted: #cbd5e1;
+  --color-on-light: #0f172a;
+  --color-on-light-muted: #64748b;
+  --color-brand-teal: #14b8a6;
+  --color-brand-azure: #3b82f6;
 }
 
 :root {
   color-scheme: light;
-  --brand-ink: #0d0d0d;
-  --brand-charcoal: #1a1a1a;
-  --brand-mid: #4d4d4d;
-  --brand-soft: #e6e6e6;
-  --brand-paper: #ffffff;
-  --brand-grid: rgba(13, 13, 13, 0.045);
+  --brand-ink: #0f172a;
+  --brand-charcoal: #1e293b;
+  --brand-mid: #64748b;
+  --brand-soft: #e2e8f0;
+  --brand-paper: #f8fafc;
+  --brand-surface: #ffffff;
+  --brand-teal: #14b8a6;
+  --brand-teal-deep: #0f9f91;
+  --brand-azure: #3b82f6;
+  --brand-azure-deep: #2563eb;
+  --brand-grid: rgba(59, 130, 246, 0.055);
+  --brand-shadow: rgba(15, 23, 42, 0.09);
+  --brand-glow: rgba(20, 184, 166, 0.18);
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not(.light):not(.dark) {
     color-scheme: dark;
-    --brand-ink: #ffffff;
-    --brand-charcoal: #e6e6e6;
-    --brand-mid: #bdbdbd;
-    --brand-soft: #1a1a1a;
-    --brand-paper: #0d0d0d;
-    --brand-grid: rgba(255, 255, 255, 0.055);
+    --brand-ink: #f8fafc;
+    --brand-charcoal: #e2e8f0;
+    --brand-mid: #94a3b8;
+    --brand-soft: #243247;
+    --brand-paper: #08111f;
+    --brand-surface: #0f1c30;
+    --brand-grid: rgba(59, 130, 246, 0.08);
+    --brand-shadow: rgba(0, 0, 0, 0.32);
+    --brand-glow: rgba(20, 184, 166, 0.12);
   }
 }
 
 :root.dark {
   color-scheme: dark;
-  --brand-ink: #ffffff;
-  --brand-charcoal: #e6e6e6;
-  --brand-mid: #bdbdbd;
-  --brand-soft: #1a1a1a;
-  --brand-paper: #0d0d0d;
-  --brand-grid: rgba(255, 255, 255, 0.055);
+  --brand-ink: #f8fafc;
+  --brand-charcoal: #e2e8f0;
+  --brand-mid: #94a3b8;
+  --brand-soft: #243247;
+  --brand-paper: #08111f;
+  --brand-surface: #0f1c30;
+  --brand-grid: rgba(59, 130, 246, 0.08);
+  --brand-shadow: rgba(0, 0, 0, 0.32);
+  --brand-glow: rgba(20, 184, 166, 0.12);
 }
 
 * {
@@ -62,7 +77,16 @@ body {
   margin: 0;
   background: var(--brand-paper);
   color: var(--brand-ink);
-  font-family: var(--font-display), sans-serif;
+  font-family:
+    Inter,
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    sans-serif;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
 }
 
 a {
@@ -77,13 +101,13 @@ textarea {
 }
 
 :focus-visible {
-  outline: 2px solid var(--brand-ink);
+  outline: 2px solid var(--brand-azure);
   outline-offset: 3px;
 }
 
 ::selection {
-  background: var(--brand-ink);
-  color: var(--brand-paper);
+  background: var(--brand-teal);
+  color: #ffffff;
 }
 
 .brand-grid {
