@@ -1,5 +1,7 @@
 'use client';
 
+import React from 'react';
+
 import { useTheme } from './theme-provider';
 
 export function ThemeToggle() {
@@ -10,7 +12,7 @@ export function ThemeToggle() {
   return (
     <button
       aria-label={label}
-      className="grid size-11 shrink-0 place-items-center rounded-full border border-[#E6E6E6] text-brand-mid transition hover:border-[#0D0D0D] hover:bg-[#E6E6E6] hover:text-foreground dark:border-[#4D4D4D] dark:hover:border-white dark:hover:bg-[#1A1A1A]"
+      className="grid size-11 shrink-0 place-items-center rounded-xl border border-brand-soft bg-[var(--brand-surface)] text-brand-mid shadow-sm transition hover:border-brand-teal hover:text-foreground"
       onClick={toggleTheme}
       title={label}
       type="button"

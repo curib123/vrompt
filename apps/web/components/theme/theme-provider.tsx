@@ -1,6 +1,12 @@
 'use client';
 
-import { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import type { ReactNode } from 'react';
 
 const themeStorageKey = 'vrompt-theme';
@@ -49,18 +55,35 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       setResolvedTheme(nextResolvedTheme);
     };
 
-    applyTheme(initialTheme);
+    const initializationFrame = window.requestAnimationFrame(() => {
+      setThemeState(initialTheme);
+      applyTheme(initialTheme);
+    });
 
-    const handleSystemThemeChange = () => {
+    const handleSystemThemeChange = (event: MediaQueryListEvent) => {
       const currentTheme = window.localStorage.getItem(themeStorageKey);
       if (currentTheme !== 'light' && currentTheme !== 'dark') {
-        applyTheme('system');
+        const nextResolvedTheme: ResolvedTheme = event.matches
+          ? 'dark'
+          : 'light';
+        document.documentElement.classList.toggle(
+          'dark',
+          nextResolvedTheme === 'dark',
+        );
+        document.documentElement.classList.toggle(
+          'light',
+          nextResolvedTheme === 'light',
+        );
+        document.documentElement.style.colorScheme = nextResolvedTheme;
+        setResolvedTheme(nextResolvedTheme);
       }
     };
 
     mediaQuery.addEventListener('change', handleSystemThemeChange);
-    return () =>
+    return () => {
+      window.cancelAnimationFrame(initializationFrame);
       mediaQuery.removeEventListener('change', handleSystemThemeChange);
+    };
   }, []);
 
   const value = useMemo<ThemeContextValue>(

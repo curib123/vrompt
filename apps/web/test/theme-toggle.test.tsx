@@ -1,3 +1,4 @@
+import React from 'react';
 import { fireEvent, render, screen } from '@testing-library/react';
 
 import { ThemeProvider } from '@/components/theme/theme-provider';
@@ -38,5 +39,34 @@ describe('theme toggle', () => {
     );
     expect(document.documentElement).toHaveClass('light');
     expect(window.localStorage.getItem('vrompt-theme')).toBe('light');
+  });
+
+  it('tracks operating-system theme changes while system mode is active', async () => {
+    let onChange: ((event: MediaQueryListEvent) => void) | undefined;
+    Object.defineProperty(window, 'matchMedia', {
+      configurable: true,
+      value: vi.fn().mockReturnValue({
+        addEventListener: (_event: string, listener: typeof onChange) => {
+          onChange = listener;
+        },
+        matches: false,
+        removeEventListener: vi.fn(),
+      }),
+    });
+
+    render(
+      <ThemeProvider>
+        <ThemeToggle />
+      </ThemeProvider>,
+    );
+
+    await vi.waitFor(() =>
+      expect(document.documentElement).toHaveClass('light'),
+    );
+    onChange?.({ matches: true } as MediaQueryListEvent);
+    await vi.waitFor(() =>
+      expect(document.documentElement).toHaveClass('dark'),
+    );
+    expect(window.localStorage.getItem('vrompt-theme')).toBeNull();
   });
 });
