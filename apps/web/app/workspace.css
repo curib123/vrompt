@@ -457,6 +457,64 @@
   line-height: 1.05;
   letter-spacing: -0.05em;
 }
+.landing-page {
+  position: relative;
+  isolation: isolate;
+  min-height: 100dvh;
+  overflow: hidden;
+  background:
+    linear-gradient(135deg, rgba(59, 130, 246, 0.045), transparent 34%),
+    radial-gradient(
+      circle at 74% 25%,
+      rgba(20, 184, 166, 0.12),
+      transparent 22rem
+    ),
+    radial-gradient(
+      circle at 86% 70%,
+      rgba(59, 130, 246, 0.1),
+      transparent 27rem
+    );
+}
+.landing-page::before {
+  position: absolute;
+  z-index: -2;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(59, 130, 246, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(59, 130, 246, 0.035) 1px, transparent 1px);
+  background-size: 56px 56px;
+  mask-image: linear-gradient(to bottom, black, transparent 82%);
+  content: '';
+}
+.landing-page::after {
+  position: absolute;
+  z-index: -1;
+  top: 7rem;
+  right: -11rem;
+  width: 38rem;
+  height: 38rem;
+  border: 1px solid rgba(59, 130, 246, 0.1);
+  border-radius: 50%;
+  box-shadow:
+    0 0 0 7rem rgba(59, 130, 246, 0.025),
+    0 0 0 14rem rgba(20, 184, 166, 0.018);
+  content: '';
+}
+.landing-backdrop {
+  position: absolute;
+  z-index: -1;
+  top: 4.5rem;
+  right: -4rem;
+  width: min(48vw, 44rem);
+  color: var(--brand-azure);
+  opacity: 0.035;
+  filter: blur(0.5px);
+  transform: rotate(-8deg);
+}
+.landing-backdrop svg {
+  width: 100%;
+  height: auto;
+}
 .public-nav {
   position: relative;
   z-index: 10;
@@ -588,6 +646,9 @@
   border-color: rgba(20, 184, 166, 0.45);
   background: rgba(20, 184, 166, 0.07);
 }
+.model-card:last-child {
+  grid-column: 1 / -1;
+}
 .model-card strong {
   display: block;
   color: var(--brand-charcoal);
@@ -597,18 +658,46 @@
   color: var(--brand-mid);
   font-size: 10px;
 }
-.model-icon {
+.provider-logo {
   float: left;
-  width: 27px;
-  height: 27px;
+  width: 30px;
+  height: 30px;
   margin-right: 9px;
   display: grid;
   place-items: center;
-  border-radius: 9px;
-  background: linear-gradient(135deg, var(--brand-azure), var(--brand-teal));
-  color: white;
-  font-size: 11px;
+  border-radius: 50%;
+  font-size: 12px;
   font-weight: 800;
+}
+.provider-auto {
+  background: linear-gradient(135deg, #3b82f6, #14b8a6);
+  color: white;
+}
+.provider-openai {
+  background: #dffaf5;
+  color: #0aa58f;
+}
+.provider-openai svg {
+  width: 21px;
+  stroke: currentColor;
+  stroke-width: 1.6;
+}
+.provider-claude {
+  background: #ead0ba;
+  color: #24170f;
+  font-size: 13px;
+  letter-spacing: -0.08em;
+}
+.provider-gemini {
+  background: linear-gradient(145deg, #ede9fe, #dbeafe);
+  color: #7357f5;
+  font-size: 22px;
+}
+.provider-meta {
+  background: #e6f2ff;
+  color: #0866ff;
+  font-size: 25px;
+  font-weight: 650;
 }
 .feature-grid {
   max-width: 1120px;
@@ -665,6 +754,23 @@
     rgba(15, 28, 48, 0.96),
     rgba(8, 17, 31, 0.9)
   );
+}
+.dark .landing-page {
+  background:
+    linear-gradient(135deg, rgba(59, 130, 246, 0.09), transparent 34%),
+    radial-gradient(
+      circle at 74% 25%,
+      rgba(20, 184, 166, 0.12),
+      transparent 22rem
+    ),
+    radial-gradient(
+      circle at 86% 70%,
+      rgba(59, 130, 246, 0.11),
+      transparent 27rem
+    );
+}
+.dark .landing-backdrop {
+  opacity: 0.055;
 }
 .dark .error-banner {
   border-color: #7f1d1d;
@@ -770,6 +876,14 @@
   }
   .public-nav nav .optional-link {
     display: none;
+  }
+  .public-nav nav > a[href='/login'] {
+    display: none;
+  }
+  .landing-backdrop {
+    top: 16rem;
+    right: -10rem;
+    width: 38rem;
   }
   .hero {
     margin-top: 0;

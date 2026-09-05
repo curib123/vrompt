@@ -1,17 +1,61 @@
 import Link from 'next/link';
 
-import { BrandLockup } from '@/components/brand/brand-mark';
+import { BrandLockup, BrandMark } from '@/components/brand/brand-mark';
+import { ThemeToggle } from '@/components/theme/theme-toggle';
 
 const models = [
-  ['Auto', 'Best for your task', '✦'],
-  ['ChatGPT', 'General & creative', 'G'],
-  ['Claude', 'Analysis & writing', 'C'],
-  ['Gemini', 'Multimodal work', '◆'],
-];
+  { detail: 'Best for your task', name: 'Auto', provider: 'auto' },
+  { detail: 'General & creative', name: 'ChatGPT', provider: 'openai' },
+  { detail: 'Analysis & writing', name: 'Claude', provider: 'claude' },
+  { detail: 'Multimodal work', name: 'Gemini', provider: 'gemini' },
+  { detail: 'Open source', name: 'Llama', provider: 'meta' },
+] as const;
+
+function ProviderLogo({
+  provider,
+}: {
+  provider: (typeof models)[number]['provider'];
+}) {
+  if (provider === 'claude')
+    return <span className="provider-logo provider-claude">AI</span>;
+  if (provider === 'gemini')
+    return (
+      <span className="provider-logo provider-gemini" aria-hidden="true">
+        ✦
+      </span>
+    );
+  if (provider === 'meta')
+    return (
+      <span className="provider-logo provider-meta" aria-hidden="true">
+        ∞
+      </span>
+    );
+  if (provider === 'auto')
+    return (
+      <span className="provider-logo provider-auto" aria-hidden="true">
+        ✦
+      </span>
+    );
+  return (
+    <span className="provider-logo provider-openai" aria-hidden="true">
+      <svg fill="none" viewBox="0 0 24 24">
+        <circle cx="12" cy="6.5" r="4" />
+        <circle cx="16.7" cy="9.25" r="4" />
+        <circle cx="16.7" cy="14.75" r="4" />
+        <circle cx="12" cy="17.5" r="4" />
+        <circle cx="7.3" cy="14.75" r="4" />
+        <circle cx="7.3" cy="9.25" r="4" />
+      </svg>
+    </span>
+  );
+}
 
 export default function Home() {
   return (
-    <>
+    <div className="landing-page">
+      <div className="landing-backdrop" aria-hidden="true">
+        <BrandMark />
+      </div>
       <header className="public-nav">
         <Link aria-label="Vrompt home" href="/">
           <BrandLockup compact />
@@ -22,6 +66,7 @@ export default function Home() {
           </Link>
           <Link href="/pricing">Pricing</Link>
           <Link href="/login">Sign in</Link>
+          <ThemeToggle />
           <Link className="primary-button" href="/chat">
             Get started
           </Link>
@@ -57,13 +102,11 @@ export default function Home() {
               What would you like to work on?
             </div>
             <div className="model-grid">
-              {models.map(([name, detail, icon]) => (
-                <div className="model-card" key={name}>
-                  <span className="model-icon" aria-hidden="true">
-                    {icon}
-                  </span>
-                  <strong>{name}</strong>
-                  <span>{detail}</span>
+              {models.map((model) => (
+                <div className="model-card" key={model.name}>
+                  <ProviderLogo provider={model.provider} />
+                  <strong>{model.name}</strong>
+                  <span>{model.detail}</span>
                 </div>
               ))}
             </div>
@@ -103,6 +146,6 @@ export default function Home() {
         <Link href="/privacy">Privacy</Link>
         <Link href="/terms">Terms</Link>
       </footer>
-    </>
+    </div>
   );
 }
