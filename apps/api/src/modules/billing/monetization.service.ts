@@ -216,12 +216,12 @@ export class MonetizationService {
           where: { id: input.userId },
           select: { accountType: true },
         });
-        await this.prisma.analyticsEvent.create({
+        await this.prisma.auditLog.create({
           data: {
-            name: 'plan_limit_reached',
-            actorId: input.userId,
-            accountType: actor?.accountType,
-            metadata: { feature: input.featureKey, units },
+            action: 'SETTING_UPDATED',
+            targetType: 'USER',
+            targetId: input.userId,
+            metadata: { event: 'plan_limit_reached', feature: input.featureKey, units, accountType: actor?.accountType },
           },
         });
       }

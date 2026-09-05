@@ -1,5 +1,3 @@
-import { AdminDashboard } from '@/components/admin/admin-dashboard';
-
-export default function AdminPage() {
-  return <AdminDashboard />;
-}
+import { AdminOverview } from '@/components/workspace/pages';
+export const metadata = { title: 'Administration', robots: { index: false } };
+export default function Page() { return <AdminOverview />; }

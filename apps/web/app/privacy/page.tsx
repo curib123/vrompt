@@ -1,0 +1,2 @@
+import Link from 'next/link';
+export default function Page() { return <main className="content-page"><Link href="/">← Vrompt</Link><h1>Privacy</h1><p className="muted">Vrompt stores account, conversation, attachment and usage records to provide the service. Provider credentials are server-side. Private conversations and files are protected by ownership checks and are not public by default.</p></main>; }

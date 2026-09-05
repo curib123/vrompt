@@ -1,5 +1,2 @@
-import { AdminBillingView } from '@/components/admin/admin-billing-view';
-
-export default function AdminBillingPage() {
-  return <AdminBillingView />;
-}
+import { BillingPage } from '@/components/workspace/pages';
+export default function Page() { return <BillingPage />; }

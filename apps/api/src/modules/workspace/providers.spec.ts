@@ -26,7 +26,7 @@ const model = {
   cachedInputPrice: new Prisma.Decimal(1),
   outputPrice: new Prisma.Decimal(4),
   additionalPrices: { cacheWriteInputPrice: 3 },
-} as AIModel;
+} as unknown as AIModel;
 describe('Provider protocol normalization', () => {
   afterEach(() => jest.restoreAllMocks());
   it('decodes fragmented UTF-8 SSE events without corrupting responses', async () => {

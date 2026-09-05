@@ -46,8 +46,7 @@ function buildService(overrides: Record<string, unknown> = {}) {
       update: jest.fn().mockResolvedValue({}),
       updateMany: jest.fn().mockResolvedValue({ count: 0 }),
     },
-    aiUsageEvent: {
-      count: jest.fn().mockResolvedValue(0),
+    usageRecord: {
       findMany: jest.fn().mockResolvedValue([]),
     },
     user: {
@@ -295,7 +294,7 @@ describe('BillingService webhook security', () => {
   });
 });
 
-describe('BillingService freemium analytics', () => {
+describe('BillingService subscription analytics', () => {
   it('calculates plan share, conversion, revenue, and usage by plan', async () => {
     const { service, prisma } = buildService();
     prisma.user.count.mockResolvedValueOnce(80).mockResolvedValueOnce(20);
@@ -307,10 +306,16 @@ describe('BillingService freemium analytics', () => {
     prisma.billingPayment.aggregate
       .mockResolvedValueOnce({ _sum: { amount: 299_000 } })
       .mockResolvedValueOnce({ _sum: { amount: 89_700 } });
-    prisma.aiUsageEvent.findMany.mockResolvedValue([
-      { units: 2, user: null },
-      { units: 3, user: { plan: 'FREE' } },
-      { units: 4, user: { plan: 'PRO' } },
+    prisma.usageRecord.findMany.mockResolvedValue([
+      { id: 'guest-1', user: null },
+      { id: 'free-1', user: { plan: 'FREE' } },
+      { id: 'pro-1', user: { plan: 'PRO' } },
+      { id: 'pro-2', user: { plan: 'PRO' } },
+      { id: 'pro-3', user: { plan: 'PRO' } },
+      { id: 'pro-4', user: { plan: 'PRO' } },
+      { id: 'guest-2', user: null },
+      { id: 'free-2', user: { plan: 'FREE' } },
+      { id: 'free-3', user: { plan: 'FREE' } },
     ]);
 
     await expect(service.adminOverview()).resolves.toMatchObject({

@@ -5,7 +5,7 @@ const refreshCookieName = 'vrompt_refresh_token';
 
 export function proxy(request: NextRequest) {
   if (request.cookies.has(refreshCookieName)) {
-    return NextResponse.redirect(new URL('/search', request.url));
+    return NextResponse.redirect(new URL('/chat', request.url));
   }
 
   return NextResponse.next();

@@ -8,7 +8,7 @@ const nextConfig: NextConfig = {
     (process.env.NODE_ENV === 'development' ? '.next-dev' : '.next'),
   output: 'standalone',
   outputFileTracingRoot: path.join(__dirname, '../../'),
-  typedRoutes: true,
+  typedRoutes: false,
   async redirects() {
     return [
       {

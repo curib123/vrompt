@@ -1,10 +1,4 @@
-import { ProtectedRoute } from '@/components/auth/protected-route';
-import { BillingAccountView } from '@/components/billing/billing-account-view';
-
-export default function BillingPage() {
-  return (
-    <ProtectedRoute>
-      <BillingAccountView />
-    </ProtectedRoute>
-  );
-}
+import { WorkspaceShell } from '@/components/workspace/shell';
+import { BillingPage } from '@/components/workspace/pages';
+export const metadata = { robots: { index: false, follow: false } };
+export default function Page() { return <WorkspaceShell><BillingPage /></WorkspaceShell>; }

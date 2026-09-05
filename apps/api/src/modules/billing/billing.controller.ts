@@ -30,11 +30,6 @@ export class BillingController {
     return this.monetization.publicPlans();
   }
 
-  @Get('usage')
-  @UseGuards(AccessTokenGuard)
-  usage(@CurrentUser() user: AuthenticatedUser) {
-    return this.monetization.usage(user.id);
-  }
 
   @Post('checkout')
   @UseGuards(AccessTokenGuard)

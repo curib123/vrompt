@@ -1,14 +1,4 @@
-import type { Metadata } from 'next';
-
-import LandingPage from './landing/page';
-import { createPageMetadata, siteConfig } from '@/lib/seo';
-
-export const metadata: Metadata = createPageMetadata({
-  title: siteConfig.tagline,
-  description: siteConfig.description,
-  path: '/',
-});
-
-export default function HomePage() {
-  return <LandingPage />;
+import Link from 'next/link';
+export default function Home() {
+  return <><header className="public-nav"><Link className="workspace-brand" href="/">vrompt<span className="brand-dot">✳</span></Link><nav><Link className="optional-link" href="/features">Features</Link><Link href="/pricing">Pricing</Link><Link href="/login">Sign in</Link><Link className="primary-button" href="/chat">Get started</Link></nav></header><main><section className="hero"><span className="eyebrow">ONE ACCOUNT. ONE SUBSCRIPTION. MULTIPLE AI MODELS.</span><h1>The right AI<br />for every task.</h1><p>Use multiple leading AI models from one account. Auto chooses for you, or select one manually anytime.</p><Link className="primary-button" href="/chat">Start with Auto ↗</Link><p className="muted">No provider API setup. Clear generation allowances.</p></section><div className="feature-grid"><section className="panel"><h2>Ask. Auto handles the choice.</h2><p className="muted">Writing, planning, coding or working with documents—Auto matches the task to an available, capable model.</p></section><section className="panel"><h2>Your model, your choice.</h2><p className="muted">Choose an exact model when you know what you want. See which model answered every request.</p></section><section className="panel"><h2>Keep your work together.</h2><p className="muted">Private conversations, file attachments and lightweight Saved Prompts, all in one workspace.</p></section></div></main><footer className="public-footer"><Link href="/auto">How Auto works</Link><Link href="/models">Models</Link><Link href="/docs">Help</Link><Link href="/privacy">Privacy</Link><Link href="/terms">Terms</Link></footer></>;
 }

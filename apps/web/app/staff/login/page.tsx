@@ -96,8 +96,8 @@ export default function StaffLoginPage() {
           Moderate safely. Manage flexibly.
         </h2>
         <p className="mt-5 max-w-md text-sm leading-7 text-zinc-300">
-          Review reports, manage people and classification, inspect analytics,
-          and keep every administrative change auditable.
+          Manage people, model configuration, billing and usage while keeping
+          every administrative change auditable.
         </p>
       </section>
     </div>

@@ -35,23 +35,23 @@ export class AdminUsersService {
   ) {}
 
   async dashboard() {
-    const [users, prompts, reports, comments, collections, staff] =
+    const [users, conversations, generations, models, savedPrompts, staff] =
       await Promise.all([
         this.prisma.user.count({ where: { status: UserStatus.ACTIVE } }),
-        this.prisma.promptRepository.count(),
-        this.prisma.report.count({ where: { status: 'OPEN' } }),
-        this.prisma.comment.count(),
-        this.prisma.collection.count(),
+        this.prisma.conversation.count(),
+        this.prisma.usageRecord.count(),
+        this.prisma.aIModel.count({ where: { enabled: true } }),
+        this.prisma.savedPrompt.count(),
         this.prisma.user.count({
           where: { role: { in: [UserRole.ADMIN, UserRole.MODERATOR] } },
         }),
       ]);
     return {
       users,
-      prompts,
-      openReports: reports,
-      comments,
-      collections,
+      conversations,
+      generations,
+      models,
+      savedPrompts,
       staff,
     };
   }

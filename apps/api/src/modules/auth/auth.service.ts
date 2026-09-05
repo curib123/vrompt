@@ -352,7 +352,7 @@ export class AuthService implements OnModuleInit {
       });
       if (registrationSetting?.value === false) {
         throw new ServiceUnavailableException(
-          'New creator registration is temporarily disabled',
+          'New account registration is temporarily disabled',
         );
       }
 
@@ -364,7 +364,7 @@ export class AuthService implements OnModuleInit {
       );
       const username = await this.uniqueUsername(
         transaction,
-        identity.displayName || identity.providerUsername || 'creator',
+          identity.displayName || identity.providerUsername || 'account',
         identity.providerUserId,
       );
 
@@ -494,7 +494,7 @@ export class AuthService implements OnModuleInit {
       source
         .toLowerCase()
         .replace(/[^a-z0-9_-]/g, '')
-        .slice(0, 25) || 'creator';
+        .slice(0, 25) || 'account';
     const suffix = createHash('sha256')
       .update(subject)
       .digest('hex')
@@ -515,7 +515,7 @@ export class AuthService implements OnModuleInit {
       }
     }
 
-    return `creator_${suffix}`;
+    return `account_${suffix}`;
   }
 
   private googleClient() {

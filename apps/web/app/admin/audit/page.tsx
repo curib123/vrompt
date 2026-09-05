@@ -1,10 +1,2 @@
-import { ProtectedRoute } from '@/components/auth/protected-route';
-import { AuditView } from '@/components/audit/audit-view';
-
-export default function AuditPage() {
-  return (
-    <ProtectedRoute>
-      <AuditView />
-    </ProtectedRoute>
-  );
-}
+import Link from 'next/link';
+export default function Page() { return <div className="content-page"><h1>Audit history</h1><p className="muted">Model, routing, billing and account changes are retained server-side.</p><Link href="/admin">Back to administration</Link></div>; }

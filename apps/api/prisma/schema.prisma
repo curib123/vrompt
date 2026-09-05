@@ -263,41 +263,23 @@ model User {
   updatedAt           DateTime       @updatedAt
   deletedAt           DateTime?
 
-  profile               Profile?
-  identities            UserIdentity[]
-  staffCredential       StaffCredential?
-  refreshTokens         RefreshToken[]
-  ownedRepositories     PromptRepository[]    @relation("RepositoryOwner")
-  authoredVersions      PromptVersion[]       @relation("VersionAuthor")
-  bookmarks             Bookmark[]
-  likes                 Like[]
-  comments              Comment[]
-  followers             Follow[]              @relation("Following")
-  following             Follow[]              @relation("Follower")
-  collections           Collection[]
-  receivedNotifications Notification[]        @relation("NotificationRecipient")
-  sentNotifications     Notification[]        @relation("NotificationActor")
-  reports               Report[]
-  moderationActions     ModerationAction[]
-  auditLogs             AuditLog[]
-  analyticsEvents       AnalyticsEvent[]
-  copyEvents            PromptCopyEvent[]
-  activityEvents        ActivityEvent[]
-  audienceInterests     UserAudience[]
-  settingUpdates        SiteSetting[]
-  aiGenerations         AiGeneration[]
-  aiUsageEvents         AiUsageEvent[]
-  billingSubscriptions  BillingSubscription[]
-  billingPayments       BillingPayment[]
-  usageBuckets          FeatureUsageBucket[]
-  usageEvents           FeatureUsageEvent[]
-  promotionRedemptions  PromotionRedemption[]
-  conversations         Conversation[]
-  savedPrompts          SavedPrompt[]
-  chatReservations      QuotaReservation[]
-  chatCounters          UsageCounter[]
-  chatUsage             UsageRecord[]
-  attachments           Attachment[]
+  profile              Profile?
+  identities           UserIdentity[]
+  staffCredential      StaffCredential?
+  refreshTokens        RefreshToken[]
+  auditLogs            AuditLog[]
+  settingUpdates       SiteSetting[]
+  billingSubscriptions BillingSubscription[]
+  billingPayments      BillingPayment[]
+  usageBuckets         FeatureUsageBucket[]
+  usageEvents          FeatureUsageEvent[]
+  promotionRedemptions PromotionRedemption[]
+  conversations        Conversation[]
+  savedPrompts         SavedPrompt[]
+  chatReservations     QuotaReservation[]
+  chatCounters         UsageCounter[]
+  chatUsage            UsageRecord[]
+  attachments          Attachment[]
 
   @@index([status, createdAt])
 }
@@ -370,224 +352,6 @@ model RefreshToken {
 
   @@index([userId, revokedAt])
   @@index([expiresAt])
-}
-
-model PromptRepository {
-  id               String                 @id @default(uuid()) @db.Uuid
-  ownerId          String                 @db.Uuid
-  categoryId       String?                @db.Uuid
-  currentVersionId String?                @unique @db.Uuid
-  sourcePromptId   String?                @db.Uuid
-  rootPromptId     String?                @db.Uuid
-  title            String                 @db.VarChar(160)
-  slug             String                 @unique @db.VarChar(180)
-  description      String?                @db.Text
-  aiCompatibility  String?                @db.VarChar(120)
-  visibility       PromptVisibility       @default(PRIVATE)
-  status           PromptRepositoryStatus @default(ACTIVE)
-  license          String?                @db.VarChar(120)
-  origin           PromptOrigin           @default(COMMUNITY)
-  variantCount     Int                    @default(0)
-  copyCount        Int                    @default(0)
-  saveCount        Int                    @default(0)
-  likeCount        Int                    @default(0)
-  createdAt        DateTime               @default(now())
-  updatedAt        DateTime               @updatedAt
-  archivedAt       DateTime?
-
-  owner             User               @relation("RepositoryOwner", fields: [ownerId], references: [id], onDelete: Restrict)
-  category          Category?          @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-  currentVersion    PromptVersion?     @relation("CurrentPromptVersion", fields: [currentVersionId], references: [id], onDelete: Restrict)
-  versions          PromptVersion[]    @relation("RepositoryVersions")
-  sourcePrompt      PromptRepository?  @relation("PromptVariants", fields: [sourcePromptId], references: [id], onDelete: SetNull)
-  variants          PromptRepository[] @relation("PromptVariants")
-  rootPrompt        PromptRepository?  @relation("PromptRoots", fields: [rootPromptId], references: [id], onDelete: SetNull)
-  descendantPrompts PromptRepository[] @relation("PromptRoots")
-  bookmarks         Bookmark[]
-  likes             Like[]
-  comments          Comment[]
-  promptTags        PromptTag[]
-  collectionItems   CollectionPrompt[]
-  notifications     Notification[]
-  reports           Report[]
-  copyEvents        PromptCopyEvent[]
-  activityEvents    ActivityEvent[]
-  promptAudiences   PromptAudience[]
-  aiGenerations     AiGeneration[]
-
-  @@index([ownerId, visibility, status])
-  @@index([categoryId, visibility, status])
-  @@index([visibility, status, updatedAt])
-  @@index([sourcePromptId])
-  @@index([rootPromptId])
-}
-
-model Audience {
-  id          String   @id @default(uuid()) @db.Uuid
-  name        String   @unique @db.VarChar(80)
-  slug        String   @unique @db.VarChar(100)
-  description String?  @db.Text
-  isActive    Boolean  @default(true)
-  sortOrder   Int      @default(0)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  promptAudiences PromptAudience[]
-  userAudiences   UserAudience[]
-
-  @@index([isActive, sortOrder])
-}
-
-model PromptAudience {
-  promptRepositoryId String @db.Uuid
-  audienceId         String @db.Uuid
-
-  promptRepository PromptRepository @relation(fields: [promptRepositoryId], references: [id], onDelete: Cascade)
-  audience         Audience         @relation(fields: [audienceId], references: [id], onDelete: Restrict)
-
-  @@id([promptRepositoryId, audienceId])
-  @@index([audienceId, promptRepositoryId])
-}
-
-model UserAudience {
-  userId     String @db.Uuid
-  audienceId String @db.Uuid
-
-  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  audience Audience @relation(fields: [audienceId], references: [id], onDelete: Restrict)
-
-  @@id([userId, audienceId])
-  @@index([audienceId, userId])
-}
-
-model PromptVersion {
-  id            String              @id @default(uuid()) @db.Uuid
-  repositoryId  String              @db.Uuid
-  authorId      String              @db.Uuid
-  versionNumber Int                 @default(1)
-  content       String              @db.Text
-  changelog     String?             @db.Text
-  status        PromptVersionStatus @default(DRAFT)
-  publishedAt   DateTime?
-  createdAt     DateTime            @default(now())
-  updatedAt     DateTime            @updatedAt
-
-  repository     PromptRepository      @relation("RepositoryVersions", fields: [repositoryId], references: [id], onDelete: Cascade)
-  author         User                  @relation("VersionAuthor", fields: [authorId], references: [id], onDelete: Restrict)
-  currentFor     PromptRepository?     @relation("CurrentPromptVersion")
-  variables      PromptVariable[]
-  examples       PromptExample[]
-  evidenceImages PromptEvidenceImage[]
-  copyEvents     PromptCopyEvent[]
-
-  @@unique([repositoryId, versionNumber])
-  @@index([repositoryId, status, createdAt])
-  @@index([authorId, createdAt])
-}
-
-model PromptVariable {
-  id              String   @id @default(uuid()) @db.Uuid
-  promptVersionId String   @db.Uuid
-  name            String   @db.VarChar(80)
-  description     String?  @db.Text
-  defaultValue    String?  @db.Text
-  required        Boolean  @default(false)
-  sortOrder       Int      @default(0)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
-  promptVersion PromptVersion @relation(fields: [promptVersionId], references: [id], onDelete: Cascade)
-
-  @@unique([promptVersionId, name])
-  @@index([promptVersionId, sortOrder])
-}
-
-model PromptExample {
-  id              String   @id @default(uuid()) @db.Uuid
-  promptVersionId String   @db.Uuid
-  title           String?  @db.VarChar(120)
-  input           String   @db.Text
-  output          String   @db.Text
-  sortOrder       Int      @default(0)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
-  promptVersion PromptVersion @relation(fields: [promptVersionId], references: [id], onDelete: Cascade)
-
-  @@index([promptVersionId, sortOrder])
-}
-
-model PromptEvidenceImage {
-  id               String          @id @default(uuid()) @db.Uuid
-  promptVersionId  String          @db.Uuid
-  storageProvider  StorageProvider
-  storageKey       String          @db.VarChar(500)
-  secureUrl        String          @db.VarChar(1000)
-  originalFilename String          @db.VarChar(255)
-  mimeType         String          @db.VarChar(100)
-  fileSize         Int
-  width            Int?
-  height           Int?
-  altText          String?         @db.VarChar(255)
-  caption          String?         @db.VarChar(500)
-  isHidden         Boolean         @default(false)
-  sortOrder        Int             @default(0)
-  createdAt        DateTime        @default(now())
-  updatedAt        DateTime        @updatedAt
-
-  promptVersion PromptVersion @relation(fields: [promptVersionId], references: [id], onDelete: Cascade)
-
-  @@unique([promptVersionId, sortOrder])
-  @@index([promptVersionId])
-}
-
-model PromptCopyEvent {
-  id                 String   @id @default(uuid()) @db.Uuid
-  userId             String?  @db.Uuid
-  promptRepositoryId String   @db.Uuid
-  promptVersionId    String   @db.Uuid
-  dedupeKey          String   @unique @db.VarChar(255)
-  createdAt          DateTime @default(now())
-
-  user             User?            @relation(fields: [userId], references: [id], onDelete: SetNull)
-  promptRepository PromptRepository @relation(fields: [promptRepositoryId], references: [id], onDelete: Cascade)
-  promptVersion    PromptVersion    @relation(fields: [promptVersionId], references: [id], onDelete: Cascade)
-
-  @@index([promptRepositoryId, createdAt])
-  @@index([promptVersionId, createdAt])
-  @@index([userId, createdAt])
-}
-
-model ActivityEvent {
-  id                 String       @id @default(uuid()) @db.Uuid
-  actorId            String       @db.Uuid
-  promptRepositoryId String?      @db.Uuid
-  collectionId       String?      @db.Uuid
-  type               ActivityType
-  metadata           Json?
-  createdAt          DateTime     @default(now())
-
-  actor            User              @relation(fields: [actorId], references: [id], onDelete: Cascade)
-  promptRepository PromptRepository? @relation(fields: [promptRepositoryId], references: [id], onDelete: Cascade)
-  collection       Collection?       @relation(fields: [collectionId], references: [id], onDelete: Cascade)
-
-  @@index([actorId, createdAt])
-  @@index([promptRepositoryId, createdAt])
-  @@index([collectionId, createdAt])
-}
-
-model AnalyticsEvent {
-  id          String       @id @default(uuid()) @db.Uuid
-  name        String       @db.VarChar(64)
-  actorId     String?      @db.Uuid
-  accountType AccountType?
-  metadata    Json?
-  createdAt   DateTime     @default(now())
-
-  actor User? @relation(fields: [actorId], references: [id], onDelete: SetNull)
-
-  @@index([name, createdAt])
-  @@index([accountType, createdAt])
 }
 
 model BillingSubscription {
@@ -665,11 +429,11 @@ model BillingPlan {
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
 
-  limits        PlanFeatureLimit[]
-  promotions    PromotionPlan[]
-  subscriptions BillingSubscription[]
-  payments      BillingPayment[]
-  priceHistory  PricingHistory[]
+  limits             PlanFeatureLimit[]
+  promotions         PromotionPlan[]
+  subscriptions      BillingSubscription[]
+  payments           BillingPayment[]
+  priceHistory       PricingHistory[]
   generationPolicies GenerationPolicy[]
 
   @@index([isActive, displayOrder])
@@ -845,256 +609,6 @@ model BillingWebhookEvent {
   @@index([status, receivedAt])
 }
 
-model AiGeneration {
-  id                 String                @id @default(uuid()) @db.Uuid
-  requesterId        String?               @db.Uuid
-  repositoryId       String?               @db.Uuid
-  mode               AiGenerationMode
-  operation          AiGenerationOperation
-  status             AiGenerationStatus    @default(REQUESTED)
-  goal               String                @db.Text
-  categorySlug       String?               @db.VarChar(100)
-  audienceSlug       String?               @db.VarChar(100)
-  input              Json
-  output             Json?
-  providerModel      String?               @db.VarChar(120)
-  providerResponseId String?               @unique @db.VarChar(255)
-  guestSaveTokenHash String?               @db.VarChar(64)
-  inputTokens        Int?
-  outputTokens       Int?
-  totalTokens        Int?
-  reviewDecision     String?               @db.VarChar(20)
-  reviewedAt         DateTime?
-  errorCode          String?               @db.VarChar(80)
-  createdAt          DateTime              @default(now())
-  completedAt        DateTime?
-
-  requester   User?             @relation(fields: [requesterId], references: [id], onDelete: SetNull)
-  repository  PromptRepository? @relation(fields: [repositoryId], references: [id], onDelete: SetNull)
-  usageEvents AiUsageEvent[]
-
-  @@index([requesterId, createdAt])
-  @@index([mode, status, createdAt])
-  @@index([repositoryId])
-}
-
-model AiUsageEvent {
-  id           String                @id @default(uuid()) @db.Uuid
-  userId       String?               @db.Uuid
-  generationId String?               @db.Uuid
-  subjectKey   String                @db.VarChar(180)
-  requestKey   String                @unique @db.VarChar(255)
-  mode         AiGenerationMode
-  operation    AiGenerationOperation
-  status       AiGenerationStatus
-  units        Int                   @default(1)
-  createdAt    DateTime              @default(now())
-
-  user       User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
-  generation AiGeneration? @relation(fields: [generationId], references: [id], onDelete: SetNull)
-
-  @@index([subjectKey, createdAt])
-  @@index([userId, createdAt])
-  @@index([mode, status, createdAt])
-}
-
-model AiQuotaBucket {
-  id           String   @id @default(uuid()) @db.Uuid
-  subjectKey   String   @db.VarChar(180)
-  periodStart  DateTime @db.Date
-  publicUsed   Int      @default(0)
-  internalUsed Int      @default(0)
-  updatedAt    DateTime @updatedAt
-
-  @@unique([subjectKey, periodStart])
-  @@index([periodStart, subjectKey])
-}
-
-model Category {
-  id        String   @id @default(uuid()) @db.Uuid
-  name      String   @unique @db.VarChar(80)
-  slug      String   @unique @db.VarChar(100)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  repositories PromptRepository[]
-}
-
-model Tag {
-  id             String   @id @default(uuid()) @db.Uuid
-  name           String   @db.VarChar(50)
-  normalizedName String   @unique @db.VarChar(50)
-  slug           String   @unique @db.VarChar(60)
-  isOfficial     Boolean  @default(false)
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-
-  promptTags PromptTag[]
-}
-
-model PromptTag {
-  promptRepositoryId String @db.Uuid
-  tagId              String @db.Uuid
-
-  promptRepository PromptRepository @relation(fields: [promptRepositoryId], references: [id], onDelete: Cascade)
-  tag              Tag              @relation(fields: [tagId], references: [id], onDelete: Cascade)
-
-  @@id([promptRepositoryId, tagId])
-  @@index([tagId])
-}
-
-model Bookmark {
-  userId             String    @db.Uuid
-  promptRepositoryId String    @db.Uuid
-  createdAt          DateTime  @default(now())
-  lastUsedAt         DateTime?
-  useCount           Int       @default(0)
-  isFavorite         Boolean   @default(false)
-  isPinned           Boolean   @default(false)
-
-  user             User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  promptRepository PromptRepository @relation(fields: [promptRepositoryId], references: [id], onDelete: Cascade)
-
-  @@id([userId, promptRepositoryId])
-  @@index([userId, createdAt])
-  @@index([userId, isPinned, isFavorite, lastUsedAt])
-  @@index([promptRepositoryId, createdAt])
-}
-
-model Like {
-  userId             String   @db.Uuid
-  promptRepositoryId String   @db.Uuid
-  createdAt          DateTime @default(now())
-
-  user             User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  promptRepository PromptRepository @relation(fields: [promptRepositoryId], references: [id], onDelete: Cascade)
-
-  @@id([userId, promptRepositoryId])
-  @@index([promptRepositoryId, createdAt])
-}
-
-model Comment {
-  id                 String        @id @default(uuid()) @db.Uuid
-  userId             String        @db.Uuid
-  promptRepositoryId String        @db.Uuid
-  parentId           String?       @db.Uuid
-  content            String        @db.Text
-  status             CommentStatus @default(VISIBLE)
-  createdAt          DateTime      @default(now())
-  updatedAt          DateTime      @updatedAt
-  deletedAt          DateTime?
-
-  user             User             @relation(fields: [userId], references: [id], onDelete: Restrict)
-  promptRepository PromptRepository @relation(fields: [promptRepositoryId], references: [id], onDelete: Cascade)
-  parent           Comment?         @relation("CommentReplies", fields: [parentId], references: [id], onDelete: SetNull)
-  replies          Comment[]        @relation("CommentReplies")
-  notifications    Notification[]
-
-  @@index([promptRepositoryId, status, createdAt])
-  @@index([parentId])
-}
-
-model Follow {
-  followerId  String   @db.Uuid
-  followingId String   @db.Uuid
-  createdAt   DateTime @default(now())
-
-  follower  User @relation("Follower", fields: [followerId], references: [id], onDelete: Cascade)
-  following User @relation("Following", fields: [followingId], references: [id], onDelete: Cascade)
-
-  @@id([followerId, followingId])
-  @@index([followingId, createdAt])
-}
-
-model Collection {
-  id          String               @id @default(uuid()) @db.Uuid
-  ownerId     String               @db.Uuid
-  name        String               @db.VarChar(120)
-  slug        String               @db.VarChar(140)
-  description String?              @db.Text
-  visibility  CollectionVisibility @default(PRIVATE)
-  createdAt   DateTime             @default(now())
-  updatedAt   DateTime             @updatedAt
-  archivedAt  DateTime?
-
-  owner          User               @relation(fields: [ownerId], references: [id], onDelete: Cascade)
-  items          CollectionPrompt[]
-  activityEvents ActivityEvent[]
-
-  @@unique([ownerId, slug])
-  @@index([ownerId, visibility, updatedAt])
-}
-
-model CollectionPrompt {
-  collectionId       String   @db.Uuid
-  promptRepositoryId String   @db.Uuid
-  sortOrder          Int      @default(0)
-  createdAt          DateTime @default(now())
-
-  collection       Collection       @relation(fields: [collectionId], references: [id], onDelete: Cascade)
-  promptRepository PromptRepository @relation(fields: [promptRepositoryId], references: [id], onDelete: Cascade)
-
-  @@id([collectionId, promptRepositoryId])
-  @@unique([collectionId, sortOrder])
-  @@index([promptRepositoryId])
-}
-
-model Notification {
-  id                 String           @id @default(uuid()) @db.Uuid
-  recipientId        String           @db.Uuid
-  actorId            String?          @db.Uuid
-  promptRepositoryId String?          @db.Uuid
-  commentId          String?          @db.Uuid
-  type               NotificationType
-  readAt             DateTime?
-  createdAt          DateTime         @default(now())
-
-  recipient        User              @relation("NotificationRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
-  actor            User?             @relation("NotificationActor", fields: [actorId], references: [id], onDelete: SetNull)
-  promptRepository PromptRepository? @relation(fields: [promptRepositoryId], references: [id], onDelete: Cascade)
-  comment          Comment?          @relation(fields: [commentId], references: [id], onDelete: SetNull)
-
-  @@index([recipientId, readAt, createdAt])
-  @@index([promptRepositoryId])
-}
-
-model Report {
-  id          String           @id @default(uuid()) @db.Uuid
-  reporterId  String           @db.Uuid
-  targetType  ReportTargetType
-  targetId    String           @db.Uuid
-  reason      ReportReason
-  description String?          @db.Text
-  status      ReportStatus     @default(OPEN)
-  createdAt   DateTime         @default(now())
-  updatedAt   DateTime         @updatedAt
-  resolvedAt  DateTime?
-
-  reporter           User              @relation(fields: [reporterId], references: [id], onDelete: Restrict)
-  PromptRepository   PromptRepository? @relation(fields: [promptRepositoryId], references: [id])
-  promptRepositoryId String?           @db.Uuid
-
-  @@index([status, createdAt])
-  @@index([targetType, targetId])
-  @@index([reporterId, targetType, targetId, createdAt])
-}
-
-model ModerationAction {
-  id         String               @id @default(uuid()) @db.Uuid
-  actorId    String               @db.Uuid
-  targetType ModerationTargetType
-  targetId   String               @db.Uuid
-  action     ModerationActionType
-  reason     String?              @db.Text
-  metadata   Json?
-  createdAt  DateTime             @default(now())
-
-  actor User @relation(fields: [actorId], references: [id], onDelete: Restrict)
-
-  @@index([targetType, targetId, createdAt])
-  @@index([actorId, createdAt])
-}
-
 model AuditLog {
   id         String          @id @default(uuid()) @db.Uuid
   actorId    String?         @db.Uuid
@@ -1132,172 +646,181 @@ enum GenerationStatus {
 }
 
 model AIModel {
-  id String @id @default(uuid()) @db.Uuid
-  provider ModelProvider
-  providerModelId String @db.VarChar(160)
-  displayName String @db.VarChar(100)
-  description String @default("") @db.VarChar(500)
-  category String @default("general") @db.VarChar(40)
-  capabilities String[] @default(["text"])
-  enabled Boolean @default(false)
-  manualAvailable Boolean @default(true)
-  autoAvailable Boolean @default(false)
-  maintenance Boolean @default(false)
-  displayOrder Int @default(0)
-  qualityTier Int @default(1)
-  routingPriority Int @default(0)
-  routingCostScore Decimal @default(1) @db.Decimal(12,6)
-  inputPrice Decimal @db.Decimal(18,8)
-  cachedInputPrice Decimal @db.Decimal(18,8)
-  outputPrice Decimal @db.Decimal(18,8)
-  additionalPrices Json @default("{}")
-  currency String @default("USD") @db.Char(3)
-  maxContext Int
-  maxOutput Int
-  fallbackId String? @db.Uuid
-  fallback AIModel? @relation("ModelFallback", fields: [fallbackId], references: [id], onDelete: SetNull)
-  fallbackFor AIModel[] @relation("ModelFallback")
-  effectiveFrom DateTime @default(now())
-  effectiveUntil DateTime?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  policies GenerationPolicy[]
+  id               String             @id @default(uuid()) @db.Uuid
+  provider         ModelProvider
+  providerModelId  String             @db.VarChar(160)
+  displayName      String             @db.VarChar(100)
+  description      String             @default("") @db.VarChar(500)
+  category         String             @default("general") @db.VarChar(40)
+  capabilities     String[]           @default(["text"])
+  enabled          Boolean            @default(false)
+  manualAvailable  Boolean            @default(true)
+  autoAvailable    Boolean            @default(false)
+  maintenance      Boolean            @default(false)
+  displayOrder     Int                @default(0)
+  qualityTier      Int                @default(1)
+  routingPriority  Int                @default(0)
+  routingCostScore Decimal            @default(1) @db.Decimal(12, 6)
+  inputPrice       Decimal            @db.Decimal(18, 8)
+  cachedInputPrice Decimal            @db.Decimal(18, 8)
+  outputPrice      Decimal            @db.Decimal(18, 8)
+  additionalPrices Json               @default("{}")
+  currency         String             @default("USD") @db.Char(3)
+  maxContext       Int
+  maxOutput        Int
+  fallbackId       String?            @db.Uuid
+  fallback         AIModel?           @relation("ModelFallback", fields: [fallbackId], references: [id], onDelete: SetNull)
+  fallbackFor      AIModel[]          @relation("ModelFallback")
+  effectiveFrom    DateTime           @default(now())
+  effectiveUntil   DateTime?
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+  policies         GenerationPolicy[]
+
   @@unique([provider, providerModelId])
   @@index([enabled, maintenance, displayOrder])
 }
 
 model GenerationPolicy {
-  id String @id @default(uuid()) @db.Uuid
-  planId String @db.Uuid
-  plan BillingPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
-  bucket String @db.VarChar(80)
-  modelId String? @db.Uuid
-  model AIModel? @relation(fields: [modelId], references: [id], onDelete: Cascade)
-  dailyLimit Int
-  monthlyLimit Int
-  maxInputChars Int
-  maxContext Int
-  maxOutput Int
-  maxFiles Int
-  maxFileBytes Int
+  id                 String      @id @default(uuid()) @db.Uuid
+  planId             String      @db.Uuid
+  plan               BillingPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+  bucket             String      @db.VarChar(80)
+  modelId            String?     @db.Uuid
+  model              AIModel?    @relation(fields: [modelId], references: [id], onDelete: Cascade)
+  dailyLimit         Int
+  monthlyLimit       Int
+  maxInputChars      Int
+  maxContext         Int
+  maxOutput          Int
+  maxFiles           Int
+  maxFileBytes       Int
   maxDurationSeconds Int
-  concurrency Int
-  ratePerMinute Int
-  enabled Boolean @default(true)
-  routing Json @default("{}")
-  updatedAt DateTime @updatedAt
+  concurrency        Int
+  ratePerMinute      Int
+  enabled            Boolean     @default(true)
+  routing            Json        @default("{}")
+  updatedAt          DateTime    @updatedAt
+
   @@unique([planId, bucket])
 }
 
 model Conversation {
-  id String @id @default(uuid()) @db.Uuid
-  userId String @db.Uuid
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-  title String @default("New conversation") @db.VarChar(160)
-  archived Boolean @default(false)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  messages Message[]
+  id          String       @id @default(uuid()) @db.Uuid
+  userId      String       @db.Uuid
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title       String       @default("New conversation") @db.VarChar(160)
+  archived    Boolean      @default(false)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  messages    Message[]
   attachments Attachment[]
+
   @@index([userId, archived, updatedAt])
 }
 
 model Message {
-  id String @id @default(uuid()) @db.Uuid
-  conversationId String @db.Uuid
-  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  role String @db.VarChar(16)
-  content String @default("") @db.Text
-  modelName String? @db.VarChar(160)
-  provider ModelProvider?
-  routingMode RoutingMode?
-  generationId String? @unique @db.Uuid
-  status GenerationStatus @default(SUCCEEDED)
-  createdAt DateTime @default(now())
+  id             String           @id @default(uuid()) @db.Uuid
+  conversationId String           @db.Uuid
+  conversation   Conversation     @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  role           String           @db.VarChar(16)
+  content        String           @default("") @db.Text
+  modelName      String?          @db.VarChar(160)
+  provider       ModelProvider?
+  routingMode    RoutingMode?
+  generationId   String?          @unique @db.Uuid
+  status         GenerationStatus @default(SUCCEEDED)
+  createdAt      DateTime         @default(now())
+
   @@index([conversationId, createdAt])
 }
 
 model SavedPrompt {
-  id String @id @default(uuid()) @db.Uuid
-  userId String @db.Uuid
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-  title String @db.VarChar(160)
-  content String @db.Text
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @db.Uuid
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String   @db.VarChar(160)
+  content   String   @db.Text
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
   @@index([userId, updatedAt])
 }
 
 model Attachment {
-  id String @id @default(uuid()) @db.Uuid
-  userId String @db.Uuid
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-  conversationId String @db.Uuid
-  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  name String @db.VarChar(200)
-  mimeType String @db.VarChar(80)
-  size Int
-  storageKey String @unique @db.VarChar(255)
-  createdAt DateTime @default(now())
+  id             String       @id @default(uuid()) @db.Uuid
+  userId         String       @db.Uuid
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  conversationId String       @db.Uuid
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  name           String       @db.VarChar(200)
+  mimeType       String       @db.VarChar(80)
+  size           Int
+  storageKey     String       @unique @db.VarChar(255)
+  createdAt      DateTime     @default(now())
+
   @@index([userId, conversationId])
 }
 
 model UsageCounter {
-  id String @id @default(uuid()) @db.Uuid
-  userId String @db.Uuid
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-  bucket String @db.VarChar(80)
+  id          String           @id @default(uuid()) @db.Uuid
+  userId      String           @db.Uuid
+  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bucket      String           @db.VarChar(80)
   periodStart DateTime
-  period UsageResetPeriod
-  used Int @default(0)
-  reserved Int @default(0)
-  extra Int @default(0)
+  period      UsageResetPeriod
+  used        Int              @default(0)
+  reserved    Int              @default(0)
+  extra       Int              @default(0)
+
   @@unique([userId, bucket, period, periodStart])
 }
 
 model QuotaReservation {
-  id String @id @db.Uuid
-  userId String @db.Uuid
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-  bucket String @db.VarChar(80)
-  fingerprint String @db.VarChar(64)
-  dayStart DateTime
-  monthStart DateTime
-  status GenerationStatus @default(RESERVED)
-  expiresAt DateTime
-  createdAt DateTime @default(now())
+  id          String           @id @db.Uuid
+  userId      String           @db.Uuid
+  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bucket      String           @db.VarChar(80)
+  fingerprint String           @db.VarChar(64)
+  dayStart    DateTime
+  monthStart  DateTime
+  status      GenerationStatus @default(RESERVED)
+  expiresAt   DateTime
+  createdAt   DateTime         @default(now())
   finalizedAt DateTime?
+
   @@index([userId, status, expiresAt])
 }
 
 model UsageRecord {
-  id String @id @default(uuid()) @db.Uuid
-  userId String @db.Uuid
-  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
-  requestId String @db.Uuid
-  subscriptionId String? @db.Uuid
-  conversationId String? @db.Uuid
-  messageId String? @db.Uuid
-  provider ModelProvider
-  modelId String @db.Uuid
-  providerModelId String @db.VarChar(160)
-  modelName String @db.VarChar(160)
-  routingMode RoutingMode
-  originalModelId String? @db.Uuid
-  fallbackReason String? @db.VarChar(100)
-  inputTokens Int @default(0)
-  cachedInputTokens Int @default(0)
-  outputTokens Int @default(0)
-  reasoningTokens Int @default(0)
-  providerUsage Json
-  pricingSnapshot Json
-  estimatedCost Decimal @db.Decimal(18,8)
-  costEstimated Boolean @default(false)
-  currency String @db.Char(3)
-  latencyMs Int
-  status GenerationStatus
-  errorCategory String? @db.VarChar(100)
-  createdAt DateTime @default(now())
+  id                String           @id @default(uuid()) @db.Uuid
+  userId            String           @db.Uuid
+  user              User             @relation(fields: [userId], references: [id], onDelete: Restrict)
+  requestId         String           @db.Uuid
+  subscriptionId    String?          @db.Uuid
+  conversationId    String?          @db.Uuid
+  messageId         String?          @db.Uuid
+  provider          ModelProvider
+  modelId           String           @db.Uuid
+  providerModelId   String           @db.VarChar(160)
+  modelName         String           @db.VarChar(160)
+  routingMode       RoutingMode
+  originalModelId   String?          @db.Uuid
+  fallbackReason    String?          @db.VarChar(100)
+  inputTokens       Int              @default(0)
+  cachedInputTokens Int              @default(0)
+  outputTokens      Int              @default(0)
+  reasoningTokens   Int              @default(0)
+  providerUsage     Json
+  pricingSnapshot   Json
+  estimatedCost     Decimal          @db.Decimal(18, 8)
+  costEstimated     Boolean          @default(false)
+  currency          String           @db.Char(3)
+  latencyMs         Int
+  status            GenerationStatus
+  errorCategory     String?          @db.VarChar(100)
+  createdAt         DateTime         @default(now())
+
   @@index([userId, createdAt])
   @@index([requestId])
   @@index([modelId, createdAt])

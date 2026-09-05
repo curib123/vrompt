@@ -108,7 +108,9 @@ export class ChatService {
     ];
     const available = await this.registry.available();
     const permitted = available.filter((m) =>
-      policies.some((p) => p.modelId === m.id),
+      input.mode === 'AUTO'
+        ? policies.some((p) => p.bucket === 'AUTO')
+        : policies.some((p) => p.modelId === m.id),
     );
     let candidates: AIModel[];
     if (input.mode === 'MANUAL') {

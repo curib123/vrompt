@@ -5,7 +5,6 @@ import {
   Get,
   Param,
   Patch,
-  Post,
   UseGuards,
 } from '@nestjs/common';
 import { UserRole } from '@prisma/client';
@@ -46,9 +45,5 @@ export class AdminSettingsController {
   ) {
     return this.service.reset(actor.id, key);
   }
-  @Post('privacy/purge') purgeAnalytics(
-    @CurrentUser() actor: AuthenticatedUser,
-  ) {
-    return this.service.purgeExpiredAnalytics(actor.id);
-  }
+
 }

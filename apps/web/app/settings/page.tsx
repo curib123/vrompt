@@ -1,10 +1,4 @@
-import { ProtectedRoute } from '@/components/auth/protected-route';
-import { ProfileSectionRedirect } from '@/components/profile/profile-section-redirect';
-
-export default function SettingsPage() {
-  return (
-    <ProtectedRoute>
-      <ProfileSectionRedirect tab="settings" />
-    </ProtectedRoute>
-  );
-}
+import { WorkspaceShell } from '@/components/workspace/shell';
+import { SettingsPage } from '@/components/workspace/pages';
+export const metadata = { robots: { index: false, follow: false } };
+export default function Page() { return <WorkspaceShell><SettingsPage /></WorkspaceShell>; }

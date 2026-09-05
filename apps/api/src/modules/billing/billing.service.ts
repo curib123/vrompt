@@ -77,9 +77,9 @@ export class BillingService {
           priceCentavos: 0,
           billingPeriod: 'forever',
           features: [
-            'Browse and search the public prompt library',
-            'Copy prompts',
-            'Daily-limited AI generation and refinement tools',
+            'Private conversations with Auto',
+            'Selected model access',
+            'Daily and monthly generation allowances',
           ],
         },
         {
@@ -88,8 +88,8 @@ export class BillingService {
           priceCentavos,
           billingPeriod: `${periodDays} days · one-time payment`,
           features: [
-            'Unlimited AI generation and refinement tools while Pro is active',
-            'More room for saved workflows',
+            'Higher Auto and model-specific allowances',
+            'Larger context and file allowances',
           ],
         },
       ],
@@ -768,17 +768,17 @@ export class BillingService {
         _sum: { amount: true },
       }),
     ]);
-    const usageRows = await this.prisma.aiUsageEvent.findMany({
+    const usageRows = await this.prisma.usageRecord.findMany({
       where: { createdAt: { gte: today } },
       select: {
-        units: true,
+        id: true,
         user: { select: { plan: true } },
       },
     });
     const usageByPlan = usageRows.reduce(
       (totals, row) => {
         const key = row.user?.plan ?? 'GUEST';
-        totals[key] += row.units;
+        totals[key] += 1;
         return totals;
       },
       { GUEST: 0, FREE: 0, PRO: 0 },
