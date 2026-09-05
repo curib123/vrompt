@@ -12,16 +12,16 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 
 const variantClasses: Record<ButtonVariant, string> = {
   primary:
-    'bg-[#0D0D0D] !text-background hover:bg-[#1A1A1A] focus-visible:outline-black dark:bg-white dark:hover:bg-[#E6E6E6]',
+    'bg-gradient-to-r from-brand-azure to-brand-teal !text-white shadow-[0_10px_24px_rgba(59,130,246,0.2)] hover:brightness-105 focus-visible:outline-brand-azure',
   secondary:
-    'border border-[#E6E6E6] bg-white !text-foreground hover:border-[#0D0D0D] hover:bg-[#E6E6E6] focus-visible:outline-black dark:border-[#4D4D4D] dark:bg-[#1A1A1A] dark:hover:border-white dark:hover:bg-[#0D0D0D]',
+    'border border-brand-soft bg-[var(--brand-surface)] !text-foreground hover:border-brand-teal hover:bg-brand-paper focus-visible:outline-brand-azure',
   ghost:
-    'bg-transparent !text-foreground hover:bg-[#E6E6E6] focus-visible:outline-black dark:hover:bg-[#1A1A1A]',
+    'bg-transparent !text-foreground hover:bg-brand-soft focus-visible:outline-brand-azure',
 };
 
 export function getButtonClasses(variant: ButtonVariant, className?: string) {
   return cn(
-    'inline-flex min-h-11 items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-50',
+    'inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-50',
     variantClasses[variant],
     className,
   );

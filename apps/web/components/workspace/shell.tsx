@@ -3,6 +3,7 @@ import Link from 'next/link';
 import type { Route } from 'next';
 import { usePathname } from 'next/navigation';
 import { useState, type ReactNode } from 'react';
+import { BrandLockup } from '@/components/brand/brand-mark';
 import { useAuth } from '@/components/providers/auth-provider';
 import { useTheme } from '@/components/theme/theme-provider';
 export const workspaceLinks = [
@@ -67,8 +68,8 @@ export function WorkspaceShell({
         >
           ☰
         </button>
-        <Link href="/chat">
-          vrompt<span className="brand-dot">✳</span>
+        <Link aria-label="Vrompt workspace" href="/chat">
+          <BrandLockup compact />
         </Link>
       </header>
       {open && (
@@ -79,8 +80,12 @@ export function WorkspaceShell({
         />
       )}
       <aside className={`workspace-sidebar ${open ? 'is-open' : ''}`}>
-        <Link className="workspace-brand" href={admin ? '/admin' : '/chat'}>
-          vrompt<span className="brand-dot">✳</span>
+        <Link
+          aria-label="Vrompt workspace"
+          className="workspace-brand"
+          href={admin ? '/admin' : '/chat'}
+        >
+          <BrandLockup compact />
         </Link>
         <p className="eyebrow">
           {admin ? 'ADMINISTRATION' : 'YOUR AI WORKSPACE'}
