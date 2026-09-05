@@ -13,11 +13,15 @@ import {
   type Usage,
 } from '@/lib/api';
 import { GeneratedImage } from './generated-image';
+import type { Project } from './projects';
 export function Chat() {
   const { accessToken } = useAuth();
   const router = useRouter();
   const params = useSearchParams();
   const id = params.get('id');
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [projectId, setProjectId] = useState(params.get('project') ?? '');
+  const [selectedFiles, setSelectedFiles] = useState<string[]>([]);
   const [feature, setFeature] = useState<'chat' | 'image_generation'>('chat');
   const [models, setModels] = useState<Model[]>([]);
   const [selected, setSelected] = useState('AUTO');
@@ -49,7 +53,38 @@ export function Chat() {
     setRecent(r);
   }
   useEffect(() => {
-    if (!accessToken) return;
+    if (!accessToken) {
+      void apiRequest<{
+        enabled: boolean;
+        dailyLimit: number;
+        monthlyLimit: number;
+      }>('/guest/configuration')
+        .then((g) =>
+          setUsage({
+            plan: 'Guest',
+            resets: { daily: '', monthly: '' },
+            allowances: g.enabled
+              ? [
+                  {
+                    bucket: 'AUTO',
+                    allowedFeatures: ['chat'],
+                    dailyLimit: g.dailyLimit,
+                    dailyRemaining: g.dailyLimit,
+                    monthlyLimit: g.monthlyLimit,
+                    monthlyRemaining: g.monthlyLimit,
+                    maxFiles: 0,
+                    maxFileBytes: 0,
+                  },
+                ]
+              : [],
+          }),
+        )
+        .catch((e) => setError(e.message));
+      return;
+    }
+    void apiRequest<Project[]>('/workspace/projects', { accessToken })
+      .then(setProjects)
+      .catch((e) => setError(e.message));
     void refresh().catch((e) => setError(e.message));
   }, [accessToken]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
@@ -75,6 +110,8 @@ export function Chat() {
         if (current) {
           setMessages(c.messages);
           setFiles(c.attachments);
+          setSelectedFiles([]);
+          setProjectId(c.projectId ?? '');
           setTitle(c.title);
         }
       })
@@ -96,13 +133,14 @@ export function Chat() {
       method: 'POST',
       body: JSON.stringify({
         title: text.trim().slice(0, 80) || 'New conversation',
+        projectId: projectId || null,
       }),
     });
     router.replace(`/chat?id=${c.id}`);
     return c.id;
   }
   async function send(regenerate?: Message) {
-    if (!accessToken || busy || (!text.trim() && !regenerate)) return;
+    if (busy || (!text.trim() && !regenerate)) return;
     setBusy(true);
     setError('');
     const content = regenerate ? 'Regenerate' : text.trim();
@@ -110,19 +148,20 @@ export function Chat() {
     abort.current = controller;
     let conversationId = id;
     try {
-      conversationId = await ensureConversation();
+      conversationId = accessToken ? await ensureConversation() : null;
       const response = await fetch(
-        `${getApiBaseUrl()}/workspace/conversations/${conversationId}/messages`,
+        `${getApiBaseUrl()}${accessToken ? `/workspace/conversations/${conversationId}/messages` : '/guest/messages'}`,
         {
           method: 'POST',
           credentials: 'include',
           headers: {
-            Authorization: `Bearer ${accessToken}`,
+            ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
             requestId: crypto.randomUUID(),
             content,
+            attachmentIds: selectedFiles,
             feature: regenerate?.artifacts?.length
               ? 'image_generation'
               : feature,
@@ -209,9 +248,9 @@ export function Chat() {
         const c = await apiRequest<{
           messages: Message[];
           attachments: ChatFile[];
-        }>(`/workspace/conversations/${conversationId}`, { accessToken }).catch(
-          () => null,
-        );
+        }>(`/workspace/conversations/${conversationId}`, {
+          accessToken: accessToken ?? undefined,
+        }).catch(() => null);
         if (c) {
           setMessages(c.messages);
           setFiles(c.attachments);
@@ -232,6 +271,7 @@ export function Chat() {
         { accessToken, method: 'POST', body },
       );
       setFiles((old) => [...old.filter((f) => f.id !== added.id), added]);
+      setSelectedFiles((old) => [...old, added.id]);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Upload failed.');
     }
@@ -265,6 +305,44 @@ export function Chat() {
         </div>
         <span className="muted">{usage?.plan ?? 'Your workspace'}</span>
       </header>
+      {accessToken ? (
+        <div className="chat-toolbar">
+          <label>
+            Project{' '}
+            <select
+              disabled={busy}
+              value={projectId}
+              onChange={async (e) => {
+                const next = e.target.value;
+                try {
+                  if (id)
+                    await apiRequest(`/workspace/conversations/${id}`, {
+                      accessToken,
+                      method: 'PATCH',
+                      body: JSON.stringify({ projectId: next || null }),
+                    });
+                  setProjectId(next);
+                } catch (e) {
+                  setError((e as Error).message);
+                }
+              }}
+            >
+              <option value="">Personal workspace</option>
+              {projects
+                .filter((p) => !p.archived)
+                .map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+            </select>
+          </label>
+        </div>
+      ) : (
+        <p className="usage-hint">
+          Temporary chat · <a href="/login">Sign up to continue and save</a>
+        </p>
+      )}
       <div className="chat-toolbar">
         <label>
           Task{' '}
@@ -354,6 +432,11 @@ export function Chat() {
                         ? 'Thinking…'
                         : 'No response completed.')}
                 </pre>
+                {m.role === 'user' && (
+                  <button disabled={busy} onClick={() => setText(m.content)}>
+                    Edit as new message
+                  </button>
+                )}
                 {m.artifacts?.map((a) => (
                   <GeneratedImage key={a.id} file={a} />
                 ))}
@@ -373,7 +456,10 @@ export function Chat() {
                       >
                         Copy response
                       </button>
-                      <button disabled={busy} onClick={() => void send(m)}>
+                      <button
+                        disabled={busy || !accessToken}
+                        onClick={() => void send(m)}
+                      >
                         Regenerate
                       </button>
                       {!['SUCCEEDED', 'RESERVED'].includes(m.status) && (
@@ -403,9 +489,29 @@ export function Chat() {
             )}
           </div>
         )}
-        <div className="composer">
+        <div
+          className="composer"
+          onDragOver={(e) => e.preventDefault()}
+          onDrop={(e) => {
+            e.preventDefault();
+            void attach(e.dataTransfer.files[0]);
+          }}
+        >
           {files.map((f) => (
             <span className="file-chip" key={f.id}>
+              <input
+                type="checkbox"
+                aria-label={`Include ${f.name}`}
+                checked={selectedFiles.includes(f.id)}
+                disabled={busy}
+                onChange={(e) =>
+                  setSelectedFiles((old) =>
+                    e.target.checked
+                      ? [...old, f.id]
+                      : old.filter((x) => x !== f.id),
+                  )
+                }
+              />
               {f.name}
               <button
                 aria-label={`Remove ${f.name}`}
@@ -431,6 +537,18 @@ export function Chat() {
             value={text}
             disabled={busy}
             onChange={(e) => setText(e.target.value)}
+            onPaste={(e) => {
+              const image = [...e.clipboardData.items]
+                .find(
+                  (item) =>
+                    item.kind === 'file' && item.type.startsWith('image/'),
+                )
+                ?.getAsFile();
+              if (image) {
+                e.preventDefault();
+                void attach(image);
+              }
+            }}
             onKeyDown={(e) => {
               if (
                 e.key === 'Enter' &&
@@ -456,7 +574,7 @@ export function Chat() {
               />
               <button
                 aria-label="Attach a file"
-                disabled={busy}
+                disabled={busy || !accessToken || !allowance?.maxFiles}
                 onClick={() => upload.current?.click()}
               >
                 ＋ Attach
@@ -493,7 +611,8 @@ export function Chat() {
                   !text.trim() ||
                   !allowance ||
                   allowance.dailyRemaining === 0 ||
-                  allowance.monthlyRemaining === 0
+                  allowance.monthlyRemaining === 0 ||
+                  usage?.credits?.remaining === 0
                 }
                 onClick={() => void send()}
               >
@@ -503,6 +622,8 @@ export function Chat() {
           </div>
         </div>
         <p className="usage-hint">
+          {usage?.credits &&
+            `${usage.credits.remaining} credits remaining this month · `}
           {allowance
             ? `${allowance.dailyRemaining} / ${allowance.dailyLimit} remaining today · ${allowance.monthlyRemaining} / ${allowance.monthlyLimit} this month`
             : 'No allowance is configured for this selection.'}{' '}

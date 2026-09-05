@@ -63,7 +63,12 @@ export type Model = {
   enabled?: boolean;
   maintenance?: boolean;
 };
-export type Conversation = { id: string; title: string; updatedAt: string };
+export type Conversation = {
+  id: string;
+  title: string;
+  updatedAt: string;
+  projectId?: string | null;
+};
 export type Message = {
   artifacts?: ChatFile[];
   id: string;
@@ -81,6 +86,12 @@ export type ChatFile = {
 };
 export type SavedPrompt = { id: string; title: string; content: string };
 export type Usage = {
+  credits?: { limit: number; remaining: number };
+  features?: {
+    projects: boolean;
+    workflows: boolean;
+    maxWorkflowSteps: number;
+  };
   plan: string;
   resets: { daily: string; monthly: string };
   allowances: {
