@@ -2,6 +2,8 @@ import {
   ConflictException,
   ForbiddenException,
   Injectable,
+  OnModuleInit,
+  OnModuleDestroy,
 } from '@nestjs/common';
 import { GenerationPolicy, GenerationStatus, Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
@@ -23,10 +25,33 @@ export function periods(now = new Date()) {
 }
 
 @Injectable()
-export class QuotaService {
+export class QuotaService implements OnModuleInit, OnModuleDestroy {
+  private timer?: ReturnType<typeof setInterval>;
+  private reconciling = false;
   constructor(private readonly prisma: PrismaService) {}
+  onModuleInit() {
+    this.timer = setInterval(() => { void this.reconcileExpired().catch(() => {}); }, 60_000);
+    this.timer.unref();
+  }
+  onModuleDestroy() { clearInterval(this.timer); }
+  async reconcileExpired() {
+    if (this.reconciling) return;
+    this.reconciling = true;
+    try {
+      const stale = await this.prisma.quotaReservation.findMany({ where: { status: 'RESERVED', expiresAt: { lt: new Date() } }, take: 100 });
+      for (const reservation of stale) await this.prisma.$transaction(async tx => {
+        await tx.$queryRaw`SELECT id FROM "User" WHERE id = ${reservation.userId}::uuid FOR UPDATE`;
+        await this.finalizeIn(tx, reservation.id, 'INTERRUPTED', true);
+        await tx.message.updateMany({ where: { generationId: reservation.id, status: 'RESERVED' }, data: { status: 'INTERRUPTED' } });
+      });
+    } finally { this.reconciling = false; }
+  }
 
   async policies(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { guestKey: true },
+    });
     const subscription = await this.prisma.billingSubscription.findFirst({
       where: { userId, status: 'ACTIVE', currentPeriodEnd: { gt: new Date() } },
       orderBy: { currentPeriodEnd: 'desc' },
@@ -36,7 +61,9 @@ export class QuotaService {
           where: { id: subscription.planConfigId },
         })
       : await this.prisma.billingPlan.findUnique({
-          where: { code: subscription ? 'PRO' : 'FREE' },
+          where: {
+            code: user?.guestKey ? 'GUEST' : subscription ? 'PRO' : 'FREE',
+          },
         });
     const policies = plan
       ? await this.prisma.generationPolicy.findMany({
@@ -51,6 +78,7 @@ export class QuotaService {
     requestId: string,
     fingerprint: string,
     policy: GenerationPolicy,
+    creditUnits = 1,
   ) {
     const now = new Date();
     const p = periods(now);
@@ -88,6 +116,31 @@ export class QuotaService {
         throw new TooManyRequestsException(
           'Please wait before sending another request.',
         );
+      const plan = await tx.billingPlan.findUniqueOrThrow({
+        where: { id: policy.planId },
+      });
+      const creditKey = {
+        userId,
+        bucket: 'CREDITS',
+        period: 'MONTHLY' as const,
+        periodStart: p.month,
+      };
+      const credits = await tx.usageCounter.upsert({
+        where: { userId_bucket_period_periodStart: creditKey },
+        create: creditKey,
+        update: {},
+      });
+      if (
+        credits.used + credits.reserved + creditUnits >
+        plan.monthlyCredits + credits.extra
+      )
+        throw new ForbiddenException(
+          'Monthly credits reached. Upgrade to continue.',
+        );
+      await tx.usageCounter.update({
+        where: { id: credits.id },
+        data: { reserved: { increment: creditUnits } },
+      });
       for (const [period, periodStart, limit] of [
         ['DAILY', p.day, policy.dailyLimit],
         ['MONTHLY', p.month, policy.monthlyLimit],
@@ -113,6 +166,7 @@ export class QuotaService {
           userId,
           bucket: policy.bucket,
           fingerprint,
+          creditUnits,
           dayStart: p.day,
           monthStart: p.month,
           expiresAt: new Date(
@@ -137,6 +191,21 @@ export class QuotaService {
       data: { status, finalizedAt: new Date() },
     });
     if (!changed.count) return;
+    if (reservation.creditUnits > 0)
+      await tx.usageCounter.update({
+        where: {
+          userId_bucket_period_periodStart: {
+            userId: reservation.userId,
+            bucket: 'CREDITS',
+            period: 'MONTHLY',
+            periodStart: reservation.monthStart,
+          },
+        },
+        data: {
+          reserved: { decrement: reservation.creditUnits },
+          used: { increment: consume ? reservation.creditUnits : 0 },
+        },
+      });
     for (const [period, periodStart] of [
       ['DAILY', reservation.dayStart],
       ['MONTHLY', reservation.monthStart],
@@ -166,6 +235,21 @@ export class QuotaService {
     });
     return {
       plan: plan?.name ?? 'Free',
+      features: {
+        projects: (plan?.maxProjects ?? 0) > 0,
+        workflows: (plan?.maxWorkflows ?? 0) > 0,
+        maxWorkflowSteps: plan?.maxWorkflowSteps ?? 0,
+      },
+      credits: {
+        limit: plan?.monthlyCredits ?? 0,
+        remaining: Math.max(
+          0,
+          (plan?.monthlyCredits ?? 0) +
+            (counters.find((c) => c.bucket === 'CREDITS')?.extra ?? 0) -
+            (counters.find((c) => c.bucket === 'CREDITS')?.used ?? 0) -
+            (counters.find((c) => c.bucket === 'CREDITS')?.reserved ?? 0),
+        ),
+      },
       resets: { daily: p.nextDay, monthly: p.nextMonth },
       allowances: policies.map((policy) => {
         const daily = counters.find(

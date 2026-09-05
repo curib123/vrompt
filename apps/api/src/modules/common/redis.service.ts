@@ -54,13 +54,12 @@ export class RedisService implements OnApplicationShutdown {
 
   async increment(key: string, ttlSeconds: number) {
     const client = await this.getClient();
-    const count = await client.incr(key);
-
-    if (count === 1) {
-      await client.expire(key, ttlSeconds);
-    }
-
-    return count;
+    return Number(
+      await client.eval(
+        "local n = redis.call('INCR', KEYS[1]); if n == 1 then redis.call('EXPIRE', KEYS[1], ARGV[1]) end; return n",
+        { keys: [key], arguments: [String(ttlSeconds)] },
+      ),
+    );
   }
 
   async delete(key: string) {

@@ -21,6 +21,8 @@ import { Roles } from '../auth/decorators/roles.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { PrismaService } from '../prisma/prisma.service';
+import { ProjectsService } from './projects.service';
+import { EconomicsService } from './economics.service';
 import { ChatService } from './chat.service';
 import { QuotaService } from './quota.service';
 import { AttachmentService } from './attachment.service';
@@ -39,6 +41,7 @@ export class WorkspaceController {
     private readonly chat: ChatService,
     private readonly quota: QuotaService,
     private readonly files: AttachmentService,
+    private readonly projects: ProjectsService,
   ) {}
   @Get('models') models(@CurrentUser() user: AuthenticatedUser) {
     return this.chat.models(user.id);
@@ -67,12 +70,14 @@ export class WorkspaceController {
       take: 100,
     });
   }
-  @Post('conversations') create(
+  @Post('conversations') async create(
     @CurrentUser() user: AuthenticatedUser,
     @Body() input: ConversationDto,
   ) {
+    if (input.projectId)
+      await this.projects.owned(user.id, input.projectId, true);
     return this.prisma.conversation.create({
-      data: { userId: user.id, title: input.title },
+      data: { userId: user.id, title: input.title, projectId: input.projectId },
     });
   }
   @Get('conversations/:id') async conversation(
@@ -98,6 +103,8 @@ export class WorkspaceController {
     @Body() input: ConversationDto,
   ) {
     await this.chat.owned(user.id, id);
+    if (input.projectId)
+      await this.projects.owned(user.id, input.projectId, true);
     return this.prisma.conversation.update({ where: { id }, data: input });
   }
   @Delete('conversations/:id') async remove(
@@ -192,19 +199,23 @@ export class WorkspaceController {
       take: 200,
     });
   }
-  @Post('saved-prompts') savePrompt(
+  @Post('saved-prompts') async savePrompt(
     @CurrentUser() user: AuthenticatedUser,
     @Body() input: SavedPromptDto,
   ) {
+    if (input.projectId)
+      await this.projects.owned(user.id, input.projectId, true);
     return this.prisma.savedPrompt.create({
       data: { ...input, userId: user.id },
     });
   }
-  @Patch('saved-prompts/:id') editPrompt(
+  @Patch('saved-prompts/:id') async editPrompt(
     @CurrentUser() user: AuthenticatedUser,
     @Param('id', ParseUUIDPipe) id: string,
     @Body() input: SavedPromptDto,
   ) {
+    if (input.projectId)
+      await this.projects.owned(user.id, input.projectId, true);
     return this.prisma.savedPrompt.updateMany({
       where: { id, userId: user.id },
       data: input,
@@ -227,6 +238,7 @@ export class WorkspaceAdminController {
   constructor(
     private readonly prisma: PrismaService,
     private readonly registry: ModelRegistryService,
+    private readonly economics: EconomicsService,
   ) {}
   @Get('configuration') async configuration() {
     return {
@@ -260,6 +272,7 @@ export class WorkspaceAdminController {
     const since = new Date(Date.now() - 30 * 86400000);
     const where = { createdAt: { gte: since } };
     return {
+      contribution: await this.economics.report(since),
       since,
       costs: await this.prisma.usageRecord.groupBy({
         by: [
@@ -293,5 +306,11 @@ export class WorkspaceAdminController {
       }),
       note: 'Provider costs are in major currency units; payments are in minor units. Do not subtract different currencies. Estimated costs require provider reconciliation. Revenue is cash received, not recognized MRR.',
     };
+  }
+  @Post('reconciliation') reconcile(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() input: unknown,
+  ) {
+    return this.economics.append(user.id, input);
   }
 }

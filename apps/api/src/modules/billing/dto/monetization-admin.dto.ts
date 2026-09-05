@@ -31,6 +31,11 @@ export class PlanLimitDto {
 }
 
 export class UpsertPlanDto {
+  @IsOptional() @IsInt() @Min(0) @Max(10000000) monthlyCredits?: number;
+  @IsOptional() @IsInt() @Min(0) @Max(200) maxProjects?: number;
+  @IsOptional() @IsInt() @Min(0) @Max(200) maxWorkflows?: number;
+  @IsOptional() @IsInt() @Min(1) @Max(20) maxWorkflowSteps?: number;
+  @IsOptional() @IsInt() @Min(0) @Max(32000) projectContextChars?: number;
   @IsString() @MinLength(2) @MaxLength(50) code!: string;
   @IsString() @MinLength(1) @MaxLength(100) name!: string;
   @IsString() @MinLength(1) @MaxLength(2000) description!: string;

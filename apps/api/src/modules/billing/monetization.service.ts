@@ -19,7 +19,7 @@ export class MonetizationService {
 
   async publicPlans(now = new Date()) {
     const plans = await this.prisma.billingPlan.findMany({
-      where: { isActive: true },
+      where: { isActive: true, code: { not: 'GUEST' } },
       orderBy: [{ displayOrder: 'asc' }, { createdAt: 'asc' }],
       include: {
         limits: { include: { feature: true }, orderBy: { resetPeriod: 'asc' } },
@@ -221,7 +221,12 @@ export class MonetizationService {
             action: 'SETTING_UPDATED',
             targetType: 'USER',
             targetId: input.userId,
-            metadata: { event: 'plan_limit_reached', feature: input.featureKey, units, accountType: actor?.accountType },
+            metadata: {
+              event: 'plan_limit_reached',
+              feature: input.featureKey,
+              units,
+              accountType: actor?.accountType,
+            },
           },
         });
       }
@@ -257,6 +262,11 @@ export class MonetizationService {
           code: input.code.trim().toUpperCase(),
           name: input.name.trim(),
           description: input.description.trim(),
+          monthlyCredits: input.monthlyCredits,
+          maxProjects: input.maxProjects,
+          maxWorkflows: input.maxWorkflows,
+          maxWorkflowSteps: input.maxWorkflowSteps,
+          projectContextChars: input.projectContextChars,
           originalPrice: input.originalPrice,
           currency: input.currency.toUpperCase(),
           billingInterval: input.billingInterval,
@@ -291,6 +301,11 @@ export class MonetizationService {
           code: input.code.trim().toUpperCase(),
           name: input.name.trim(),
           description: input.description.trim(),
+          monthlyCredits: input.monthlyCredits,
+          maxProjects: input.maxProjects,
+          maxWorkflows: input.maxWorkflows,
+          maxWorkflowSteps: input.maxWorkflowSteps,
+          projectContextChars: input.projectContextChars,
           originalPrice: input.originalPrice,
           currency: input.currency.toUpperCase(),
           billingInterval: input.billingInterval,

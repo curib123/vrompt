@@ -53,6 +53,31 @@ describe('Routing and reset boundaries', () => {
       periods(new Date('2026-12-31T23:59:59Z')).nextDay.toISOString(),
     ).toBe('2027-01-01T00:00:00.000Z');
   });
+  it('does not let priority overwhelm cost and breaks ties deterministically', () => {
+    const ranked = rankModels(
+      [
+        { ...models[0]!, routingPriority: 0 },
+        { ...models[1]!, routingPriority: 100 },
+      ],
+      policy,
+      'hello',
+      ['text'],
+      1000,
+    );
+    expect(ranked[0]?.id).toBe('cheap');
+    expect(
+      rankModels(
+        [
+          { ...models[0]!, routingCostScore: new Prisma.Decimal(5) },
+          { ...models[1]!, routingPriority: 10 },
+        ],
+        policy,
+        'hello',
+        ['text'],
+        1000,
+      )[0]?.id,
+    ).toBe('strong');
+  });
   it('rejects incomplete or unbounded policies', () => {
     expect(() =>
       validate(policySchema, { bucket: 'AUTO', dailyLimit: -1 }),

@@ -208,10 +208,15 @@ export class GoogleProvider implements AIProvider {
     usage: NormalizedUsage,
     options?: ProviderOptions,
   ) {
-    const contents = messages.map((m) => ({
-      role: m.role === 'assistant' ? 'model' : 'user',
-      parts: [{ text: m.content }] as any[],
-    }));
+    const system = messages
+      .filter((m) => m.role === 'system')
+      .map((m) => ({ text: m.content }));
+    const contents = messages
+      .filter((m) => m.role !== 'system')
+      .map((m) => ({
+        role: m.role === 'assistant' ? 'model' : 'user',
+        parts: [{ text: m.content }] as any[],
+      }));
     contents[contents.length - 1]!.parts.push(
       ...files.map((f) =>
         f.mimeType === 'text/plain'
@@ -229,6 +234,7 @@ export class GoogleProvider implements AIProvider {
       { 'x-goog-api-key': process.env.GOOGLE_AI_API_KEY! },
       {
         contents,
+        ...(system.length ? { systemInstruction: { parts: system } } : {}),
         generationConfig: {
           maxOutputTokens: maxOutput,
           ...(options?.feature === 'image_generation'
@@ -280,10 +286,21 @@ export class AnthropicProvider implements AIProvider {
   ) {
     if (options?.feature === 'image_generation')
       throw new ProviderFailure('UNSUPPORTED_FEATURE', false);
-    const input: any[] = messages.map((m) => ({
-      role: m.role,
-      content: [{ type: 'text', text: m.content }],
-    }));
+    const system = messages
+      .filter((m) => m.role === 'system')
+      .map((m) => ({
+        type: 'text',
+        text: m.content,
+        ...(model.capabilities.includes('prompt_caching')
+          ? { cache_control: { type: 'ephemeral' } }
+          : {}),
+      }));
+    const input: any[] = messages
+      .filter((m) => m.role !== 'system')
+      .map((m) => ({
+        role: m.role,
+        content: [{ type: 'text', text: m.content }],
+      }));
     input[input.length - 1].content.push(
       ...files.map((f) =>
         f.mimeType === 'text/plain'
@@ -310,6 +327,7 @@ export class AnthropicProvider implements AIProvider {
       {
         model: model.providerModelId,
         messages: input,
+        ...(system.length ? { system } : {}),
         max_tokens: maxOutput,
         stream: true,
       },

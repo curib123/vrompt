@@ -119,6 +119,9 @@ async function main() {
       },
       create: {
         code: 'PRO',
+        monthlyCredits: 5000,
+        maxProjects: 30,
+        maxWorkflows: 50,
         name: 'Pro',
         description: 'Higher limits and access to every enabled model.',
         originalPrice: 1900,
@@ -161,14 +164,76 @@ async function main() {
     data: { fallbackId: models[1]!.id },
   });
 
+  const guest = await prisma.billingPlan.upsert({
+    where: { code: 'GUEST' },
+    update: {},
+    create: {
+      code: 'GUEST',
+      name: 'Guest',
+      description: 'Temporary Auto text chat',
+      originalPrice: 0,
+      currency: 'USD',
+      billingInterval: BillingInterval.MONTH,
+      monthlyCredits: 6,
+    },
+  });
+  await prisma.generationPolicy.upsert({
+    where: { planId_bucket: { planId: guest.id, bucket: 'AUTO' } },
+    update: {},
+    create: {
+      planId: guest.id,
+      bucket: 'AUTO',
+      dailyLimit: 3,
+      monthlyLimit: 6,
+      maxInputChars: 2000,
+      maxContext: 8000,
+      maxOutput: 512,
+      maxFiles: 0,
+      maxFileBytes: 1,
+      maxDurationSeconds: 30,
+      concurrency: 1,
+      ratePerMinute: 2,
+      allowedFeatures: ['chat'],
+      routing: {
+        allowedModelIds: models.slice(0, 2).map((m) => m.id),
+        maxAttempts: 1,
+        minimumQualityTier: 1,
+        costWeight: 1,
+        rules: [],
+      },
+    },
+  });
   const modelIds = models.map((model) => model.id);
   for (const plan of plans) {
+    const routing = {
+      allowedModelIds: models
+        .filter(
+          (m) =>
+            plan.code !== 'FREE' ||
+            m.providerModelId === 'gpt-4o-mini' ||
+            m.providerModelId === 'gemini-2.0-flash',
+        )
+        .map((m) => m.id),
+      attemptTimeoutSeconds: 30,
+      maxAttempts: 3,
+      minimumQualityTier: 1,
+      costWeight: 1,
+      rules: [
+        {
+          task: 'technical',
+          keywords: ['debug', 'refactor', 'architecture', 'algorithm'],
+          qualityTier: 2,
+          capabilities: ['text'],
+        },
+      ],
+    };
     const buckets = plan.code === 'FREE' ? ['AUTO'] : ['AUTO', ...modelIds];
     for (const bucket of buckets) {
       await prisma.generationPolicy.upsert({
         where: { planId_bucket: { planId: plan.id, bucket } },
         update: {
           modelId: bucket === 'AUTO' ? null : bucket,
+          routing,
           allowedFeatures: ['chat', 'image_generation'],
           dailyLimit: plan.code === 'FREE' ? 20 : 200,
           monthlyLimit: plan.code === 'FREE' ? 200 : 5000,
@@ -184,6 +249,7 @@ async function main() {
         },
         create: {
           planId: plan.id,
+          routing,
           bucket,
           modelId: bucket === 'AUTO' ? null : bucket,
           allowedFeatures: ['chat', 'image_generation'],

@@ -251,6 +251,8 @@ enum ActivityType {
 }
 
 model User {
+  guestKey String? @unique @db.VarChar(64)
+  guestExpiresAt DateTime?
   projects Project[]
   id                  String         @id @default(uuid()) @db.Uuid
   email               String         @unique @db.VarChar(320)
@@ -886,4 +888,16 @@ model WorkflowRun {
   createdAt DateTime @default(now())
   finishedAt DateTime?
   @@index([workflowId, status])
+}
+
+model EconomicEntry {
+  id String @id @db.Uuid
+  kind String @db.VarChar(32)
+  amount Decimal @db.Decimal(18, 8)
+  currency String @db.Char(3)
+  requestId String? @db.Uuid
+  note String @db.VarChar(500)
+  actorId String @db.Uuid
+  createdAt DateTime @default(now())
+  @@index([currency, createdAt])
 }

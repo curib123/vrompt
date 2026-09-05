@@ -7,11 +7,13 @@ import { AIModel, GenerationPolicy, Prisma } from '@prisma/client';
 import Joi from 'joi';
 import { PrismaService } from '../prisma/prisma.service';
 import { ProviderRegistry } from './providers';
+import { RoutingHealth } from './routing';
 
 const money = Joi.number().min(0).max(1000000).required();
 const integer = (max: number) =>
   Joi.number().integer().min(1).max(max).required();
 export const modelSchema = Joi.object({
+  creditCost: integer(100000).default(1),
   provider: Joi.string()
     .valid('OPENAI', 'GOOGLE', 'ANTHROPIC', 'MISTRAL')
     .required(),
@@ -32,6 +34,7 @@ export const modelSchema = Joi.object({
         'reasoning',
         'long_context',
         'image_generation',
+        'prompt_caching',
       ),
     )
     .min(1)
@@ -83,6 +86,13 @@ export const policySchema = Joi.object({
   ratePerMinute: integer(120),
   enabled: Joi.boolean().default(true),
   routing: Joi.object({
+    allowedModelIds: Joi.array()
+      .items(Joi.string().uuid())
+      .unique()
+      .max(200)
+      .required(),
+    attemptTimeoutSeconds: Joi.number().integer().min(1).max(600).default(30),
+    maxAttempts: Joi.number().integer().min(1).max(5).default(3),
     minimumQualityTier: Joi.number().integer().min(1).max(4).default(1),
     costWeight: Joi.number().min(0).max(100).default(1),
     rules: Joi.array()
@@ -110,7 +120,7 @@ export const policySchema = Joi.object({
         }),
       )
       .default([]),
-  }).default({ minimumQualityTier: 1, costWeight: 1, rules: [] }),
+  }).required(),
 });
 export function validate<T>(schema: Joi.ObjectSchema, input: unknown): T {
   const result = schema.validate(input, {
@@ -160,15 +170,16 @@ export function rankModels(
     )
     .sort(
       (a, b) =>
-        Number(a.routingCostScore) * (routing.costWeight ?? 1) -
-        a.routingPriority -
-        (Number(b.routingCostScore) * (routing.costWeight ?? 1) -
-          b.routingPriority),
+        (Number(a.routingCostScore) - Number(b.routingCostScore)) *
+          (routing.costWeight ?? 1) ||
+        b.routingPriority - a.routingPriority ||
+        a.id.localeCompare(b.id),
     );
 }
 
 @Injectable()
 export class ModelRegistryService {
+  readonly health = new RoutingHealth();
   constructor(
     private readonly prisma: PrismaService,
     private readonly providers: ProviderRegistry,
@@ -230,6 +241,13 @@ export class ModelRegistryService {
       policySchema,
       input,
     );
+    const ids = (data.routing as { allowedModelIds: string[] }).allowedModelIds;
+    if (
+      ids.length &&
+      (await this.prisma.aIModel.count({ where: { id: { in: ids } } })) !==
+        ids.length
+    )
+      throw new BadRequestException('Auto pool contains an unknown model.');
     if (
       (data.bucket === 'AUTO' && data.modelId) ||
       (data.bucket !== 'AUTO' && data.bucket !== data.modelId)
