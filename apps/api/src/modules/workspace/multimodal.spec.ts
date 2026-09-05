@@ -23,19 +23,17 @@ const response = (events: unknown[]) =>
 describe('Multimodal provider delivery', () => {
   afterEach(() => jest.restoreAllMocks());
   it('requests the OpenAI image tool and delivers image-only output', async () => {
-    const fetch = jest
-      .spyOn(global, 'fetch')
-      .mockResolvedValue(
-        response([
-          {
-            type: 'response.completed',
-            response: {
-              output: [{ type: 'image_generation_call', result: png }],
-              usage: { input_tokens: 8, output_tokens: 2 },
-            },
+    const fetch = jest.spyOn(global, 'fetch').mockResolvedValue(
+      response([
+        {
+          type: 'response.completed',
+          response: {
+            output: [{ type: 'image_generation_call', result: png }],
+            usage: { input_tokens: 8, output_tokens: 2 },
           },
-        ]),
-      );
+        },
+      ]),
+    );
     const image = jest.fn();
     const usage = emptyUsage();
     await new OpenAIProvider().stream(
@@ -55,23 +53,21 @@ describe('Multimodal provider delivery', () => {
     expect(usage.raw.toolCostUnverified).toBe(true);
   });
   it('requests Gemini image modality and retains image-edit inputs', async () => {
-    const fetch = jest
-      .spyOn(global, 'fetch')
-      .mockResolvedValue(
-        response([
-          {
-            candidates: [
-              {
-                content: {
-                  parts: [{ inlineData: { mimeType: 'image/png', data: png } }],
-                },
-                finishReason: 'STOP',
+    const fetch = jest.spyOn(global, 'fetch').mockResolvedValue(
+      response([
+        {
+          candidates: [
+            {
+              content: {
+                parts: [{ inlineData: { mimeType: 'image/png', data: png } }],
               },
-            ],
-            usageMetadata: { promptTokenCount: 5, candidatesTokenCount: 1290 },
-          },
-        ]),
-      );
+              finishReason: 'STOP',
+            },
+          ],
+          usageMetadata: { promptTokenCount: 5, candidatesTokenCount: 1290 },
+        },
+      ]),
+    );
     const image = jest.fn();
     await new GoogleProvider().stream(
       model,
@@ -175,21 +171,19 @@ describe('Multimodal provider delivery', () => {
     expect(fetch).not.toHaveBeenCalled();
   });
   it('rejects interrupted Gemini output even after receiving an image', async () => {
-    jest
-      .spyOn(global, 'fetch')
-      .mockResolvedValue(
-        response([
-          {
-            candidates: [
-              {
-                content: {
-                  parts: [{ inlineData: { mimeType: 'image/png', data: png } }],
-                },
+    jest.spyOn(global, 'fetch').mockResolvedValue(
+      response([
+        {
+          candidates: [
+            {
+              content: {
+                parts: [{ inlineData: { mimeType: 'image/png', data: png } }],
               },
-            ],
-          },
-        ]),
-      );
+            },
+          ],
+        },
+      ]),
+    );
     await expect(
       new GoogleProvider().stream(
         model,
