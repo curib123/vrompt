@@ -40,8 +40,8 @@ export default function Page() {
         <h2>Responsible use</h2>
         <p>
           Do not use Vrompt for unlawful activity, attempt to access someone
-          else's private workspace, bypass usage limits, or interfere with the
-          service. Accounts may be suspended to address misuse or security
+          else&apos;s private workspace, bypass usage limits, or interfere with
+          the service. Accounts may be suspended to address misuse or security
           issues. Applicable AI provider restrictions also apply to requests
           sent to those providers.
         </p>

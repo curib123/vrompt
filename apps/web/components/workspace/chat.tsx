@@ -181,7 +181,6 @@ export function Chat() {
       preferences &&
       catalog
     ) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setSelected(
         requestedModel === 'AUTO'
           ? 'AUTO'
@@ -197,6 +196,8 @@ export function Chat() {
         !models.some((model) => model.id === requestedModel)
       ) {
         const requested = catalog.find((model) => model.id === requestedModel);
+        // The notice mirrors a URL model request after catalog data arrives.
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setSelectionNotice(
           requested?.available === false
             ? `${requested.displayName} is temporarily unavailable. You can keep your draft and try again later.`
