@@ -367,7 +367,11 @@ export function Chat() {
   return (
     <div className={`chat-page ${!messages.length ? 'chat-is-new' : ''}`}>
       <header className="chat-toolbar">
-        <div>
+        <div className="chat-toolbar-title">
+          <span className="eyebrow">YOUR WORKSPACE</span>
+          <strong>New chat</strong>
+        </div>
+        <div className="chat-model-picker">
           <select
             aria-label="Choose AI model"
             value={selected}
@@ -512,6 +516,10 @@ export function Chat() {
             <p className="muted">
               The right AI for <span className="teal-text">every task.</span>
             </p>
+            <div className="chat-section-label">
+              <span>Choose how you want to work</span>
+              <small>Auto is recommended</small>
+            </div>
             <div className="available-models">
               <button
                 className={`model-choice ${selected === 'AUTO' ? 'selected' : ''}`}
@@ -550,6 +558,10 @@ export function Chat() {
                   </span>
                 </button>
               ))}
+            </div>
+            <div className="chat-section-label quick-label">
+              <span>Start with a task</span>
+              <small>Pick a shortcut or write your own prompt below</small>
             </div>
             <div className="task-cards">
               {starterTasks.map((task) => (
