@@ -25,7 +25,7 @@ Cloud Free Tier Ubuntu VM. The VM is deployment-only: changes are merged to
 
 4. Copy `.env.production.example` to `/srv/vrompt/.env.production`, set a
    strong database password, Redis password, JWT secret, OAuth credentials,
-   AI and PayMongo secrets, Cloudinary credentials, and the final HTTPS domain.
+   AI and PayMongo secrets, and the final HTTPS domain.
    Keep this file root/deploy-user readable only; it is ignored by Git.
 5. Point DNS `A` records for the apex domain and `www` at the reserved IP.
 6. Obtain the first certificate using the instructions in
@@ -72,8 +72,7 @@ with `IMAGE_TAG` and `VROMPT_IMAGE_PREFIX` supplied by the workflow.
 
 PostgreSQL and Redis use named Docker volumes; only Nginx publishes host ports.
 Run the encrypted PostgreSQL backup timer described in
-`infrastructure/backups/README.md` and test restores regularly. Cloudinary
-objects require separate provider retention/versioning.
+`infrastructure/backups/README.md` and test restores regularly. Back up the private chat-files volume separately.
 
 To roll back application images, run
 `IMAGE_TAG=<known-good-sha> VROMPT_IMAGE_PREFIX=... infrastructure/deploy/rollback.sh`.

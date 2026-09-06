@@ -30,11 +30,10 @@ internal network.
 ## Production storage
 
 Create `/srv/vrompt/.env.production` with the values from
-`.env.production.example`. Set `MEDIA_STORAGE_DRIVER=cloudinary` and provide
-all Cloudinary credentials. Do not use a VPS filesystem volume for evidence
-images in production. The only persistent production database volume is for
-PostgreSQL; temporary upload buffers must remain bounded by the API and Nginx
-limits.
+`.env.production.example`. Chat attachments and generated images use the private
+`vrompt-private-files` volume at `/var/lib/vrompt/private-chat-files`. Preserve and
+back up this volume alongside PostgreSQL. Files are served only through
+authenticated workspace endpoints, never through a public storage directory.
 
 ## Operations
 

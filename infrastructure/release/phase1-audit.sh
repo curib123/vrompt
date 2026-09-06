@@ -27,7 +27,6 @@ required_files=(
   infrastructure/backups/restore-postgres.sh
   infrastructure/backups/test-restore.sh
   infrastructure/monitoring/check-production.sh
-  infrastructure/validation/MVP_VALIDATION_REPORT.md
   .github/workflows/ci-cd.yml
 )
 

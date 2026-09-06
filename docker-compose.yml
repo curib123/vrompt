@@ -69,9 +69,6 @@ services:
       ADMIN_BOOTSTRAP_PASSWORD: ${ADMIN_BOOTSTRAP_PASSWORD:-}
       AUTH_COOKIE_SECURE: 'false'
       AUTH_COOKIE_SAME_SITE: lax
-      MEDIA_STORAGE_DRIVER: local
-      LOCAL_MEDIA_ROOT: /app/storage/evidence
-      MEDIA_STORAGE_LOCAL_PUBLIC_URL: /media
     ports:
       - '4100:4000'
     depends_on:

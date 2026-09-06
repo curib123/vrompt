@@ -8,8 +8,6 @@ COPY package.json package-lock.json turbo.json ./
 COPY apps/api/package.json apps/api/package.json
 COPY apps/web/package.json apps/web/package.json
 COPY packages/config/package.json packages/config/package.json
-COPY packages/shared/package.json packages/shared/package.json
-COPY packages/types/package.json packages/types/package.json
 
 RUN --mount=type=cache,target=/root/.npm \
   npm ci \
@@ -47,7 +45,6 @@ COPY --from=production-dependencies --chown=node:node /workspace/node_modules ./
 COPY --from=build --chown=node:node /workspace/apps/api/dist ./apps/api/dist
 COPY --from=build --chown=node:node /workspace/apps/api/prisma ./apps/api/prisma
 
-RUN mkdir -p /app/storage && chown node:node /app/storage
 RUN mkdir -p /var/lib/vrompt/private-chat-files && chown node:node /var/lib/vrompt/private-chat-files
 
 USER node

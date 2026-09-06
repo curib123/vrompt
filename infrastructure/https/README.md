@@ -1,10 +1,10 @@
 # Vrompt HTTPS
 
-Phase 38 terminates HTTP at the Nginx edge. The production Compose file
+Nginx terminates HTTP at the Nginx edge. The production Compose file
 publishes only Nginx on ports 80 and 443; web, API, PostgreSQL, and Redis remain
 on the internal Docker network. The Nginx template redirects HTTP to HTTPS,
 sets TLS/security headers, limits API requests, supports proxy upgrades, and
-allows up to 16 MB request bodies for the three-image evidence workflow.
+enforces request-size limits for workspace attachments.
 
 ## Initial certificate
 
@@ -18,7 +18,7 @@ docker compose --env-file .env.production -f docker-compose.prod.yml up -d vromp
 
 Set `VROMPT_LETSENCRYPT_DIR`, `VROMPT_TLS_CERT_PATH`, and
 `VROMPT_TLS_KEY_PATH` in `.env.production` to match the mounted certificate
-paths. These values are paths only; no Cloudinary credential is passed to
+paths. These values are paths only; no provider credential is passed to
 Nginx or the browser.
 
 ## Renewal

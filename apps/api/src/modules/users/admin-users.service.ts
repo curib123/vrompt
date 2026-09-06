@@ -63,10 +63,6 @@ export class AdminUsersService {
       this.checkOracleServer(),
       this.checkDomain(),
     ] as const);
-    const storageDriver = this.config.get<string>(
-      'MEDIA_STORAGE_DRIVER',
-      'local',
-    );
     return {
       checkedAt: new Date().toISOString(),
       environment: this.config.get<string>('NODE_ENV', 'development'),
@@ -97,8 +93,7 @@ export class AdminUsersService {
       integrations: {
         googleOAuth: Boolean(this.config.get<string>('GOOGLE_CLIENT_ID', '')),
         githubOAuth: Boolean(this.config.get<string>('GITHUB_CLIENT_ID', '')),
-        cloudStorage: storageDriver === 'cloudinary',
-        storageDriver,
+        storageDriver: 'private local files',
         aiProvider: [
           'OPENAI_API_KEY',
           'GOOGLE_AI_API_KEY',

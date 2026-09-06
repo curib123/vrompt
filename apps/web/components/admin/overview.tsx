@@ -90,30 +90,28 @@ export function OperationsOverview() {
       <h2>Connected services</h2>
       <section className="panel">
         {system.data &&
-          Object.entries(system.data.integrations)
-            .filter(([name]) => name !== 'cloudStorage')
-            .map(([name, value]) => (
-              <div className="row" key={name}>
-                <span>
-                  {(
-                    {
-                      googleOAuth: 'Google sign-in',
-                      githubOAuth: 'GitHub sign-in',
-                      aiProvider: 'AI provider credentials',
-                      payMongo: 'Payments',
-                      storageDriver: 'File storage',
-                    } as Record<string, string>
-                  )[name] ?? name}
-                </span>
-                <span className="status-badge">
-                  {typeof value === 'boolean'
-                    ? value
-                      ? 'Configured'
-                      : 'Not configured'
-                    : value}
-                </span>
-              </div>
-            ))}
+          Object.entries(system.data.integrations).map(([name, value]) => (
+            <div className="row" key={name}>
+              <span>
+                {(
+                  {
+                    googleOAuth: 'Google sign-in',
+                    githubOAuth: 'GitHub sign-in',
+                    aiProvider: 'AI provider credentials',
+                    payMongo: 'Payments',
+                    storageDriver: 'File storage',
+                  } as Record<string, string>
+                )[name] ?? name}
+              </span>
+              <span className="status-badge">
+                {typeof value === 'boolean'
+                  ? value
+                    ? 'Configured'
+                    : 'Not configured'
+                  : value}
+              </span>
+            </div>
+          ))}
       </section>
       <div className="row-actions">
         <Link className="primary-button" href="/admin/models">

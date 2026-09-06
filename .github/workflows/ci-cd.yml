@@ -57,7 +57,7 @@ jobs:
       - run: npm run typecheck --workspace @vrompt/web
       - run: npm test --workspace @vrompt/api
       - run: npm test --workspace @vrompt/web
-      - run: npm run test:integration --workspace @vrompt/api
+      - run: npm run test:e2e --workspace @vrompt/api
       - run: npm run build --workspace @vrompt/web
       - run: npm run build --workspace @vrompt/api
 

@@ -1,6 +1,6 @@
 # Vrompt
 
-Vrompt is a monorepo for a private, multi-model AI workspace. It provides a Next.js chat application, a NestJS API, configurable model routing, usage controls, billing, shared TypeScript packages, and Docker-based development and production environments.
+Vrompt is a monorepo for a private, multi-model AI workspace. It provides a Next.js chat application, a NestJS API, configurable model routing, usage controls, billing, shared TypeScript configuration, and Docker-based development and production environments.
 
 ## Repository structure
 
@@ -10,19 +10,14 @@ apps/
   web/                 Next.js web application
 packages/
   config/              Shared TypeScript and ESLint configuration
-  shared/              Shared runtime utilities
-  types/               Shared TypeScript types
 infrastructure/
   docker/              API, web, and Nginx Dockerfiles/configuration
   vps/                 Ubuntu/VPS bootstrap guidance
   https/               TLS and certificate guidance
   backups/             PostgreSQL backup and restore scripts
   monitoring/          Production health and metrics checks
-  alpha/               Private alpha testing materials
-  beta/                Controlled beta operations materials
-  validation/          MVP validation materials
   release/             Release audit and sign-off checks
-docs/                  SEO and webmaster operations
+docs/                  Provider, routing, and deployment documentation
 docker-compose.yml     Base local services
 docker-compose.dev.yml Local development overlay
 docker-compose.local.yml Local host-port overrides
@@ -154,7 +149,7 @@ Browser regressions run with `npm run test:e2e --workspace @vrompt/web` against 
 docker compose -p vrompt-dev -f docker-compose.yml -f docker-compose.dev.yml -f docker-compose.local.yml run --rm --no-deps -e AUTH_REVIEW=true -e AUTH_REVIEW_API_URL=http://vrompt-api:4000/api/v1 vrompt-api node apps/api/test/auth.live.cjs
 ```
 
-Use `.env.example` for local development and `.env.production.example` as the production template. Never commit `.env`, `.env.production`, API keys, OAuth secrets, payment secrets, JWT secrets, or Cloudinary credentials.
+Use `.env.example` for local development and `.env.production.example` as the production template. Never commit `.env`, `.env.production`, API keys, OAuth secrets, payment secrets, JWT secrets.
 
 Important configuration groups include:
 
@@ -165,7 +160,6 @@ Important configuration groups include:
 | AI             | `OPENAI_API_KEY`, `GOOGLE_AI_API_KEY`, `ANTHROPIC_API_KEY`, `MISTRAL_API_KEY`, `GROQ_API_KEY`, `CHAT_STORAGE_DIR` | Server-side providers and private files |
 | Authentication | `JWT_*`, `GOOGLE_*`, `GITHUB_*`                                                                   | Tokens and OAuth callbacks              |
 | Staff          | `ADMIN_BOOTSTRAP_*`                                                                               | Initial control-panel accounts          |
-| Media          | `MEDIA_STORAGE_DRIVER`, `MEDIA_STORAGE_LOCAL_DIR`, `CLOUDINARY_*`                                 | Local or Cloudinary evidence storage    |
 | Payments       | `PAYMONGO_*`                                                                                      | Pro subscription checkout and webhooks  |
 
 OAuth callback URLs must point to the API, not the web application. For local development they are:

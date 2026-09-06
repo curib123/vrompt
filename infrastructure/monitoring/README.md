@@ -10,7 +10,7 @@ check used by uptime monitors.
 - Public API availability and dependency health.
 - Container health, CPU, memory, and host disk usage.
 - Request totals, 2xx/4xx/5xx responses, average latency, and failed login attempts.
-- Evidence upload count, upload failures, upload latency, storage errors, oversized files, and rejected file types.
+- Private attachment upload count, upload failures, upload latency, storage errors, oversized files, and rejected file types.
 - Backup status file freshness.
 
 The metrics endpoint is intentionally aggregate-only. It does not return tokens,

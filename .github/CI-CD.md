@@ -29,6 +29,6 @@ VROMPT_IMAGE_PREFIX=ghcr.io/<owner>/vrompt \
 ./infrastructure/deploy/rollback.sh
 ```
 
-The production environment, Cloudinary credentials, SSH private key, and GHCR
+The production environment, provider credentials, SSH private key, and GHCR
 token must remain in GitHub/VPS secret stores. Do not use plaintext secrets in
 workflow YAML, image build args, or repository files.

@@ -3,7 +3,6 @@ import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import express from 'express';
-import { resolve } from 'node:path';
 
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { RequestLoggingInterceptor } from './common/interceptors/request-logging.interceptor';
@@ -72,16 +71,6 @@ async function bootstrap() {
 
       next();
     },
-  );
-  httpServer.use(
-    '/media',
-    express.static(
-      resolve(
-        configService.get<string>('LOCAL_MEDIA_ROOT') ??
-          configService.get<string>('MEDIA_STORAGE_LOCAL_DIR', './storage'),
-      ),
-      { dotfiles: 'deny', index: false },
-    ),
   );
   app.setGlobalPrefix(configService.get<string>('API_PREFIX', 'api/v1'));
   app.useGlobalPipes(

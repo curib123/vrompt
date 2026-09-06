@@ -1,8 +1,8 @@
 # Vrompt Backups and Recovery
 
-Phase 40 backs up PostgreSQL metadata outside the primary VPS. The backup is a
+The backup scripts preserve PostgreSQL data outside the primary VPS. The backup is a
 plain SQL dump compressed with gzip and encrypted with `age` before upload to an
-`rclone` remote. The scripts never upload Cloudinary credentials or store an
+`rclone` remote. The scripts never upload provider credentials or store an
 unencrypted dump on the remote.
 
 ## Daily backup
@@ -52,15 +52,14 @@ BACKUP_NAME=vrompt-postgres-<timestamp>.sql.gz.age \
 ./infrastructure/backups/restore-postgres.sh
 ```
 
-Restart the application, verify `/health`, sign-in, repository reads, prompt
-copies, and evidence metadata, then record the restore outcome.
+Restart the application and verify `/health`, sign-in, conversations, usage, and
+private attachment downloads, then record the restore outcome.
 
-## Cloudinary recovery
+## Private file recovery
 
-The database backup preserves evidence metadata, `storageKey`, provider, and
-Cloudinary URLs; it does not copy Cloudinary objects. Configure Cloudinary
-asset retention/versioning and keep the Cloudinary account recovery details in
-the provider's secure vault. If an asset is lost, identify affected records
-from `PromptEvidenceImage`, restore or re-upload the asset in Cloudinary, and
-update the metadata through a controlled migration. A database restore alone
-must not be called media recovery.
+Database dumps preserve attachment metadata but do not contain attachment bytes.
+Back up the `vrompt-private-files` Docker volume separately using encrypted,
+access-controlled storage. Restore the matching file backup alongside the database
+and verify that another account cannot download the restored files. Keep existing
+legacy evidence backups according to your retention policy; they are not served
+by the current application.

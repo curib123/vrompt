@@ -1,7 +1,7 @@
 # Launch Audit
 
 Run `phase1-audit.sh` from the repository root before a production decision. It
-checks deployment, backup, monitoring, migration, CI, and validation artifacts,
+checks deployment, backup, monitoring, migration, and CI configuration,
 renders production Compose when `.env.production` is available, rejects exposed
 PostgreSQL/Redis ports, and checks the configured public health endpoint.
 
@@ -17,19 +17,4 @@ PostgreSQL/Redis ports, and checks the configured public health endpoint.
 - Backup encryption, off-host upload, checksum verification, retention, and restore testing have current evidence.
 - Monitoring alerts cover downtime, unhealthy containers, disk/memory limits, provider failures, 5xx/latency, auth failures, storage failures, and stale backups.
 
-## Release record
-
-Release commit:
-Audit date (UTC):
-Audit owner:
-Automated audit output:
-Open S1/S2 issues:
-Rollback image tags:
-Backup restore evidence:
-External smoke-test evidence:
-Decision: `launch` / `hold` / `rollback`
-Decision notes:
-
-Do not mark this phase complete from a local green build alone. Production
-credentials, DNS, OAuth clients, provider keys, payment configuration, VPS access,
-backup storage, alert routing, and real tester evidence are external prerequisites.
+Keep release decisions and external verification results in your release tracker.
