@@ -6,6 +6,7 @@ import {
   useEffect,
   useEffectEvent,
   useState,
+  useRef,
 } from 'react';
 import type { ReactNode } from 'react';
 
@@ -29,14 +30,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [user, setUser] = useState<AuthUser | null>(null);
+  const refreshInFlight = useRef<Promise<AuthUser> | null>(null);
+  const sessionEpoch = useRef(0);
 
-  async function refreshSession(): Promise<AuthUser> {
-    const session = await apiRequest<AuthResponse>('/auth/refresh', {
-      method: 'POST',
-    });
-    setAccessToken(session.accessToken);
-    setUser(session.user);
-    return session.user;
+  async function withSessionLock<T>(operation: () => Promise<T>): Promise<T> {
+    return navigator.locks
+      ? navigator.locks.request('vrompt-auth-session', operation)
+      : operation();
+  }
+
+  function refreshSession(): Promise<AuthUser> {
+    if (refreshInFlight.current) return refreshInFlight.current;
+    const epoch = sessionEpoch.current;
+    const pending = withSessionLock(async () => {
+      if (epoch !== sessionEpoch.current) throw new Error('Session changed');
+      const session = await apiRequest<AuthResponse>('/auth/refresh', {
+        method: 'POST',
+      });
+      if (epoch !== sessionEpoch.current) throw new Error('Session changed');
+      setAccessToken(session.accessToken);
+      setUser(session.user);
+      return session.user;
+    })
+      .catch((error) => {
+        if (epoch === sessionEpoch.current) {
+          setAccessToken(null);
+          setUser(null);
+        }
+        throw error;
+      })
+      .finally(() => {
+        if (refreshInFlight.current === pending) refreshInFlight.current = null;
+      });
+    refreshInFlight.current = pending;
+    return pending;
   }
 
   const initializeSession = useEffectEvent(async () => {
@@ -57,9 +84,56 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     // The initial session check synchronizes React state with the HttpOnly cookie.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     void initializeSession();
   }, []);
+
+  const renewSession = useEffectEvent(() => {
+    void refreshSession().catch(() => {});
+  });
+  useEffect(() => {
+    if (!accessToken) return;
+    let expiresAt: number;
+    try {
+      expiresAt =
+        JSON.parse(
+          atob(
+            (accessToken.split('.')[1] ?? '')
+              .replace(/-/g, '+')
+              .replace(/_/g, '/'),
+          ),
+        ).exp * 1000;
+    } catch {
+      return;
+    }
+    if (!Number.isFinite(expiresAt)) return;
+    const timer = setTimeout(
+      () => renewSession(),
+      Math.max(1000, expiresAt - Date.now() - 60000),
+    );
+    const resume = () => {
+      if (
+        document.visibilityState === 'visible' &&
+        Date.now() >= expiresAt - 60000
+      )
+        renewSession();
+    };
+    document.addEventListener('visibilitychange', resume);
+    return () => {
+      clearTimeout(timer);
+      document.removeEventListener('visibilitychange', resume);
+    };
+  }, [accessToken]);
+
+  useEffect(() => {
+    const expired = (event: Event) => {
+      if ((event as CustomEvent<string>).detail !== accessToken) return;
+      sessionEpoch.current++;
+      setAccessToken(null);
+      setUser(null);
+    };
+    window.addEventListener('vrompt:session-expired', expired);
+    return () => window.removeEventListener('vrompt:session-expired', expired);
+  }, [accessToken]);
 
   function beginGoogleLogin() {
     window.location.replace(`${getApiBaseUrl()}/auth/google`);
@@ -70,19 +144,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   async function logout() {
-    try {
-      await apiRequest('/auth/logout', { method: 'POST' });
-    } finally {
-      setAccessToken(null);
-      setUser(null);
-    }
+    sessionEpoch.current++;
+    await withSessionLock(() => apiRequest('/auth/logout', { method: 'POST' }));
+    setAccessToken(null);
+    setUser(null);
   }
 
   async function staffLogin(email: string, password: string) {
-    const session = await apiRequest<AuthResponse>('/auth/staff/login', {
-      body: JSON.stringify({ email, password }),
-      method: 'POST',
-    });
+    const epoch = ++sessionEpoch.current;
+    const session = await withSessionLock(() =>
+      apiRequest<AuthResponse>('/auth/staff/login', {
+        body: JSON.stringify({ email, password }),
+        method: 'POST',
+      }),
+    );
+    if (epoch !== sessionEpoch.current) throw new Error('Session changed');
     setAccessToken(session.accessToken);
     setUser(session.user);
     return session.user;

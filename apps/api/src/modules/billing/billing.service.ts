@@ -350,6 +350,7 @@ export class BillingService {
           status: true,
           currentPeriodStart: true,
           currentPeriodEnd: true,
+          planConfig: { select: { code: true, name: true } },
         },
       }),
       this.prisma.billingPayment.findFirst({
@@ -372,6 +373,12 @@ export class BillingService {
     );
     return {
       plan: hasActiveSubscription ? MembershipPlan.PRO : MembershipPlan.FREE,
+      planCode: hasActiveSubscription
+        ? (subscription?.planConfig?.code ?? 'PRO')
+        : 'FREE',
+      planName: hasActiveSubscription
+        ? (subscription?.planConfig?.name ?? 'Pro')
+        : 'Free',
       subscription: subscription
         ? {
             id: subscription.id,

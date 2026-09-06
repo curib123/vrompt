@@ -100,7 +100,7 @@ Development data is stored in the named `vrompt-dev_vrompt-postgres-data` volume
 
 ### Development seed
 
-The seed command creates starter Free/Pro plans, provider models, Auto fallback, and generation policies. Run it after PostgreSQL is healthy:
+The optional development seed creates starter Free/Pro plans, provider models, and generation policies. It creates no demo users or prompts, preserves existing admin configuration, and refuses to run in production. Run it after PostgreSQL is healthy:
 
 ```bash
 docker compose -p vrompt-dev \
@@ -123,7 +123,7 @@ The responsive interface uses the Vrompt brand palette, a local Inter variable f
 - `/admin/billing`, `/admin/analytics`, `/admin/audit`: payment/webhook monitoring, currency-separated costs, and recorded changes.
 - `/settings`: persisted display name, default model, and message-send behavior; appearance is saved per device.
 
-Apply migration `0032_workspace_preferences` before using the new account preferences:
+Apply all migrations before running the app:
 
 ```bash
 npm run prisma:generate --workspace @vrompt/api
@@ -132,11 +132,27 @@ npm run prisma:deploy --workspace @vrompt/api
 
 The application supports active USER and ADMIN roles. Legacy moderator records remain available for historical data, but cannot sign in or use protected endpoints. An administrator can explicitly reassign a legacy account from Users. No accounts are automatically promoted.
 
-Public model cards come from `/api/v1/catalog/models`. A model appears only when enabled, within its availability dates, outside maintenance, and backed by configured provider credentials. Plan-specific access is still enforced separately. The reference artwork's Llama logo does not imply a Meta provider integration; supported adapters are OpenAI, Google, Anthropic, and Mistral.
+Public model cards come from `/api/v1/catalog/models`. Enabled models within their availability dates appear with an availability flag. Missing credentials or maintenance prevent generation; plan-specific access is enforced separately. The reference artwork's Llama logo does not imply a Meta provider integration; supported adapters are OpenAI, Google, Anthropic, and Mistral. Provider marks are bundled locally under `apps/web/public/providers`.
+
+The landing page contains the hero, supported providers, Why Vrompt, Auto explanation, models, pricing, and final signup action. Old `/features`, `/auto`, `/models`, and `/pricing` URLs redirect to the matching section. Signup and login use the same OAuth modal and preserve a selected plan, model, or prompt through sign-in.
+
+The app can run without AI or payment credentials. Chat keeps the composer available for drafting, explains that generation is unavailable, and prevents submission without consuming credits. No synthetic AI responses are generated. Configure a provider key and enable an applicable model/routing policy in Admin to enable real generation.
+
+Payments default to **test** mode. Add `PAYMONGO_SECRET_KEY=sk_test_...` and `PAYMONGO_WEBHOOK_SECRET` to the private environment and restart the API to enable test checkout. Register `/api/v1/webhooks/paymongo` with PayMongo using a publicly reachable HTTPS API URL. Missing credentials or a key/mode mismatch disable paid checkout. A browser redirect never grants a paid plan: a verified matching webhook must activate access. Paid access is renewed by checkout, with no automatic card charge. Configure plan prices, currency, and allowances in Admin; USD card acceptance must be enabled on the merchant account when using USD plans.
+
+Migration `0033` removes identified legacy demo accounts and their copied prompt data, without matching real OAuth users or accounts with billing history. `0034` introduces revocable session families and signs out existing sessions once. `0035` disables only the old seeded launch promotion while retaining billing references. Back up an existing database before applying cleanup migrations.
+
+Authentication uses memory-only access tokens, rotating HttpOnly refresh cookies, issuer/audience validation, OAuth state and PKCE, and immediate session revocation on logout, password changes, suspension, or role changes. Cookie-authenticated mutations require `X-Vrompt-Client: web` and validate browser origin. The API enforces USER/ADMIN roles and ownership independently of UI restrictions. Admin promotion requires a password; self-demotion and self-suspension are rejected.
 
 When the browser API URL is omitted, Next.js proxies `/api/v1` to `INTERNAL_API_BASE_URL`, defaulting to the local API on port 4000. OAuth and payment providers require valid server credentials and callbacks before live use.
 
 Browser regressions run with `npm run test:e2e --workspace @vrompt/web` against the running web app. They use intercepted API fixtures to test UI behavior without provider calls. `apps/api/test/workspace.live.cjs` additionally checks a running API against an explicitly isolated local database named `vrompt_review`; it requires `DATABASE_URL`, `JWT_ACCESS_SECRET`, `REVIEW_ADMIN_EMAIL`, and `REVIEW_ADMIN_PASSWORD`. It creates test records and must never target an operational database.
+
+`apps/api/test/auth.live.cjs` is an opt-in local regression for rotation/replay, role and ownership checks, password changes, suspension, and unavailable-provider usage. It requires `AUTH_REVIEW=true`, a local database, and matching server environment; it creates temporary accounts and removes its records in `finally`. For the local Docker stack:
+
+```bash
+docker compose -p vrompt-dev -f docker-compose.yml -f docker-compose.dev.yml -f docker-compose.local.yml run --rm --no-deps -e AUTH_REVIEW=true -e AUTH_REVIEW_API_URL=http://vrompt-api:4000/api/v1 vrompt-api node apps/api/test/auth.live.cjs
+```
 
 Use `.env.example` for local development and `.env.production.example` as the production template. Never commit `.env`, `.env.production`, API keys, OAuth secrets, payment secrets, JWT secrets, or Cloudinary credentials.
 
@@ -148,7 +164,7 @@ Important configuration groups include:
 | Data           | `DATABASE_URL`, `REDIS_URL`                                                                       | PostgreSQL and Redis connections        |
 | AI             | `OPENAI_API_KEY`, `GOOGLE_AI_API_KEY`, `ANTHROPIC_API_KEY`, `MISTRAL_API_KEY`, `CHAT_STORAGE_DIR` | Server-side providers and private files |
 | Authentication | `JWT_*`, `GOOGLE_*`, `GITHUB_*`                                                                   | Tokens and OAuth callbacks              |
-| Staff          | `ADMIN_BOOTSTRAP_*`, `MODERATOR_BOOTSTRAP_*`                                                      | Initial control-panel accounts          |
+| Staff          | `ADMIN_BOOTSTRAP_*`                                                                               | Initial control-panel accounts          |
 | Media          | `MEDIA_STORAGE_DRIVER`, `MEDIA_STORAGE_LOCAL_DIR`, `CLOUDINARY_*`                                 | Local or Cloudinary evidence storage    |
 | Payments       | `PAYMONGO_*`                                                                                      | Pro subscription checkout and webhooks  |
 

@@ -43,7 +43,10 @@ export const envValidationSchema = Joi.object({
       is: 'production',
       then: Joi.string()
         .required()
-        .invalid('local-development-access-secret-change-me'),
+        .invalid(
+          'local-development-access-secret-change-me',
+          'local-docker-access-secret-change-me',
+        ),
       otherwise: Joi.string().default(
         'local-development-access-secret-change-me',
       ),
@@ -71,13 +74,6 @@ export const envValidationSchema = Joi.object({
   ADMIN_BOOTSTRAP_EMAIL: Joi.string().email().allow('').default(''),
   ADMIN_BOOTSTRAP_USERNAME: Joi.string().min(3).max(32).allow('').default(''),
   ADMIN_BOOTSTRAP_PASSWORD: Joi.string().min(12).allow('').default(''),
-  MODERATOR_BOOTSTRAP_EMAIL: Joi.string().email().allow('').default(''),
-  MODERATOR_BOOTSTRAP_USERNAME: Joi.string()
-    .min(3)
-    .max(32)
-    .allow('')
-    .default(''),
-  MODERATOR_BOOTSTRAP_PASSWORD: Joi.string().min(12).allow('').default(''),
   AUTH_COOKIE_SECURE: Joi.boolean().when('NODE_ENV', {
     is: 'production',
     then: Joi.boolean().valid(true).default(true),

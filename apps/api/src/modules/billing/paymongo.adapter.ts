@@ -70,6 +70,7 @@ export class PayMongoAdapter implements PaymentGatewayAdapter {
         `${baseUrl.replace(/\/$/, '')}/v2/checkout_sessions`,
         {
           method: 'POST',
+          signal: AbortSignal.timeout(20000),
           headers: {
             accept: 'application/json',
             authorization: `Basic ${authorization}`,
@@ -85,7 +86,7 @@ export class PayMongoAdapter implements PaymentGatewayAdapter {
                   {
                     amount: input.amount,
                     currency: input.currency,
-                    name: 'Vrompt Pro',
+                    name: input.description,
                     quantity: 1,
                   },
                 ],

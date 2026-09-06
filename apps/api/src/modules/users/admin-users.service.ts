@@ -218,21 +218,28 @@ export class AdminUsersService {
     const email = input.email.trim().toLowerCase();
     const username = input.username.trim().toLowerCase();
     try {
-      const user = await this.prisma.user.create({
-        data: {
-          email,
-          username,
-          role: input.role,
-          status: UserStatus.ACTIVE,
-          accountType: AccountType.OFFICIAL,
-          onboardingCompleted: true,
-          profile: { create: { displayName: username } },
-        },
-        select: this.userSelect,
+      return await this.prisma.$transaction(async (tx) => {
+        const user = await tx.user.create({
+          data: {
+            email,
+            username,
+            role: input.role,
+            status: UserStatus.ACTIVE,
+            accountType: AccountType.OFFICIAL,
+            onboardingCompleted: true,
+            profile: { create: { displayName: username } },
+          },
+          select: this.userSelect,
+        });
+        await this.auth.setStaffPassword(user.id, input.password, tx);
+        await this.audit(
+          actorId,
+          user.id,
+          { created: true, role: input.role },
+          tx,
+        );
+        return user;
       });
-      await this.auth.setStaffPassword(user.id, input.password);
-      await this.audit(actorId, user.id, { created: true, role: input.role });
-      return user;
     } catch (error) {
       if (
         error instanceof Prisma.PrismaClientKnownRequestError &&
@@ -244,57 +251,99 @@ export class AdminUsersService {
   }
 
   async update(actorId: string, userId: string, input: UpdateAdminUserDto) {
-    const existing = await this.prisma.user.findUnique({
-      where: { id: userId },
-      select: { id: true, role: true },
-    });
-    if (!existing) throw new NotFoundException('User not found');
-    if (
-      actorId === userId &&
-      (input.status === 'SUSPENDED' || (input.role && input.role !== 'ADMIN'))
-    )
+    if (actorId === userId && input.password)
       throw new ForbiddenException(
-        'You cannot remove your own administrator access',
+        'Use the password change form and verify your current password',
       );
-    if (!input.role && !input.status && !input.password)
-      throw new BadRequestException('No changes provided');
-    const resultingRole = input.role ?? existing.role;
-    if (
-      input.password &&
-      resultingRole !== UserRole.ADMIN &&
-      resultingRole !== UserRole.MODERATOR
-    )
-      throw new BadRequestException(
-        'Passwords are only available for staff accounts',
+    return this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT 1 AS locked FROM pg_advisory_xact_lock(86727601)`;
+      await tx.$queryRaw`SELECT id FROM "User" WHERE id = ${userId}::uuid FOR UPDATE`;
+      const actor = await tx.user.findUnique({ where: { id: actorId } });
+      if (actor?.role !== UserRole.ADMIN || actor.status !== UserStatus.ACTIVE)
+        throw new ForbiddenException('Administrator access required');
+      const existing = await tx.user.findUnique({
+        where: { id: userId },
+        select: {
+          id: true,
+          role: true,
+          status: true,
+          staffCredential: { select: { id: true } },
+        },
+      });
+      if (!existing) throw new NotFoundException('User not found');
+      if (
+        actorId === userId &&
+        (input.status === 'SUSPENDED' || (input.role && input.role !== 'ADMIN'))
+      )
+        throw new ForbiddenException(
+          'You cannot remove your own administrator access',
+        );
+      if (!input.role && !input.status && !input.password)
+        throw new BadRequestException('No changes provided');
+      const resultingRole = input.role ?? existing.role;
+      if (input.password && resultingRole !== UserRole.ADMIN)
+        throw new BadRequestException(
+          'Passwords are only available for staff accounts',
+        );
+      if (
+        resultingRole === UserRole.ADMIN &&
+        !existing.staffCredential &&
+        !input.password
+      )
+        throw new BadRequestException(
+          'Set a password when granting administrator access',
+        );
+      if (
+        existing.role === UserRole.ADMIN &&
+        existing.status === UserStatus.ACTIVE &&
+        (input.role === UserRole.USER ||
+          input.status === UserStatus.SUSPENDED) &&
+        (await tx.user.count({
+          where: { role: UserRole.ADMIN, status: UserStatus.ACTIVE },
+        })) <= 1
+      )
+        throw new ForbiddenException(
+          'At least one active administrator is required',
+        );
+      const user = await tx.user.update({
+        where: { id: userId },
+        data: {
+          ...(input.role ? { role: input.role } : {}),
+          ...(input.status ? { status: input.status } : {}),
+        },
+        select: this.userSelect,
+      });
+      if (input.password) {
+        await this.auth.setStaffPassword(userId, input.password, tx);
+      }
+      if (input.role && input.role === UserRole.USER)
+        await tx.staffCredential.deleteMany({ where: { userId } });
+      await tx.refreshToken.updateMany({
+        where: { userId, revokedAt: null },
+        data: { revokedAt: new Date() },
+      });
+      await this.audit(
+        actorId,
+        userId,
+        {
+          fromRole: existing.role,
+          role: user.role,
+          status: user.status,
+          passwordChanged: Boolean(input.password),
+        },
+        tx,
       );
-    const user = await this.prisma.user.update({
-      where: { id: userId },
-      data: {
-        ...(input.role ? { role: input.role } : {}),
-        ...(input.status ? { status: input.status } : {}),
-      },
-      select: this.userSelect,
+      return user;
     });
-    if (input.password) {
-      await this.auth.setStaffPassword(userId, input.password);
-    }
-    if (input.role && input.role === UserRole.USER)
-      await this.prisma.staffCredential.deleteMany({ where: { userId } });
-    await this.audit(actorId, userId, {
-      fromRole: existing.role,
-      role: user.role,
-      status: user.status,
-      passwordChanged: Boolean(input.password),
-    });
-    return user;
   }
 
   private audit(
     actorId: string,
     targetId: string,
     metadata: Prisma.InputJsonValue,
+    database: Prisma.TransactionClient = this.prisma,
   ) {
-    return this.prisma.auditLog.create({
+    return database.auditLog.create({
       data: {
         actorId,
         action: AuditActionType.ROLE_CHANGED,

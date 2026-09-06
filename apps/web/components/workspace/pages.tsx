@@ -1,7 +1,15 @@
 'use client';
+import { Icon } from '@/components/ui/icon';
+import { Suspense } from 'react';
+import {
+  PlanCards,
+  usePlans,
+  type PublicPlan,
+} from '@/components/billing/plan-cards';
+
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/components/providers/auth-provider';
 import { useAuthDialog } from '@/components/providers/auth-dialog-provider';
 import {
@@ -371,40 +379,65 @@ export function AdminAnalytics() {
   );
 }
 
-type Plan = {
-  id: string;
-  name: string;
-  description: string;
-  priceCentavos: number;
-  currency: string;
-  billingPeriod: string;
-  features: { key: string; name: string; limit: number; resetPeriod: string }[];
-};
 type Billing = {
   plan: string;
+  planCode?: string;
+  planName?: string;
   subscription: { id: string; status: string; currentPeriodEnd: string } | null;
   latestPayment: { status: string; amount: number; currency: string } | null;
 };
-export function BillingPage({ pricing = false }: { pricing?: boolean }) {
+export function BillingPage() {
+  return (
+    <Suspense
+      fallback={
+        <p className="content-page" role="status">
+          Loading billing…
+        </p>
+      }
+    >
+      <BillingContent />
+    </Suspense>
+  );
+}
+function BillingContent() {
   const { openLogin } = useAuthDialog();
-  const { accessToken } = useAuth();
-  const [plans, setPlans] = useState<Plan[]>([]);
+  const { accessToken, user } = useAuth();
+  const router = useRouter();
+  const requestedPlan = useSearchParams().get('plan');
+  const plans = usePlans();
   const [billing, setBilling] = useState<Billing>();
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [selected, setSelected] = useState<string | null>(requestedPlan);
   const [code, setCode] = useState('');
   useEffect(() => {
-    void apiRequest<{ plans: Plan[] }>('/billing/plans')
-      .then((r) => setPlans(r.plans))
-      .catch((e) => setError(e.message));
-    if (accessToken)
-      void apiRequest<Billing>('/billing/me', { accessToken })
-        .then(setBilling)
-        .catch((e) => setError(e.message));
+    if (!accessToken) return;
+    const controller = new AbortController();
+    void apiRequest<Billing>('/billing/me', {
+      accessToken,
+      signal: controller.signal,
+    })
+      .then(setBilling)
+      .catch((e) => {
+        if (!controller.signal.aborted) setError(e.message);
+      });
+    return () => controller.abort();
   }, [accessToken]);
-  async function checkout(planCode: string) {
+  async function checkout(plan: PublicPlan) {
+    if (!plan.priceCentavos) {
+      if (user) router.push('/chat');
+      else openLogin('/chat');
+      return;
+    }
     if (!accessToken) {
-      openLogin('/billing');
+      openLogin('/billing?plan=' + encodeURIComponent(plan.id));
+      return;
+    }
+    setSelected(plan.id);
+    if (plans.data?.checkoutAvailable === false) {
+      setError(
+        'Paid checkout is temporarily unavailable. You can continue using your free workspace.',
+      );
       return;
     }
     setBusy(true);
@@ -417,95 +450,118 @@ export function BillingPage({ pricing = false }: { pricing?: boolean }) {
           method: 'POST',
           headers: { 'idempotency-key': crypto.randomUUID() },
           body: JSON.stringify({
-            planCode,
-            ...(code ? { discountCode: code } : {}),
+            planCode: plan.id,
+            ...(code.trim() ? { discountCode: code.trim() } : {}),
           }),
         },
       );
-      window.location.assign(result.checkoutUrl);
+      const url = new URL(result.checkoutUrl);
+      if (
+        url.protocol !== 'https:' ||
+        !(
+          url.hostname === 'paymongo.com' ||
+          url.hostname.endsWith('.paymongo.com')
+        )
+      )
+        throw new Error(
+          'The checkout link could not be verified. Please retry.',
+        );
+      window.location.assign(url.href);
     } catch (e) {
       setError((e as Error).message);
       setBusy(false);
     }
   }
   return (
-    <div className="content-page">
-      {pricing && <Link href="/">← Vrompt</Link>}
-      <h1>
-        {pricing
-          ? 'One subscription. More possibilities.'
-          : 'Subscription / Billing'}
-      </h1>
-      <p className="muted">
-        Clear daily and monthly generation allowances. Choose the capacity that
-        fits your work.
-      </p>
-      {error && (
-        <p className="error-banner" role="alert">
-          {error}
-        </p>
-      )}
+    <div className="content-page billing-content">
+      <p className="eyebrow">YOUR PLAN, YOUR PACE</p>
+      <h1>Make room for more.</h1>
+      <p className="muted">One account. One plan. More ways to work with AI.</p>
       {billing && (
-        <section className="panel">
-          <h2>Current plan: {billing.plan}</h2>
-          {billing.subscription && (
-            <p>
-              Access status: {billing.subscription.status} · Ends{' '}
-              {new Date(
-                billing.subscription.currentPeriodEnd,
-              ).toLocaleDateString()}
-            </p>
-          )}
-          <p className="muted">
-            Access passes are renewed by checkout. Your card is not
-            automatically charged.
-          </p>
-          {billing.latestPayment && (
-            <p>
-              Latest payment: {billing.latestPayment.currency}{' '}
-              {(billing.latestPayment.amount / 100).toFixed(2)} ·{' '}
-              {billing.latestPayment.status}
-            </p>
-          )}
+        <section className="panel current-plan-panel">
+          <div>
+            <span className="eyebrow">CURRENT PLAN</span>
+            <h2>{billing.planName ?? billing.plan}</h2>
+          </div>
+          <div>
+            {billing.subscription && (
+              <p>
+                {billing.subscription.status} · Access ends{' '}
+                {new Date(
+                  billing.subscription.currentPeriodEnd,
+                ).toLocaleDateString()}
+              </p>
+            )}
+            <Link href="/usage" className="text-link">
+              View your usage <Icon name="arrow" />
+            </Link>
+          </div>
         </section>
       )}
-      <label>
-        Promotion code{' '}
-        <input
-          value={code}
-          maxLength={64}
-          onChange={(e) => setCode(e.target.value)}
-        />
-      </label>
-      {plans.map((p) => (
-        <section className="panel" key={p.id}>
-          <h2>{p.name}</h2>
-          <p className="muted">{p.description}</p>
-          <p>
-            <strong>
-              {p.currency} {(p.priceCentavos / 100).toFixed(2)}
-            </strong>{' '}
-            · {p.billingPeriod}
-          </p>
-          {p.features.map((f, i) => (
-            <p key={`${f.key}-${i}`} className="muted">
-              {f.name}: {f.limit} / {f.resetPeriod.toLowerCase()}
+      {plans.data?.checkoutAvailable === false && (
+        <div className="service-notice" role="status">
+          <Icon name="card" />
+          <div>
+            <strong>Paid checkout is temporarily unavailable.</strong>
+            <p>
+              Your free workspace remains available. No payment will be taken.
             </p>
-          ))}
-          <button
-            className="primary-button"
-            disabled={busy || p.priceCentavos === 0}
-            onClick={() => void checkout(p.id)}
-          >
-            {p.priceCentavos ? 'Get access' : 'Free plan'}
-          </button>
-        </section>
-      ))}
-      {!plans.length && !error && (
-        <p className="panel">
-          Plans are being configured. Please check back shortly.
+            <Link href="/chat" className="text-link">
+              Continue to chat <Icon name="arrow" />
+            </Link>
+          </div>
+        </div>
+      )}
+      {plans.data?.checkoutAvailable && plans.data.paymentMode === 'test' && (
+        <p className="notice-banner">
+          Test payment mode. Checkout will not make a real charge.
         </p>
       )}
+      {(error || plans.error) && (
+        <p className="error-banner" role="alert">
+          {error || plans.error}
+        </p>
+      )}
+      {plans.error && (
+        <button className="secondary-button" onClick={plans.retry}>
+          Reload plans
+        </button>
+      )}
+      {plans.data?.checkoutAvailable && (
+        <label className="promotion-field">
+          Promotion code (optional)
+          <input
+            value={code}
+            maxLength={64}
+            onChange={(e) => setCode(e.target.value)}
+            placeholder="Enter your code"
+          />
+        </label>
+      )}
+      {plans.data ? (
+        <PlanCards
+          plans={plans.data.plans}
+          onChoose={(plan) => void checkout(plan)}
+          busy={busy}
+          selected={selected}
+          currentPlan={billing?.planCode ?? billing?.plan}
+          checkoutAvailable={plans.data.checkoutAvailable}
+        />
+      ) : (
+        !plans.error && <p role="status">Loading current plans…</p>
+      )}
+      {plans.data && !plans.data.plans.length && (
+        <div className="service-notice">
+          <p>Paid plans are currently unavailable.</p>
+          <Link href="/chat" className="primary-button">
+            Open your free workspace
+          </Link>
+        </div>
+      )}
+      <p className="pricing-footnote">
+        Paid access is renewed by checkout. Your card is not automatically
+        charged. Shared credits and individual model limits both apply.
+      </p>
     </div>
   );
 }

@@ -18,6 +18,7 @@ import { OAuth2Client } from 'google-auth-library';
 import {
   createHash,
   randomBytes,
+  randomUUID,
   scrypt as nodeScrypt,
   timingSafeEqual,
 } from 'node:crypto';
@@ -66,43 +67,69 @@ export class AuthService implements OnModuleInit {
   ) {}
 
   async onModuleInit() {
-    await this.bootstrapStaffAccount('ADMIN');
+    await this.bootstrapStaffAccount();
   }
 
   async authenticateStaff(email: string, password: string) {
     const normalizedEmail = this.normalizeEmail(email);
-    const credential = await this.prismaService.staffCredential.findFirst({
-      where: {
-        user: {
-          email: normalizedEmail,
-          role: UserRole.ADMIN,
-          status: UserStatus.ACTIVE,
+    return this.prismaService.$transaction(async (tx) => {
+      const credential = await tx.staffCredential.findFirst({
+        where: {
+          user: {
+            email: normalizedEmail,
+            role: UserRole.ADMIN,
+            status: UserStatus.ACTIVE,
+          },
         },
-      },
-      include: { user: { select: this.authUserSelect } },
-    });
+        include: { user: { select: this.authUserSelect } },
+      });
 
-    const valid = credential
-      ? await this.verifyPassword(password, credential.passwordHash)
-      : await this.verifyPassword(password, this.dummyPasswordHash);
-    if (!credential || !valid) {
-      throw new UnauthorizedException('Invalid staff credentials');
-    }
+      if (credential) {
+        await tx.$queryRaw`SELECT id FROM "User" WHERE id = ${credential.user.id}::uuid FOR UPDATE`;
+        const latest = await tx.staffCredential.findUnique({
+          where: { id: credential.id },
+        });
+        if (!latest || latest.passwordHash !== credential.passwordHash)
+          throw new UnauthorizedException('Invalid staff credentials');
+      }
+      const valid = credential
+        ? await this.verifyPassword(password, credential.passwordHash)
+        : await this.verifyPassword(password, this.dummyPasswordHash);
+      if (!credential || !valid) {
+        throw new UnauthorizedException('Invalid staff credentials');
+      }
 
-    await this.prismaService.staffCredential.update({
-      where: { id: credential.id },
-      data: { lastLoginAt: new Date() },
+      await tx.staffCredential.update({
+        where: { id: credential.id },
+        data: { lastLoginAt: new Date() },
+      });
+      return this.issueSession(this.toAuthenticatedUser(credential.user), tx);
     });
-    return this.issueSession(this.toAuthenticatedUser(credential.user));
   }
 
-  async setStaffPassword(userId: string, password: string) {
+  async setStaffPassword(
+    userId: string,
+    password: string,
+    database?: Prisma.TransactionClient,
+  ) {
     const passwordHash = await this.hashPassword(password);
-    await this.prismaService.staffCredential.upsert({
-      where: { userId },
-      create: { userId, passwordHash },
-      update: { passwordHash },
-    });
+    const save = async (tx: Prisma.TransactionClient) => {
+      await tx.$queryRaw`SELECT id FROM "User" WHERE id = ${userId}::uuid FOR UPDATE`;
+      const user = await tx.user.findUnique({ where: { id: userId } });
+      if (user?.role !== UserRole.ADMIN)
+        throw new UnauthorizedException('Administrator account required');
+      await tx.staffCredential.upsert({
+        where: { userId },
+        create: { userId, passwordHash },
+        update: { passwordHash },
+      });
+      await tx.refreshToken.updateMany({
+        where: { userId, revokedAt: null },
+        data: { revokedAt: new Date() },
+      });
+    };
+    if (database) await save(database);
+    else await this.prismaService.$transaction(save);
   }
 
   async changeStaffPassword(
@@ -110,21 +137,20 @@ export class AuthService implements OnModuleInit {
     currentPassword: string,
     newPassword: string,
   ) {
-    const credential = await this.prismaService.staffCredential.findUnique({
-      where: { userId },
+    return this.prismaService.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM "User" WHERE id = ${userId}::uuid FOR UPDATE`;
+      const credential = await tx.staffCredential.findUnique({
+        where: { userId },
+      });
+      if (
+        !credential ||
+        !(await this.verifyPassword(currentPassword, credential.passwordHash))
+      ) {
+        throw new UnauthorizedException('Current password is incorrect');
+      }
+      await this.setStaffPassword(userId, newPassword, tx);
+      return { success: true };
     });
-    if (
-      !credential ||
-      !(await this.verifyPassword(currentPassword, credential.passwordHash))
-    ) {
-      throw new UnauthorizedException('Current password is incorrect');
-    }
-    await this.setStaffPassword(userId, newPassword);
-    await this.prismaService.refreshToken.updateMany({
-      where: { userId, revokedAt: null },
-      data: { revokedAt: new Date() },
-    });
-    return { success: true };
   }
 
   async assertAuthRateLimit(key: string, limit: number, ttlSeconds: number) {
@@ -143,24 +169,29 @@ export class AuthService implements OnModuleInit {
         throw error;
       }
 
-      // Redis is an optional local-development dependency; auth remains available if it is down.
+      throw new ServiceUnavailableException(
+        'Authentication is temporarily unavailable',
+      );
     }
   }
 
-  getGoogleAuthorizationUrl(state: string) {
+  getGoogleAuthorizationUrl(state: string, verifier: string) {
     const client = this.googleClient();
 
     return client.generateAuthUrl({
-      access_type: 'offline',
+      access_type: 'online',
       prompt: 'select_account',
       scope: ['openid', 'email', 'profile'],
       state,
+      code_challenge: createHash('sha256').update(verifier).digest('base64url'),
+      code_challenge_method:
+        'S256' as import('google-auth-library').CodeChallengeMethod,
     });
   }
 
-  async exchangeGoogleCode(code: string) {
+  async exchangeGoogleCode(code: string, verifier: string) {
     const client = this.googleClient();
-    const { tokens } = await client.getToken(code);
+    const { tokens } = await client.getToken({ code, codeVerifier: verifier });
 
     if (!tokens.id_token) {
       throw new UnauthorizedException(
@@ -199,7 +230,7 @@ export class AuthService implements OnModuleInit {
     });
   }
 
-  getGitHubAuthorizationUrl(state: string) {
+  getGitHubAuthorizationUrl(state: string, verifier: string) {
     this.githubClientConfig();
     const query = new URLSearchParams({
       client_id: this.githubClientId,
@@ -207,11 +238,13 @@ export class AuthService implements OnModuleInit {
       response_type: 'code',
       scope: 'read:user user:email',
       state,
+      code_challenge: createHash('sha256').update(verifier).digest('base64url'),
+      code_challenge_method: 'S256',
     });
     return `https://github.com/login/oauth/authorize?${query.toString()}`;
   }
 
-  async exchangeGitHubCode(code: string) {
+  async exchangeGitHubCode(code: string, verifier: string) {
     this.githubClientConfig();
     const tokenResponse = await fetch(
       'https://github.com/login/oauth/access_token',
@@ -220,6 +253,7 @@ export class AuthService implements OnModuleInit {
           client_id: this.githubClientId,
           client_secret: this.githubClientSecret,
           code,
+          code_verifier: verifier,
           redirect_uri: this.githubCallbackUrl,
         }),
         headers: {
@@ -227,6 +261,7 @@ export class AuthService implements OnModuleInit {
           'Content-Type': 'application/x-www-form-urlencoded',
         },
         method: 'POST',
+        signal: AbortSignal.timeout(10000),
       },
     );
     const tokenBody = (await tokenResponse.json().catch(() => null)) as {
@@ -246,6 +281,7 @@ export class AuthService implements OnModuleInit {
     };
     const profileResponse = await fetch('https://api.github.com/user', {
       headers,
+      signal: AbortSignal.timeout(10000),
     });
     const profile = (await profileResponse.json().catch(() => null)) as {
       avatar_url?: string;
@@ -258,17 +294,18 @@ export class AuthService implements OnModuleInit {
       throw new UnauthorizedException('GitHub identity could not be verified');
     }
 
-    let email = profile.email ?? undefined;
-    if (!email) {
+    let email: string | undefined;
+    {
       const emailsResponse = await fetch('https://api.github.com/user/emails', {
         headers,
+        signal: AbortSignal.timeout(10000),
       });
       const emails = (await emailsResponse.json().catch(() => null)) as Array<{
         email?: string;
         primary?: boolean;
         verified?: boolean;
       }> | null;
-      if (emailsResponse.ok) {
+      if (emailsResponse.ok && Array.isArray(emails)) {
         email =
           emails?.find((item) => item.primary && item.verified)?.email ??
           emails?.find((item) => item.verified)?.email;
@@ -315,8 +352,9 @@ export class AuthService implements OnModuleInit {
       });
 
       if (
-        existingIdentity?.user.status !== UserStatus.ACTIVE &&
-        existingIdentity
+        existingIdentity &&
+        (existingIdentity.user.status !== UserStatus.ACTIVE ||
+          existingIdentity.user.role !== UserRole.USER)
       ) {
         throw new UnauthorizedException('This account is unavailable');
       }
@@ -399,39 +437,62 @@ export class AuthService implements OnModuleInit {
 
   async refresh(refreshToken: string) {
     const tokenHash = this.hashRefreshToken(refreshToken);
-    const existingToken = await this.prismaService.refreshToken.findUnique({
-      where: { tokenHash },
-      include: { user: { select: this.authUserSelect } },
-    });
-    const now = new Date();
+    const session = await this.prismaService.$transaction(
+      async (transaction) => {
+        const lookup = await transaction.refreshToken.findUnique({
+          where: { tokenHash },
+          select: { userId: true },
+        });
+        if (!lookup)
+          throw new UnauthorizedException('Invalid or expired refresh token');
+        await transaction.$queryRaw`SELECT id FROM "User" WHERE id = ${lookup.userId}::uuid FOR UPDATE`;
+        const existingToken = await transaction.refreshToken.findUnique({
+          where: { tokenHash },
+          include: { user: { select: this.authUserSelect } },
+        });
+        const now = new Date();
+        if (existingToken?.revokedAt) {
+          await transaction.refreshToken.updateMany({
+            where: { familyId: existingToken.familyId, revokedAt: null },
+            data: { revokedAt: now },
+          });
+          return null;
+        }
 
-    if (
-      !existingToken ||
-      existingToken.revokedAt ||
-      existingToken.expiresAt <= now ||
-      existingToken.user.status !== UserStatus.ACTIVE ||
-      !([UserRole.USER, UserRole.ADMIN] as UserRole[]).includes(
-        existingToken.user.role,
-      )
-    ) {
-      throw new UnauthorizedException('Invalid or expired refresh token');
-    }
+        if (
+          !existingToken ||
+          existingToken.revokedAt ||
+          existingToken.expiresAt <= now ||
+          existingToken.user.status !== UserStatus.ACTIVE ||
+          !([UserRole.USER, UserRole.ADMIN] as UserRole[]).includes(
+            existingToken.user.role,
+          )
+        ) {
+          throw new UnauthorizedException('Invalid or expired refresh token');
+        }
 
-    return this.prismaService.$transaction(async (transaction) => {
-      const revoked = await transaction.refreshToken.updateMany({
-        where: { id: existingToken.id, revokedAt: null },
-        data: { revokedAt: now },
-      });
+        const revoked = await transaction.refreshToken.updateMany({
+          where: { id: existingToken.id, revokedAt: null },
+          data: { revokedAt: now },
+        });
 
-      if (revoked.count !== 1) {
-        throw new UnauthorizedException('Refresh token has already been used');
-      }
+        if (revoked.count !== 1) {
+          throw new UnauthorizedException(
+            'Refresh token has already been used',
+          );
+        }
 
-      return this.issueSession(
-        this.toAuthenticatedUser(existingToken.user),
-        transaction,
-      );
-    });
+        return this.issueSession(
+          this.toAuthenticatedUser(existingToken.user),
+          transaction,
+          existingToken.familyId,
+          existingToken.expiresAt,
+        );
+      },
+    );
+    if (!session)
+      throw new UnauthorizedException('Refresh token has already been used');
+    return session;
   }
 
   async logout(refreshToken?: string) {
@@ -439,12 +500,16 @@ export class AuthService implements OnModuleInit {
       return;
     }
 
-    await this.prismaService.refreshToken.updateMany({
-      where: {
-        tokenHash: this.hashRefreshToken(refreshToken),
-        revokedAt: null,
-      },
-      data: { revokedAt: new Date() },
+    await this.prismaService.$transaction(async (tx) => {
+      const session = await tx.refreshToken.findUnique({
+        where: { tokenHash: this.hashRefreshToken(refreshToken) },
+      });
+      if (!session) return;
+      await tx.$queryRaw`SELECT id FROM "User" WHERE id = ${session.userId}::uuid FOR UPDATE`;
+      await tx.refreshToken.updateMany({
+        where: { familyId: session.familyId, revokedAt: null },
+        data: { revokedAt: new Date() },
+      });
     });
   }
 
@@ -464,14 +529,37 @@ export class AuthService implements OnModuleInit {
   private async issueSession(
     user: AuthenticatedUser,
     database: PrismaService | Prisma.TransactionClient = this.prismaService,
+    familyId: string = randomUUID(),
+    expiresAt?: Date,
   ): Promise<AuthSession> {
+    if (database === this.prismaService) {
+      return this.prismaService.$transaction((tx) =>
+        this.issueSession(user, tx, familyId, expiresAt),
+      );
+    }
+    await database.$queryRaw`SELECT id FROM "User" WHERE id = ${user.id}::uuid FOR UPDATE`;
+    const current = await database.user.findUnique({
+      where: { id: user.id },
+      select: this.authUserSelect,
+    });
+    if (
+      !current ||
+      current.status !== UserStatus.ACTIVE ||
+      current.role !== user.role ||
+      ![UserRole.USER, UserRole.ADMIN].includes(
+        current.role as 'USER' | 'ADMIN',
+      )
+    )
+      throw new UnauthorizedException('Account is unavailable');
     const refreshToken = randomBytes(48).toString('base64url');
-    const refreshExpiresAt = new Date(
-      Date.now() + this.refreshTtlSeconds * 1000,
-    );
+    const sessionId = randomUUID();
+    const refreshExpiresAt =
+      expiresAt ?? new Date(Date.now() + this.refreshTtlSeconds * 1000);
 
     await database.refreshToken.create({
       data: {
+        id: sessionId,
+        familyId,
         userId: user.id,
         tokenHash: this.hashRefreshToken(refreshToken),
         expiresAt: refreshExpiresAt,
@@ -480,6 +568,7 @@ export class AuthService implements OnModuleInit {
 
     const accessToken = await this.jwtService.signAsync({
       sub: user.id,
+      sid: familyId,
       role: user.role,
       username: user.username,
     });
@@ -567,8 +656,8 @@ export class AuthService implements OnModuleInit {
     return email.trim().toLowerCase();
   }
 
-  private async bootstrapStaffAccount(role: 'ADMIN' | 'MODERATOR') {
-    const prefix = role === 'ADMIN' ? 'ADMIN' : 'MODERATOR';
+  private async bootstrapStaffAccount() {
+    const prefix = 'ADMIN';
     const email = this.configService
       .get<string>(`${prefix}_BOOTSTRAP_EMAIL`, '')
       .trim()
@@ -626,13 +715,13 @@ export class AuthService implements OnModuleInit {
         data: {
           email,
           username,
-          role: UserRole[role],
+          role: UserRole.ADMIN,
           status: UserStatus.ACTIVE,
           accountType: AccountType.OFFICIAL,
           onboardingCompleted: true,
           profile: {
             create: {
-              displayName: role === 'ADMIN' ? 'Administrator' : 'Moderator',
+              displayName: 'Administrator',
             },
           },
         },

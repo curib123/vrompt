@@ -5,7 +5,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { AccessTokenGuard } from './guards/access-token.guard';
-import { OptionalAccessTokenGuard } from './guards/optional-access-token.guard';
+import { AuthOriginGuard } from './guards/auth-origin.guard';
 import { RolesGuard } from './guards/roles.guard';
 
 @Module({
@@ -15,24 +15,21 @@ import { RolesGuard } from './guards/roles.guard';
       useFactory: (configService: ConfigService) => ({
         secret: configService.get<string>('JWT_ACCESS_SECRET'),
         signOptions: {
+          algorithm: 'HS256',
+          issuer: 'vrompt-api',
+          audience: 'vrompt-web',
           expiresIn: configService.get<number>('JWT_ACCESS_TTL_SECONDS', 900),
+        },
+        verifyOptions: {
+          algorithms: ['HS256'],
+          issuer: 'vrompt-api',
+          audience: 'vrompt-web',
         },
       }),
     }),
   ],
   controllers: [AuthController],
-  providers: [
-    AuthService,
-    AccessTokenGuard,
-    OptionalAccessTokenGuard,
-    RolesGuard,
-  ],
-  exports: [
-    AuthService,
-    AccessTokenGuard,
-    OptionalAccessTokenGuard,
-    RolesGuard,
-    JwtModule,
-  ],
+  providers: [AuthService, AccessTokenGuard, AuthOriginGuard, RolesGuard],
+  exports: [AuthService, AccessTokenGuard, RolesGuard, JwtModule],
 })
 export class AuthModule {}

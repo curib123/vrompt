@@ -1,3 +1,4 @@
-import { BillingPage } from '@/components/workspace/pages';
-export const metadata = { title: 'Pricing' };
-export default function Page() { return <BillingPage pricing />; }
+import { redirect } from 'next/navigation';
+export default function Page() {
+  redirect('/#pricing');
+}

@@ -27,7 +27,7 @@ export class HealthController {
 
   @Get('metrics')
   @UseGuards(AccessTokenGuard, RolesGuard)
-  @Roles(UserRole.ADMIN, UserRole.MODERATOR)
+  @Roles(UserRole.ADMIN)
   @ApiOperation({
     summary: 'Aggregate application metrics without sensitive data',
   })

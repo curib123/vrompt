@@ -1,5 +1,4 @@
-import { ModelCatalog } from '@/components/workspace/model-catalog';
-export const metadata = { title: 'Available models' };
+import { redirect } from 'next/navigation';
 export default function Page() {
-  return <ModelCatalog />;
+  redirect('/#models');
 }

@@ -50,6 +50,7 @@ export function WorkspaceShell({
   const { toggleTheme } = useTheme();
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  const [logoutError, setLogoutError] = useState('');
   const { announcement } = useSiteSettings();
   const menuButton = useRef<HTMLButtonElement>(null);
   const sidebar = useRef<HTMLElement>(null);
@@ -92,9 +93,7 @@ export function WorkspaceShell({
       <main className="center-page">
         <h1>Your AI workspace awaits.</h1>
         <p>Sign in to keep your conversations private and synced.</p>
-        <SignInButton className="primary-button" returnTo={pathname}>
-          Sign in
-        </SignInButton>
+        <SignInButton className="primary-button">Sign in</SignInButton>
       </main>
     );
   if (admin && user?.role !== 'ADMIN')
@@ -188,9 +187,21 @@ export function WorkspaceShell({
             </span>
           </div>
           {user && (
-            <button onClick={() => void logout()}>
+            <button
+              onClick={() => {
+                setLogoutError('');
+                void logout().catch(() =>
+                  setLogoutError('Unable to sign out. Please retry.'),
+                );
+              }}
+            >
               <Icon name="logout" /> Sign out
             </button>
+          )}
+          {logoutError && (
+            <p role="alert" className="error-banner">
+              {logoutError}
+            </p>
           )}
           {!user && <SignInButton>Sign in to save your work</SignInButton>}
           <Link href="/">About Vrompt</Link>

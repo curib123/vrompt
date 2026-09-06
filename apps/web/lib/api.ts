@@ -2,7 +2,7 @@ export interface AuthUser {
   id: string;
   email: string;
   username: string;
-  role: 'USER' | 'MODERATOR' | 'ADMIN';
+  role: 'USER' | 'ADMIN';
   accountType: 'REAL' | 'STARTER' | 'OFFICIAL';
   plan: 'FREE' | 'PRO';
   onboardingCompleted: boolean;
@@ -36,6 +36,7 @@ export async function apiRequest<T>(
 ): Promise<T> {
   const { accessToken, ...init } = options;
   const headers = new Headers(init.headers);
+  headers.set('X-Vrompt-Client', 'web');
   if (accessToken) headers.set('Authorization', `Bearer ${accessToken}`);
   if (init.body && !(init.body instanceof FormData))
     headers.set('Content-Type', 'application/json');
@@ -45,6 +46,10 @@ export async function apiRequest<T>(
     credentials: 'include',
   });
   const body = await response.json().catch(() => null);
+  if (response.status === 401 && accessToken && typeof window !== 'undefined')
+    window.dispatchEvent(
+      new CustomEvent('vrompt:session-expired', { detail: accessToken }),
+    );
   if (!response.ok)
     throw new ApiError(
       Array.isArray(body?.message)
@@ -55,6 +60,8 @@ export async function apiRequest<T>(
   return body as T;
 }
 export type Model = {
+  available?: boolean;
+  autoAvailable?: boolean;
   id: string;
   provider: string;
   displayName: string;

@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { apiRequest } from '@/lib/api';
 import { useAuth } from '@/components/providers/auth-provider';
+import { SignInButton } from '@/components/providers/auth-dialog-provider';
 function PaymentStatus() {
   const { accessToken } = useAuth();
   const id = useSearchParams().get('payment');
@@ -47,6 +48,11 @@ function PaymentStatus() {
             : status}
       </p>
       <p className="muted">Access updates only after payment confirmation.</p>
+      {!accessToken && (
+        <SignInButton className="primary-button">
+          Sign in to view payment
+        </SignInButton>
+      )}
       <Link href="/billing">Back to billing</Link>
     </main>
   );

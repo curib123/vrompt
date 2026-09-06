@@ -22,6 +22,17 @@ export class MonetizationService {
       where: { isActive: true, code: { not: 'GUEST' } },
       orderBy: [{ displayOrder: 'asc' }, { createdAt: 'asc' }],
       include: {
+        generationPolicies: {
+          where: { enabled: true },
+          select: {
+            bucket: true,
+            modelId: true,
+            dailyLimit: true,
+            monthlyLimit: true,
+            maxFiles: true,
+            allowedFeatures: true,
+          },
+        },
         limits: { include: { feature: true }, orderBy: { resetPeriod: 'asc' } },
         promotions: {
           where: {
@@ -67,6 +78,15 @@ export class MonetizationService {
             plan.billingInterval,
             plan.intervalCount,
           ),
+          monthlyCredits: plan.monthlyCredits,
+          manualModelCount: plan.generationPolicies.filter(
+            (policy) => policy.modelId,
+          ).length,
+          allowances: plan.generationPolicies.map((policy) => ({
+            bucket: policy.bucket === 'AUTO' ? 'Auto' : 'Manual model',
+            dailyLimit: policy.dailyLimit,
+            monthlyLimit: policy.monthlyLimit,
+          })),
           features: plan.limits.map((item) => ({
             key: item.feature.key,
             name: item.feature.name,

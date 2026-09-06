@@ -3,12 +3,21 @@ import Link from 'next/link';
 import { useEffect, useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { BrandLockup, BrandMark } from './brand-mark';
-import { ProviderIcon } from './provider-icon';
+import { ProviderIcon, providerNames } from './provider-icon';
 import { ThemeToggle } from '@/components/theme/theme-toggle';
 import { useSiteSettings } from '@/components/providers/site-settings-provider';
+import { useAuth } from '@/components/providers/auth-provider';
+import {
+  useAuthDialog,
+  SignInButton,
+} from '@/components/providers/auth-dialog-provider';
+import {
+  PlanCards,
+  usePlans,
+  type PublicPlan,
+} from '@/components/billing/plan-cards';
 import { Icon, type IconName } from '@/components/ui/icon';
 import { apiRequest, type Model } from '@/lib/api';
-import { SignInButton } from '@/components/providers/auth-dialog-provider';
 
 export const starterTasks: {
   key: string;
@@ -38,17 +47,23 @@ export const starterTasks: {
 
 export function Landing() {
   const { settings, announcement, tagline, siteName } = useSiteSettings();
+  const { user } = useAuth();
+  const { openLogin } = useAuthDialog();
   const router = useRouter();
   const [models, setModels] = useState<Model[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [catalogError, setCatalogError] = useState(false);
+  const [attempt, setAttempt] = useState(0);
+  const [query, setQuery] = useState('');
   const [draft, setDraft] = useState('');
+  const plans = usePlans();
   useEffect(() => {
     const controller = new AbortController();
     void apiRequest<Model[]>('/catalog/models', { signal: controller.signal })
       .then((data) => {
         setModels(data);
         setLoaded(true);
+        setCatalogError(false);
       })
       .catch(() => {
         if (!controller.signal.aborted) {
@@ -57,15 +72,32 @@ export function Landing() {
         }
       });
     return () => controller.abort();
-  }, []);
+  }, [attempt]);
+  function begin(destination = '/chat') {
+    if (user) router.push(user.role === 'ADMIN' ? '/admin' : destination);
+    else openLogin(destination);
+  }
   function start(event: FormEvent) {
     event.preventDefault();
     if (draft.trim())
       sessionStorage.setItem('vrompt-insert-prompt', draft.trim());
-    router.push('/chat');
+    begin('/chat');
   }
+  function choosePlan(plan: PublicPlan) {
+    begin(
+      plan.priceCentavos === 0
+        ? '/chat'
+        : `/billing?plan=${encodeURIComponent(plan.id)}`,
+    );
+  }
+  const filtered = models.filter((model) =>
+    `${model.displayName} ${model.provider} ${model.capabilities.join(' ')}`
+      .toLowerCase()
+      .includes(query.toLowerCase()),
+  );
+  const brands = Object.entries(providerNames);
   return (
-    <div className="brand-home">
+    <div className="brand-home landing-mvp">
       <a href="#main-content" className="skip-link">
         Skip to content
       </a>
@@ -75,263 +107,408 @@ export function Landing() {
           <BrandLockup compact />
         </Link>
         <nav aria-label="Main navigation">
-          <Link href="/features">Why {siteName}</Link>
-          <Link href="/models">Models</Link>
-          <Link href="/pricing">Pricing</Link>
+          <a href="#why-vrompt">Why {siteName}</a>
+          <a href="#models">Models</a>
+          <a href="#pricing">Pricing</a>
         </nav>
         <div className="nav-actions">
           <ThemeToggle />
           <SignInButton className="nav-signin" />
-          <Link href="/chat" className="primary-button">
-            Get started <Icon name="arrow" />
-          </Link>
+          <button className="primary-button" onClick={() => begin()}>
+            Start for Free <Icon name="arrow" />
+          </button>
         </div>
       </header>
       <main id="main-content">
-        <section className="brand-hero">
+        <section className="brand-hero mvp-hero" aria-labelledby="hero-title">
           <div className="hero-copy">
             <span className="brand-pill">
-              <span className="status-dot" /> A little less switching. A lot
-              more doing.
+              <BrandMark className="brand-symbol" /> MULTIPLE AIs. A SMARTER
+              YOU.
             </span>
-            <h1>
-              The right AI
-              <br />
-              for <em>every task.</em>
-            </h1>
-            <p>
-              {String(
-                settings['content.heroDescription'] ||
-                  'Use multiple leading AI models from one account. Auto chooses for you, or select one manually anytime.',
-              )}
-            </p>
-            <div className="brand-hero-actions">
-              <Link className="primary-button" href="/chat">
-                Find your flow <Icon name="arrow" />
-              </Link>
-              <Link className="text-link" href="/auto">
-                Meet Auto <span aria-hidden="true">↗</span>
-              </Link>
-            </div>
-            <div className="hero-assurance">
-              <Icon name="shield" /> One account. Your own private workspace.
-            </div>
-          </div>
-          <div className="identity-art" aria-hidden="true">
-            <div className="orbit orbit-one" />
-            <div className="orbit orbit-two" />
-            <div className="orbit orbit-three" />
-            <span className="orbit-label orbit-label-top">LESS FRICTION</span>
-            <div className="identity-tile">
-              <BrandMark />
-            </div>
-            <div className="floating-card floating-write">
-              <span className="task-icon">
-                <Icon name="write" />
-              </span>
-              <span>
-                Make it sound like you.<small>WRITE WITH CLARITY</small>
-              </span>
-            </div>
-            <div className="floating-card floating-create">
-              <span className="task-icon teal">
-                <Icon name="cube" />
-              </span>
-              <span>
-                A spark for your next idea.<small>CREATE SOMETHING NEW</small>
-              </span>
-            </div>
-            <span className="orbit-spark spark-one">✦</span>
-            <span className="orbit-spark spark-two">✦</span>
-            <span className="orbit-label orbit-label-bottom">
-              MORE POSSIBILITY
-            </span>
-          </div>
-        </section>
-        <section
-          className="workspace-showcase"
-          aria-labelledby="showcase-title"
-        >
-          <div className="showcase-label">
-            <span className="eyebrow">YOUR IDEAS. MEET YOUR WORKSPACE.</span>
-            <span>Thoughtfully simple. Quietly powerful.</span>
-          </div>
-          <div className="preview-window">
-            <aside className="preview-sidebar">
-              <BrandLockup compact />
-              <Link href="/chat" className="preview-active">
-                <Icon name="chat" /> New chat <span>＋</span>
-              </Link>
-              <Link href="/conversations">
-                <Icon name="history" /> Conversations
-              </Link>
-              <Link href="/projects">
-                <Icon name="folder" /> Projects
-              </Link>
-              <Link href="/saved-prompts">
-                <Icon name="library" /> Library
-              </Link>
-              <Link href="/workflows">
-                <Icon name="workflow" /> Workflows
-              </Link>
-              <div className="preview-sidebar-bottom">
-                <Link href="/settings">
-                  <Icon name="settings" /> Settings
-                </Link>
-                <Link href="/docs">
-                  <Icon name="help" /> Help & getting started
-                </Link>
-              </div>
-              <span className="preview-tagline">{tagline}</span>
-            </aside>
-            <div className="preview-workspace">
-              <div className="preview-heading">
-                <div>
-                  <span className="eyebrow">A FRESH START</span>
-                  <h2 id="showcase-title">What will you make today?</h2>
-                  <p>
-                    The right AI for <span>every task.</span>
-                  </p>
-                </div>
-                <Link href="/auto" className="auto-badge">
-                  <ProviderIcon provider="auto" /> Auto{' '}
-                  <small>Recommended</small>
-                </Link>
-              </div>
-              <form className="preview-composer" onSubmit={start}>
-                <label className="sr-only" htmlFor="homepage-prompt">
-                  Your message
-                </label>
-                <textarea
-                  id="homepage-prompt"
-                  placeholder="An idea, a question, a little help getting started…"
-                  value={draft}
-                  onChange={(e) => setDraft(e.target.value)}
-                  maxLength={10000}
-                />
-                <div>
-                  <span>
-                    <Icon name="attach" /> Start here. Take it anywhere.
-                  </span>
-                  <button
-                    type="submit"
-                    aria-label="Open chat with your message"
-                  >
-                    <Icon name="arrow" />
-                  </button>
-                </div>
-              </form>
-              <div className="available-models">
-                <Link className="model-choice selected" href="/chat">
-                  <ProviderIcon provider="auto" />
-                  <span>
-                    <strong>Auto</strong>
-                    <small>Matched to your task</small>
-                  </span>
-                </Link>
-                {models.slice(0, 4).map((model) => (
-                  <Link className="model-choice" href="/models" key={model.id}>
-                    <ProviderIcon provider={model.provider} />
-                    <span>
-                      <strong>{model.displayName}</strong>
-                      <small>{model.provider.toLowerCase()}</small>
-                    </span>
-                  </Link>
-                ))}
-              </div>
-              <p className="catalog-note">
-                {!loaded
-                  ? 'Loading available models…'
-                  : catalogError
-                    ? 'Model availability will appear when the service reconnects.'
-                    : models.length
-                      ? `${models.length} available models. Access varies by plan.`
-                      : 'Models will appear here when they are enabled.'}
-              </p>
-              <div className="task-cards">
-                {starterTasks.map((task) => (
-                  <button
-                    key={task.key}
-                    onClick={() => {
-                      setDraft(
-                        String(
-                          settings[`workspace.${task.key}Prompt`] ||
-                            `Help me ${task.title.toLowerCase()}.`,
-                        ),
-                      );
-                      document.getElementById('homepage-prompt')?.focus();
-                    }}
-                  >
-                    <span className={`task-icon ${task.key}`}>
-                      <Icon name={task.icon} />
-                    </span>
-                    <span>
-                      <strong>{task.title}</strong>
-                      <small>{task.detail}</small>
-                    </span>
-                    <span className="task-arrow">↗</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-        </section>
-        <section className="brand-benefits">
-          <div className="benefit-intro">
-            <span className="eyebrow">AI WORKS BETTER TOGETHER</span>
-            <h2>
+            <h1 id="hero-title">
               One account.
               <br />
-              <em>Every possibility.</em>
+              One subscription.
+              <br />
+              <em>Multiple AI models.</em>
+            </h1>
+            <p>
+              Stop switching between separate AI subscriptions. Choose the right
+              AI—or let <strong>Auto</strong> choose for you.
+            </p>
+            <div className="brand-hero-actions">
+              <button className="primary-button" onClick={() => begin()}>
+                Start for Free <Icon name="arrow" />
+              </button>
+              <a className="text-link" href="#how-auto-works">
+                See how Auto works <span aria-hidden="true">↘</span>
+              </a>
+            </div>
+            <div className="hero-assurance">
+              <Icon name="check" />
+              Start free. Upgrade when you need more.
+            </div>
+          </div>
+          <div className="hero-hub">
+            <div className="hub-caption">
+              <span className="eyebrow">YOUR AI, ALL TOGETHER</span>
+              <span className="hub-dot" />
+            </div>
+            <div className="hub-brand">
+              <BrandMark className="brand-symbol" />
+              <strong>{siteName}</strong>
+              <span>One workspace. More possibilities.</span>
+            </div>
+            <div className="hub-providers">
+              {brands.map(([key, name]) => (
+                <a href="#models" key={key}>
+                  <ProviderIcon provider={key} />
+                  <strong>{name}</strong>
+                </a>
+              ))}
+            </div>
+            <div className="hub-auto">
+              <ProviderIcon provider="auto" />
+              <span>
+                <strong>Auto — Recommended</strong>
+                <small>The right model for the task at hand</small>
+              </span>
+              <Icon name="check" />
+            </div>
+            <p>Prefer a specific model? Switch manually anytime.</p>
+          </div>
+        </section>
+
+        <section className="provider-strip" aria-labelledby="providers-title">
+          <p id="providers-title" className="eyebrow">
+            LEADING AI BRANDS. ONE PLACE TO WORK.
+          </p>
+          <div>
+            {brands.map(([key, name]) => (
+              <a href="#models" key={key}>
+                <ProviderIcon provider={key} />
+                <span>{name}</span>
+              </a>
+            ))}
+          </div>
+          <p className="muted">
+            Supported integrations. Model availability and allowances depend on
+            your plan.
+          </p>
+        </section>
+
+        <section
+          id="why-vrompt"
+          className="landing-section"
+          aria-labelledby="why-title"
+        >
+          <div className="section-heading">
+            <span className="eyebrow">WHY {siteName.toUpperCase()}</span>
+            <h2 id="why-title">
+              Less switching.
+              <br />
+              <em>More getting things done.</em>
             </h2>
             <p>
-              More room for your ideas.
-              <br />
-              Less getting in their way.
+              Your questions, ideas, and conversations finally have one home.
             </p>
-            <Link href="/features">
-              Explore the workspace <Icon name="arrow" />
-            </Link>
           </div>
-          <div className="benefit-list">
+          <div className="why-grid">
             {[
               {
+                icon: 'grid',
+                title: 'One account, more choice',
+                text: 'Work with multiple AI models in one workspace. Keep the conversation going without juggling separate accounts.',
+              },
+              {
                 icon: 'workflow',
-                title: 'The choice is yours. Or Auto’s.',
-                text: 'Let Auto match your task to an available model, or choose the model you want.',
+                title: 'Start with Auto. Stay in control.',
+                text: 'Auto chooses an available model for your task. Select a specific model yourself when you know what you need.',
               },
               {
-                icon: 'folder',
-                title: 'A home for your best thinking.',
-                text: 'Keep conversations in projects and turn useful instructions into reusable prompts.',
-              },
-              {
-                icon: 'shield',
-                title: 'Your work stays yours.',
-                text: 'Private conversations, protected files, and clear usage controls in one place.',
+                icon: 'chart',
+                title: 'Know what you use',
+                text: 'See your shared credits and model allowances. Upgrade from the same account when you need more room.',
               },
             ].map((item) => (
               <article key={item.title}>
                 <span className="task-icon">
                   <Icon name={item.icon as IconName} />
                 </span>
-                <div>
-                  <h3>{item.title}</h3>
-                  <p>{item.text}</p>
-                </div>
+                <h3>{item.title}</h3>
+                <p>{item.text}</p>
               </article>
             ))}
           </div>
         </section>
-        <section className="brand-cta">
-          <BrandMark />
-          <div>
-            <h2>A smarter way to start.</h2>
-            <p>Your next idea is in good company.</p>
+
+        <section
+          id="how-auto-works"
+          className="landing-section auto-section"
+          aria-labelledby="auto-title"
+        >
+          <div className="section-heading">
+            <span className="eyebrow">A SMARTER DEFAULT</span>
+            <h2 id="auto-title">
+              Your task. <em>Auto’s choice.</em>
+            </h2>
+            <p>Choose the right AI—or let Auto choose for you.</p>
           </div>
-          <Link className="primary-button" href="/chat">
-            Let’s make something <Icon name="arrow" />
-          </Link>
+          <ol className="auto-steps">
+            <li>
+              <span>01</span>
+              <h3>Tell us what you need</h3>
+              <p>Write a prompt, ask a question, or start with an idea.</p>
+            </li>
+            <li>
+              <span>02</span>
+              <h3>Auto finds a fit</h3>
+              <p>
+                It considers the task, capabilities, model availability, and
+                your plan.
+              </p>
+            </li>
+            <li>
+              <span>03</span>
+              <h3>Keep moving forward</h3>
+              <p>See which model answered. Switch models whenever you want.</p>
+            </li>
+          </ol>
+          <div className="landing-composer">
+            <div className="preview-heading">
+              <div>
+                <span className="eyebrow">YOUR NEXT GOOD IDEA STARTS HERE</span>
+                <h3>What will you make today?</h3>
+              </div>
+              <span className="auto-badge">
+                <ProviderIcon provider="auto" /> Auto <small>Recommended</small>
+              </span>
+            </div>
+            <form className="preview-composer" onSubmit={start}>
+              <label className="sr-only" htmlFor="homepage-prompt">
+                Your message
+              </label>
+              <textarea
+                id="homepage-prompt"
+                placeholder="Ask a question. Draft something. Think it through…"
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                maxLength={10000}
+              />
+              <div>
+                <span>
+                  <Icon name="shield" />
+                  Your own private workspace
+                </span>
+                <button type="submit" aria-label="Open chat with your message">
+                  <Icon name="arrow" />
+                </button>
+              </div>
+            </form>
+            <div className="task-cards">
+              {starterTasks.map((task) => (
+                <button
+                  key={task.key}
+                  onClick={() => {
+                    setDraft(
+                      String(
+                        settings[`workspace.${task.key}Prompt`] ||
+                          `Help me ${task.title.toLowerCase()}.`,
+                      ),
+                    );
+                    document.getElementById('homepage-prompt')?.focus();
+                  }}
+                >
+                  <span className={`task-icon ${task.key}`}>
+                    <Icon name={task.icon} />
+                  </span>
+                  <span>
+                    <strong>{task.title}</strong>
+                    <small>{task.detail}</small>
+                  </span>
+                  <span className="task-arrow">↗</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section
+          id="models"
+          className="landing-section"
+          aria-labelledby="models-title"
+        >
+          <div className="section-heading">
+            <span className="eyebrow">DIFFERENT STRENGTHS. ONE WORKSPACE.</span>
+            <h2 id="models-title">
+              Meet your <em>AI lineup.</em>
+            </h2>
+            <p>
+              Use Auto — Recommended, or choose a specific model for your next
+              task.
+            </p>
+          </div>
+          <div className="model-section-toolbar">
+            <label>
+              <Icon name="search" />
+              <input
+                aria-label="Search models"
+                placeholder="Find a model or provider…"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+              />
+            </label>
+            <button
+              className="secondary-button"
+              onClick={() => begin('/chat?model=AUTO')}
+            >
+              <ProviderIcon provider="auto" />
+              Start with Auto
+            </button>
+          </div>
+          {!loaded && (
+            <p role="status" className="muted">
+              Loading the model lineup…
+            </p>
+          )}
+          {catalogError && (
+            <div role="alert" className="service-notice">
+              <p>The model catalog is temporarily unavailable.</p>
+              <button
+                className="text-link"
+                onClick={() => setAttempt((value) => value + 1)}
+              >
+                Retry
+              </button>
+            </div>
+          )}
+          <div className="landing-model-grid">
+            {filtered.map((model) => (
+              <article key={model.id}>
+                <div className="model-card-heading">
+                  <ProviderIcon provider={model.provider} />
+                  <span className="eyebrow">
+                    {providerNames[model.provider.toLowerCase()] ||
+                      model.provider}
+                  </span>
+                </div>
+                <h3>{model.displayName}</h3>
+                <p>{model.description}</p>
+                <div className="capability-list">
+                  {model.capabilities
+                    .filter((capability) =>
+                      [
+                        'text',
+                        'coding',
+                        'vision',
+                        'reasoning',
+                        'image_generation',
+                      ].includes(capability),
+                    )
+                    .map((capability) => (
+                      <span key={capability} className="status-badge">
+                        {capability.replaceAll('_', ' ')}
+                      </span>
+                    ))}
+                </div>
+                {model.available === false && (
+                  <small className="model-availability">
+                    Temporarily unavailable
+                  </small>
+                )}
+                <button
+                  className="text-link"
+                  onClick={() =>
+                    begin(`/chat?model=${encodeURIComponent(model.id)}`)
+                  }
+                >
+                  Explore in chat <Icon name="arrow" />
+                </button>
+              </article>
+            ))}
+          </div>
+          {loaded && !catalogError && !filtered.length && (
+            <div className="service-notice">
+              <p>
+                {query
+                  ? 'No models match your search.'
+                  : 'The model lineup is currently offline. You can create your account and explore the workspace.'}
+              </p>
+              {query ? (
+                <button className="text-link" onClick={() => setQuery('')}>
+                  Show all models
+                </button>
+              ) : (
+                <button className="text-link" onClick={() => begin()}>
+                  Create your free account <Icon name="arrow" />
+                </button>
+              )}
+            </div>
+          )}
+        </section>
+
+        <section
+          id="pricing"
+          className="landing-section pricing-section"
+          aria-labelledby="pricing-title"
+        >
+          <div className="section-heading">
+            <span className="eyebrow">ONE PLAN. MORE POSSIBILITIES.</span>
+            <h2 id="pricing-title">
+              Start free.
+              <br />
+              <em>Grow at your own pace.</em>
+            </h2>
+            <p>
+              Choose the allowance that fits your work. Every plan keeps your AI
+              in one place.
+            </p>
+          </div>
+          {plans.data ? (
+            <PlanCards plans={plans.data.plans} onChoose={choosePlan} />
+          ) : (
+            !plans.error && <p role="status">Loading plans…</p>
+          )}
+          {plans.error && (
+            <div className="service-notice" role="alert">
+              <p>We couldn’t load current pricing.</p>
+              <button className="text-link" onClick={plans.retry}>
+                Retry pricing
+              </button>
+            </div>
+          )}
+          {plans.data && !plans.data.plans.length && (
+            <div className="service-notice">
+              <p>
+                Paid plans are currently unavailable. Start with a free account
+                to explore {siteName}.
+              </p>
+              <button className="primary-button" onClick={() => begin()}>
+                Start for Free
+              </button>
+            </div>
+          )}
+          <p className="pricing-footnote">
+            Shared credits and individual model limits both apply. Paid access
+            is renewed by checkout; your card is not automatically charged.
+          </p>
+        </section>
+
+        <section className="brand-cta final-cta">
+          <BrandMark className="brand-symbol" />
+          <div>
+            <span className="eyebrow">LESS SWITCHING. YOUR NEXT STEP.</span>
+            <h2>
+              One account.
+              <br />
+              Your next great idea.
+            </h2>
+            <p>Start using multiple AI models from one account today.</p>
+          </div>
+          <button className="primary-button" onClick={() => begin()}>
+            Get Started <Icon name="arrow" />
+          </button>
         </section>
       </main>
       <footer className="brand-footer">
@@ -340,6 +517,9 @@ export function Landing() {
           <p>{tagline}</p>
         </div>
         <nav aria-label="Footer">
+          <a href="#why-vrompt">Why {siteName}</a>
+          <a href="#models">Models</a>
+          <a href="#pricing">Pricing</a>
           <Link href="/docs">Help</Link>
           <Link href="/privacy">Privacy</Link>
           <Link href="/terms">Terms</Link>

@@ -16,8 +16,8 @@ export class AdminUserQueryDto {
   q?: string;
 
   @IsOptional()
-  @IsIn(['USER', 'MODERATOR', 'ADMIN'])
-  role?: 'USER' | 'MODERATOR' | 'ADMIN';
+  @IsIn(['USER', 'ADMIN'])
+  role?: 'USER' | 'ADMIN';
 
   @IsOptional()
   @IsIn(['ACTIVE', 'SUSPENDED', 'DELETED'])

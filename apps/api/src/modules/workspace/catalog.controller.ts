@@ -5,12 +5,14 @@ import { ModelRegistryService } from './registry.service';
 export class CatalogController {
   constructor(private readonly registry: ModelRegistryService) {}
   @Get('models') async models() {
-    return (await this.registry.available()).map((model) => ({
+    return (await this.registry.catalog()).map((model) => ({
       id: model.id,
       provider: model.provider,
       displayName: model.displayName,
       description: model.description,
       capabilities: model.capabilities,
+      available: model.available,
+      autoAvailable: model.autoAvailable,
     }));
   }
 }

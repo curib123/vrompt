@@ -23,6 +23,8 @@ export interface PaymentGatewayAdapter {
 
 export interface BillingSummary {
   plan: MembershipPlan;
+  planCode?: string;
+  planName?: string;
   subscription: {
     id: string;
     status: BillingSubscriptionStatus;

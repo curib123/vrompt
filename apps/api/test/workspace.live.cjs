@@ -18,7 +18,14 @@ assert(
 );
 const base = 'http://localhost:4000/api/v1';
 const prisma = new PrismaClient();
-const jwt = new JwtService({ secret: process.env.JWT_ACCESS_SECRET });
+const jwt = new JwtService({
+  secret: process.env.JWT_ACCESS_SECRET,
+  signOptions: {
+    algorithm: 'HS256',
+    issuer: 'vrompt-api',
+    audience: 'vrompt-web',
+  },
+});
 let checks = 0;
 async function request(
   path,
@@ -27,6 +34,7 @@ async function request(
   const response = await fetch(`${base}${path}`, {
     method,
     headers: {
+      'X-Vrompt-Client': 'web',
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...(body ? { 'Content-Type': 'application/json' } : {}),
     },
@@ -68,8 +76,23 @@ async function main() {
       onboardingCompleted: true,
     },
   });
-  const token = jwt.sign({ sub: owner.id }, { expiresIn: '5m' });
-  const otherToken = jwt.sign({ sub: other.id }, { expiresIn: '5m' });
+  async function sessionFor(user) {
+    const familyId = randomUUID();
+    await prisma.refreshToken.create({
+      data: {
+        userId: user.id,
+        familyId,
+        tokenHash: randomUUID(),
+        expiresAt: new Date(Date.now() + 300_000),
+      },
+    });
+    return jwt.sign(
+      { sub: user.id, sid: familyId, role: user.role },
+      { expiresIn: '5m' },
+    );
+  }
+  const token = await sessionFor(owner);
+  const otherToken = await sessionFor(other);
   await request('/admin/workspace/configuration', { status: 401 });
   await request('/admin/workspace/configuration', { token, status: 403 });
   await request('/admin/workspace/models', {
@@ -175,7 +198,8 @@ async function main() {
     token: admin,
   });
   assert(config.models.length > 0 && config.plans.length > 0);
-  assert.deepEqual(await request('/catalog/models'), []); // Providers intentionally unconfigured in this test.
+  const catalog = await request('/catalog/models');
+  assert(catalog.every((model) => model.available === false)); // Providers intentionally unconfigured in this test.
   const audits = await request('/admin/audit', { token: admin });
   assert(audits.items.some((event) => event.action === 'SETTING_UPDATED'));
   await request('/admin/billing/payments', { token: admin });

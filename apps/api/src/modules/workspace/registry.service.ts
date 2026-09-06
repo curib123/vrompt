@@ -185,18 +185,23 @@ export class ModelRegistryService {
     private readonly providers: ProviderRegistry,
   ) {}
   async available() {
+    return (await this.catalog()).filter((m) => m.available);
+  }
+  async catalog() {
     const now = new Date();
     return (
       await this.prisma.aIModel.findMany({
         where: {
           enabled: true,
-          maintenance: false,
           effectiveFrom: { lte: now },
           OR: [{ effectiveUntil: null }, { effectiveUntil: { gt: now } }],
         },
         orderBy: { displayOrder: 'asc' },
       })
-    ).filter((m) => this.providers.get(m.provider).available());
+    ).map((m) => ({
+      ...m,
+      available: !m.maintenance && this.providers.get(m.provider).available(),
+    }));
   }
   async saveModel(actorId: string, input: unknown, id?: string) {
     const data = validate<Prisma.AIModelUncheckedCreateInput>(

@@ -16,6 +16,8 @@ import type { AuthenticatedRequest } from '../auth.types';
 
 interface AccessTokenPayload {
   sub: string;
+  sid: string;
+  role: UserRole;
 }
 
 @Injectable()
@@ -28,7 +30,9 @@ export class AccessTokenGuard implements CanActivate {
 
   async canActivate(context: ExecutionContext) {
     const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
-    const token = request.header('authorization')?.replace(/^Bearer\s+/i, '');
+    const token = request
+      .header('authorization')
+      ?.match(/^Bearer ([^\s]+)$/i)?.[1];
 
     if (!token) {
       throw new UnauthorizedException('Authentication required');
@@ -37,21 +41,41 @@ export class AccessTokenGuard implements CanActivate {
     try {
       const payload =
         await this.jwtService.verifyAsync<AccessTokenPayload>(token);
-      const user = await this.prismaService.user.findUnique({
-        where: { id: payload.sub },
+      const uuid =
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      if (!uuid.test(payload.sub ?? '') || !uuid.test(payload.sid ?? ''))
+        throw new UnauthorizedException('Invalid session');
+      const session = await this.prismaService.refreshToken.findFirst({
+        where: {
+          familyId: payload.sid,
+          userId: payload.sub,
+          revokedAt: null,
+          expiresAt: { gt: new Date() },
+        },
         select: {
-          id: true,
-          email: true,
-          username: true,
-          role: true,
-          accountType: true,
-          plan: true,
-          onboardingCompleted: true,
-          status: true,
+          user: {
+            select: {
+              id: true,
+              email: true,
+              username: true,
+              role: true,
+              accountType: true,
+              plan: true,
+              onboardingCompleted: true,
+              status: true,
+              guestKey: true,
+            },
+          },
         },
       });
+      const user = session?.user;
 
-      if (!user || user.status !== UserStatus.ACTIVE) {
+      if (
+        !user ||
+        user.status !== UserStatus.ACTIVE ||
+        user.guestKey ||
+        user.role !== payload.role
+      ) {
         throw new UnauthorizedException('Authentication required');
       }
 
@@ -67,8 +91,7 @@ export class AccessTokenGuard implements CanActivate {
       if (allowedRoles?.length && !allowedRoles.includes(user.role))
         throw new ForbiddenException('Insufficient permissions');
       const isStaff = user.role === UserRole.ADMIN;
-      const isStaffAuthRoute = request.path.includes('/auth/');
-      if (isStaff && !isStaffAuthRoute && !allowedRoles?.includes(user.role)) {
+      if (isStaff && !allowedRoles?.includes(user.role)) {
         throw new ForbiddenException(
           'Staff accounts are restricted to the control panel',
         );

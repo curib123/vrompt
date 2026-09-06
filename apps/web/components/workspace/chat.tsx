@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 import { useAuth } from '@/components/providers/auth-provider';
 import {
   apiRequest,
@@ -27,10 +28,16 @@ export function Chat() {
   const router = useRouter();
   const params = useSearchParams();
   const id = params.get('id');
+  const requestedModel = params.get('model');
+  const [catalog, setCatalog] = useState<Model[] | null>(null);
+  const [catalogError, setCatalogError] = useState(false);
+  const [availabilityAttempt, setAvailabilityAttempt] = useState(0);
+  const [selectionNotice, setSelectionNotice] = useState('');
   const [projects, setProjects] = useState<Project[]>([]);
   const [projectId, setProjectId] = useState(params.get('project') ?? '');
   const [preferences, setPreferences] = useState<Preferences>();
   const createdNavigation = useRef<string | null>(null);
+  const modelChosenByUser = useRef(false);
   const [selectedFiles, setSelectedFiles] = useState<string[]>([]);
   const [feature, setFeature] = useState<'chat' | 'image_generation'>('chat');
   const [models, setModels] = useState<Model[]>([]);
@@ -48,6 +55,26 @@ export function Chat() {
   const bottom = useRef<HTMLDivElement>(null);
   const upload = useRef<HTMLInputElement>(null);
   const allowance = usage?.allowances.find((a) => a.bucket === selected);
+  const chatAvailable =
+    catalog !== null &&
+    !catalogError &&
+    (selected === 'AUTO'
+      ? catalog.some(
+          (model) => model.available !== false && model.autoAvailable !== false,
+        )
+      : models.some((model) => model.id === selected));
+  useEffect(() => {
+    const controller = new AbortController();
+    void apiRequest<Model[]>('/catalog/models', { signal: controller.signal })
+      .then((data) => {
+        setCatalog(data);
+        setCatalogError(false);
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setCatalogError(true);
+      });
+    return () => controller.abort();
+  }, [availabilityAttempt]);
   async function refresh() {
     if (!accessToken) return;
     const options = { accessToken };
@@ -101,7 +128,7 @@ export function Chat() {
     void apiRequest<Preferences>('/workspace/preferences', { accessToken })
       .then(setPreferences)
       .catch((e) => setError(e.message));
-  }, [accessToken]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [accessToken, availabilityAttempt]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     const inserted = sessionStorage.getItem('vrompt-insert-prompt');
     // Synchronize a prompt handed off through browser session storage.
@@ -116,6 +143,7 @@ export function Chat() {
       return;
     }
     let current = true;
+    modelChosenByUser.current = false;
     setError('');
     setSelected('AUTO');
     if (!id) {
@@ -146,15 +174,37 @@ export function Chat() {
   }, [id, accessToken]);
   useEffect(() => {
     // Apply persisted defaults only to a new conversation.
-    if (!id && preferences) {
+    if (
+      !id &&
+      !createdNavigation.current &&
+      !modelChosenByUser.current &&
+      preferences &&
+      catalog
+    ) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setSelected(
-        models.some((model) => model.id === preferences.defaultModelId)
-          ? preferences.defaultModelId!
-          : 'AUTO',
+        requestedModel === 'AUTO'
+          ? 'AUTO'
+          : models.some((model) => model.id === requestedModel)
+            ? requestedModel!
+            : models.some((model) => model.id === preferences.defaultModelId)
+              ? preferences.defaultModelId!
+              : 'AUTO',
       );
+      if (
+        requestedModel &&
+        requestedModel !== 'AUTO' &&
+        !models.some((model) => model.id === requestedModel)
+      ) {
+        const requested = catalog.find((model) => model.id === requestedModel);
+        setSelectionNotice(
+          requested?.available === false
+            ? `${requested.displayName} is temporarily unavailable. You can keep your draft and try again later.`
+            : 'This model is not included in your current allowance. Start with Auto or compare upgrade options.',
+        );
+      } else setSelectionNotice('');
     }
-  }, [id, preferences, models]);
+  }, [id, preferences, models, requestedModel, catalog]);
   useEffect(() => {
     bottom.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
@@ -174,7 +224,7 @@ export function Chat() {
     return c.id;
   }
   async function send(regenerate?: Message) {
-    if (busy || (!text.trim() && !regenerate)) return;
+    if (busy || !chatAvailable || (!text.trim() && !regenerate)) return;
     setBusy(true);
     setError('');
     const content = regenerate ? 'Regenerate' : text.trim();
@@ -207,6 +257,10 @@ export function Chat() {
         },
       );
       if (!response.ok) {
+        if (response.status === 401 && accessToken)
+          window.dispatchEvent(
+            new CustomEvent('vrompt:session-expired', { detail: accessToken }),
+          );
         const body = await response.json();
         throw new Error(body.message ?? 'Unable to send message.');
       }
@@ -319,6 +373,8 @@ export function Chat() {
             value={selected}
             disabled={busy}
             onChange={(e) => {
+              modelChosenByUser.current = true;
+              setSelectionNotice('');
               setSelected(e.target.value);
               setFeature('chat');
             }}
@@ -339,6 +395,34 @@ export function Chat() {
         </div>
         <span className="muted">{usage?.plan ?? 'Your workspace'}</span>
       </header>
+      {selectionNotice && (
+        <div className="service-notice">
+          <div>
+            <p>{selectionNotice}</p>
+            <Link href="/billing" className="text-link">
+              Compare plans <Icon name="arrow" />
+            </Link>
+          </div>
+        </div>
+      )}
+      {(catalogError || (catalog !== null && !chatAvailable)) && (
+        <div className="service-notice" role="status">
+          <Icon name="chat" />
+          <div>
+            <strong>AI chat is temporarily unavailable.</strong>
+            <p>
+              You can write your next prompt, explore your workspace, and try
+              again later. No credits are used while chat is unavailable.
+            </p>
+            <button
+              className="text-link"
+              onClick={() => setAvailabilityAttempt((value) => value + 1)}
+            >
+              Check availability
+            </button>
+          </div>
+        </div>
+      )}
       <details className="chat-options">
         <summary>
           <Icon name="settings" /> Conversation options
@@ -433,6 +517,8 @@ export function Chat() {
                 className={`model-choice ${selected === 'AUTO' ? 'selected' : ''}`}
                 disabled={busy}
                 onClick={() => {
+                  modelChosenByUser.current = true;
+                  setSelectionNotice('');
                   setSelected('AUTO');
                   setFeature('chat');
                 }}
@@ -449,6 +535,8 @@ export function Chat() {
                   key={model.id}
                   disabled={busy}
                   onClick={() => {
+                    modelChosenByUser.current = true;
+                    setSelectionNotice('');
                     setSelected(model.id);
                     setFeature('chat');
                   }}
@@ -701,6 +789,7 @@ export function Chat() {
               <button
                 className="primary-button"
                 disabled={
+                  !chatAvailable ||
                   !text.trim() ||
                   !allowance ||
                   allowance.dailyRemaining === 0 ||

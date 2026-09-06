@@ -50,6 +50,7 @@ describe('AuthController OAuth routes', () => {
     );
     expect(authService.getGitHubAuthorizationUrl).toHaveBeenCalledWith(
       expect.any(String),
+      expect.any(String),
     );
     expect(response.redirect).toHaveBeenCalledWith(
       'https://github.com/login/oauth/authorize',
@@ -64,7 +65,10 @@ describe('AuthController OAuth routes', () => {
     const response = createResponse();
 
     await controller.githubCallback(
-      createRequest('vrompt_github_oauth_state=stored-state'),
+      createRequest(
+        'vrompt_github_oauth_state=stored-state; vrompt_github_oauth_state_pkce=' +
+          'v'.repeat(43),
+      ),
       'oauth-code',
       'different-state',
       response as never,
@@ -93,13 +97,19 @@ describe('AuthController OAuth routes', () => {
     const response = createResponse();
 
     await controller.githubCallback(
-      createRequest('vrompt_github_oauth_state=stored-state'),
+      createRequest(
+        'vrompt_github_oauth_state=stored-state; vrompt_github_oauth_state_pkce=' +
+          'v'.repeat(43),
+      ),
       'oauth-code',
       'stored-state',
       response as never,
     );
 
-    expect(authService.exchangeGitHubCode).toHaveBeenCalledWith('oauth-code');
+    expect(authService.exchangeGitHubCode).toHaveBeenCalledWith(
+      'oauth-code',
+      'v'.repeat(43),
+    );
     expect(response.cookie).toHaveBeenCalledWith(
       'vrompt_refresh_token',
       'refresh-token',

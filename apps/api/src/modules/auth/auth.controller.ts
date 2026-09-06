@@ -10,13 +10,15 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { randomBytes, timingSafeEqual } from 'node:crypto';
+import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import type { Request, Response } from 'express';
 
 import { AuthService } from './auth.service';
 import { CurrentUser } from './decorators/current-user.decorator';
 import type { AuthenticatedRequest } from './auth.types';
 import { AccessTokenGuard } from './guards/access-token.guard';
+import { AuthOriginGuard } from './guards/auth-origin.guard';
+import { Roles } from './decorators/roles.decorator';
 import { StaffLoginDto } from './dto/staff-login.dto';
 import { ChangeStaffPasswordDto } from './dto/change-staff-password.dto';
 
@@ -25,6 +27,7 @@ const GOOGLE_STATE_COOKIE = 'vrompt_google_oauth_state';
 const GITHUB_STATE_COOKIE = 'vrompt_github_oauth_state';
 
 @Controller('auth')
+@UseGuards(AuthOriginGuard)
 export class AuthController {
   constructor(
     private readonly authService: AuthService,
@@ -42,6 +45,11 @@ export class AuthController {
       8,
       15 * 60,
     );
+    await this.authService.assertAuthRateLimit(
+      `staff-account:${createHash('sha256').update(input.email.trim().toLowerCase()).digest('hex')}`,
+      12,
+      15 * 60,
+    );
     const session = await this.authService.authenticateStaff(
       input.email,
       input.password,
@@ -55,12 +63,18 @@ export class AuthController {
   }
 
   @Post('staff/password')
+  @Roles('ADMIN')
   @UseGuards(AccessTokenGuard)
   async changeStaffPassword(
     @Body() input: ChangeStaffPasswordDto,
     @CurrentUser() user: AuthenticatedRequest['user'],
     @Res({ passthrough: true }) response: Response,
   ) {
+    await this.authService.assertAuthRateLimit(
+      `password:${user.id}`,
+      5,
+      15 * 60,
+    );
     await this.authService.changeStaffPassword(
       user.id,
       input.currentPassword,
@@ -84,9 +98,18 @@ export class AuthController {
         ...this.cookieOptions(5 * 60 * 1000),
         maxAge: 5 * 60 * 1000,
       });
-      response.redirect(this.authService.getGoogleAuthorizationUrl(state));
+      const verifier = randomBytes(32).toString('base64url');
+      response.cookie(
+        GOOGLE_STATE_COOKIE + '_pkce',
+        verifier,
+        this.cookieOptions(5 * 60 * 1000),
+      );
+      response.redirect(
+        this.authService.getGoogleAuthorizationUrl(state, verifier),
+      );
     } catch {
       response.clearCookie(GOOGLE_STATE_COOKIE, this.cookieOptions());
+      response.clearCookie(GOOGLE_STATE_COOKIE + '_pkce', this.cookieOptions());
       response.redirect(`${this.webOrigin}/login?error=google_not_configured`);
     }
   }
@@ -99,12 +122,19 @@ export class AuthController {
     @Res() response: Response,
   ) {
     const storedState = this.getCookie(request, GOOGLE_STATE_COOKIE);
+    const verifier = this.getCookie(request, GOOGLE_STATE_COOKIE + '_pkce');
 
-    if (!state || !storedState || !this.matchesState(state, storedState)) {
+    if (
+      typeof state !== 'string' ||
+      !storedState ||
+      !verifier ||
+      !/^[A-Za-z0-9_-]{43}$/.test(verifier) ||
+      !this.matchesState(state, storedState)
+    ) {
       return this.redirectToFailure(response, GOOGLE_STATE_COOKIE, 'google');
     }
 
-    if (!code) {
+    if (typeof code !== 'string' || !code || code.length > 4096) {
       return this.redirectToFailure(response, GOOGLE_STATE_COOKIE, 'google');
     }
 
@@ -114,13 +144,14 @@ export class AuthController {
         20,
         15 * 60,
       );
-      const session = await this.authService.exchangeGoogleCode(code);
+      const session = await this.authService.exchangeGoogleCode(code, verifier);
       this.setRefreshCookie(
         response,
         session.refreshToken,
         session.refreshExpiresAt,
       );
       response.clearCookie(GOOGLE_STATE_COOKIE, this.cookieOptions());
+      response.clearCookie(GOOGLE_STATE_COOKIE + '_pkce', this.cookieOptions());
       return response.redirect(`${this.webOrigin}/auth/callback`);
     } catch {
       return this.redirectToFailure(response, GOOGLE_STATE_COOKIE, 'google');
@@ -141,9 +172,18 @@ export class AuthController {
         ...this.cookieOptions(5 * 60 * 1000),
         maxAge: 5 * 60 * 1000,
       });
-      response.redirect(this.authService.getGitHubAuthorizationUrl(state));
+      const verifier = randomBytes(32).toString('base64url');
+      response.cookie(
+        GITHUB_STATE_COOKIE + '_pkce',
+        verifier,
+        this.cookieOptions(5 * 60 * 1000),
+      );
+      response.redirect(
+        this.authService.getGitHubAuthorizationUrl(state, verifier),
+      );
     } catch {
       response.clearCookie(GITHUB_STATE_COOKIE, this.cookieOptions());
+      response.clearCookie(GITHUB_STATE_COOKIE + '_pkce', this.cookieOptions());
       response.redirect(`${this.webOrigin}/login?error=github_not_configured`);
     }
   }
@@ -156,12 +196,19 @@ export class AuthController {
     @Res() response: Response,
   ) {
     const storedState = this.getCookie(request, GITHUB_STATE_COOKIE);
+    const verifier = this.getCookie(request, GITHUB_STATE_COOKIE + '_pkce');
 
-    if (!state || !storedState || !this.matchesState(state, storedState)) {
+    if (
+      typeof state !== 'string' ||
+      !storedState ||
+      !verifier ||
+      !/^[A-Za-z0-9_-]{43}$/.test(verifier) ||
+      !this.matchesState(state, storedState)
+    ) {
       return this.redirectToFailure(response, GITHUB_STATE_COOKIE, 'github');
     }
 
-    if (!code) {
+    if (typeof code !== 'string' || !code || code.length > 4096) {
       return this.redirectToFailure(response, GITHUB_STATE_COOKIE, 'github');
     }
 
@@ -171,13 +218,14 @@ export class AuthController {
         20,
         15 * 60,
       );
-      const session = await this.authService.exchangeGitHubCode(code);
+      const session = await this.authService.exchangeGitHubCode(code, verifier);
       this.setRefreshCookie(
         response,
         session.refreshToken,
         session.refreshExpiresAt,
       );
       response.clearCookie(GITHUB_STATE_COOKIE, this.cookieOptions());
+      response.clearCookie(GITHUB_STATE_COOKIE + '_pkce', this.cookieOptions());
       return response.redirect(`${this.webOrigin}/auth/callback`);
     } catch {
       return this.redirectToFailure(response, GITHUB_STATE_COOKIE, 'github');
@@ -215,6 +263,7 @@ export class AuthController {
   }
 
   @Get('me')
+  @Roles('USER', 'ADMIN')
   @UseGuards(AccessTokenGuard)
   async me(@CurrentUser() user: AuthenticatedRequest['user']) {
     return this.authService.getCurrentUser(user.id);
@@ -270,6 +319,7 @@ export class AuthController {
     provider: 'google' | 'github',
   ) {
     response.clearCookie(stateCookie, this.cookieOptions());
+    response.clearCookie(stateCookie + '_pkce', this.cookieOptions());
     return response.redirect(
       `${this.webOrigin}/login?error=${provider}_auth_failed`,
     );
@@ -287,7 +337,7 @@ export class AuthController {
         this.configService.get<string>('NODE_ENV') === 'production' ||
         this.configService.get<boolean>('AUTH_COOKIE_SECURE', false),
       sameSite: sameSite as 'lax' | 'strict' | 'none',
-      path: '/api/v1/auth',
+      path: `/${this.configService.get<string>('API_PREFIX', 'api/v1').replace(/^\/+|\/+$/g, '')}/auth`,
       ...(maxAge ? { maxAge } : {}),
     };
   }

@@ -40,6 +40,24 @@ describe('AuthService', () => {
   };
   const jwtService = { signAsync: jest.fn().mockResolvedValue('access-token') };
 
+  it('fails closed when authentication rate limiting is unavailable', async () => {
+    const service = await createService({}, configService, jwtService, {
+      increment: jest.fn().mockRejectedValue(new Error('Redis offline')),
+    });
+    await expect(
+      service.assertAuthRateLimit('login', 8, 900),
+    ).rejects.toMatchObject({ status: 503 });
+  });
+
+  it('rejects excessive authentication attempts', async () => {
+    const service = await createService({}, configService, jwtService, {
+      increment: jest.fn().mockResolvedValue(9),
+    });
+    await expect(
+      service.assertAuthRateLimit('login', 8, 900),
+    ).rejects.toMatchObject({ status: 429 });
+  });
+
   it('creates a Vrompt user from a verified Google identity', async () => {
     const transaction = {
       siteSetting: { findUnique: jest.fn().mockResolvedValue(null) },
@@ -297,7 +315,9 @@ describe('AuthService', () => {
       { increment: jest.fn() },
     );
 
-    const url = new URL(service.getGitHubAuthorizationUrl('state-value'));
+    const url = new URL(
+      service.getGitHubAuthorizationUrl('state-value', 'v'.repeat(43)),
+    );
 
     expect(url.origin).toBe('https://github.com');
     expect(url.pathname).toBe('/login/oauth/authorize');
@@ -396,6 +416,33 @@ async function createService(
   jwtService: object,
   redisService: object,
 ) {
+  const database = prismaService as {
+    $transaction?: jest.Mock;
+    refreshToken?: { findUnique?: jest.Mock };
+  };
+  const originalTransaction = database.$transaction?.getMockImplementation();
+  if (database.$transaction && originalTransaction) {
+    database.$transaction.mockImplementation((callback: (tx: any) => unknown) =>
+      originalTransaction(async (tx: any) => {
+        tx.$queryRaw ??= jest.fn().mockResolvedValue([]);
+        tx.refreshToken ??= {};
+        tx.refreshToken.create ??= jest.fn().mockResolvedValue(undefined);
+        tx.refreshToken.findUnique ??= database.refreshToken?.findUnique;
+        tx.user ??= {};
+        const originalFind = tx.user.findUnique;
+        tx.user.findUnique = jest.fn((args: any) =>
+          args.where.id
+            ? Promise.resolve({
+                id: args.where.id,
+                role: 'USER',
+                status: 'ACTIVE',
+              })
+            : originalFind?.(args),
+        );
+        return callback(tx);
+      }),
+    );
+  }
   const moduleRef = await Test.createTestingModule({
     providers: [
       AuthService,

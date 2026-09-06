@@ -86,17 +86,14 @@ const modelSeed = [
 ];
 
 async function main() {
+  if (process.env.NODE_ENV === 'production')
+    throw new Error(
+      'Development seeds are disabled in production. Configure models and plans through the admin panel.',
+    );
   const plans = await Promise.all([
     prisma.billingPlan.upsert({
       where: { code: 'FREE' },
-      update: {
-        name: 'Free',
-        description: 'Try the workspace with a shared model allowance.',
-        originalPrice: 0,
-        legacyPlan: MembershipPlan.FREE,
-        billingInterval: BillingInterval.MONTH,
-        isActive: true,
-      },
+      update: {},
       create: {
         code: 'FREE',
         name: 'Free',
@@ -109,14 +106,7 @@ async function main() {
     }),
     prisma.billingPlan.upsert({
       where: { code: 'PRO' },
-      update: {
-        name: 'Pro',
-        description: 'Higher limits and access to every enabled model.',
-        originalPrice: 1900,
-        legacyPlan: MembershipPlan.PRO,
-        billingInterval: BillingInterval.MONTH,
-        isActive: true,
-      },
+      update: {},
       create: {
         code: 'PRO',
         monthlyCredits: 5000,
@@ -141,13 +131,7 @@ async function main() {
           providerModelId: seed.providerModelId,
         },
       },
-      update: {
-        ...seed,
-        enabled: true,
-        autoAvailable:
-          index < 2 || seed.capabilities.includes('image_generation'),
-        displayOrder: index,
-      },
+      update: {},
       create: {
         ...seed,
         enabled: true,
@@ -158,11 +142,6 @@ async function main() {
     });
     models.push(model);
   }
-
-  await prisma.aIModel.update({
-    where: { id: models[0]!.id },
-    data: { fallbackId: models[1]!.id },
-  });
 
   const guest = await prisma.billingPlan.upsert({
     where: { code: 'GUEST' },
@@ -231,22 +210,7 @@ async function main() {
     for (const bucket of buckets) {
       await prisma.generationPolicy.upsert({
         where: { planId_bucket: { planId: plan.id, bucket } },
-        update: {
-          modelId: bucket === 'AUTO' ? null : bucket,
-          routing,
-          allowedFeatures: ['chat', 'image_generation'],
-          dailyLimit: plan.code === 'FREE' ? 20 : 200,
-          monthlyLimit: plan.code === 'FREE' ? 200 : 5000,
-          maxInputChars: plan.code === 'FREE' ? 12000 : 50000,
-          maxContext: plan.code === 'FREE' ? 32000 : 128000,
-          maxOutput: plan.code === 'FREE' ? 2048 : 8192,
-          maxFiles: plan.code === 'FREE' ? 1 : 5,
-          maxFileBytes: plan.code === 'FREE' ? 5_000_000 : 20_000_000,
-          maxDurationSeconds: 90,
-          concurrency: plan.code === 'FREE' ? 1 : 3,
-          ratePerMinute: plan.code === 'FREE' ? 6 : 30,
-          enabled: true,
-        },
+        update: {},
         create: {
           planId: plan.id,
           routing,

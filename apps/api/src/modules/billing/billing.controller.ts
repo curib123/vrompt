@@ -10,6 +10,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import type { Request } from 'express';
+import { ConfigService } from '@nestjs/config';
 
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
@@ -23,11 +24,21 @@ export class BillingController {
   constructor(
     private readonly service: BillingService,
     private readonly monetization: MonetizationService,
+    private readonly config: ConfigService,
   ) {}
 
   @Get('plans')
-  plans() {
-    return this.monetization.publicPlans();
+  async plans() {
+    const mode = this.config.get<string>('PAYMONGO_MODE', 'test');
+    const key = this.config.get<string>('PAYMONGO_SECRET_KEY', '').trim();
+    return {
+      ...(await this.monetization.publicPlans()),
+      checkoutAvailable: Boolean(
+        key.startsWith(mode === 'live' ? 'sk_live_' : 'sk_test_') &&
+        this.config.get<string>('PAYMONGO_WEBHOOK_SECRET', '').trim(),
+      ),
+      paymentMode: mode,
+    };
   }
 
   @Post('checkout')

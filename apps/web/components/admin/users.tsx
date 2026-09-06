@@ -282,21 +282,24 @@ export function AdminUsers() {
               </label>
             </>
           )}
-          <label>
-            {editing === 'new' ? 'Password' : 'New admin password (optional)'}
-            <input
-              name="password"
-              type="password"
-              autoComplete="new-password"
-              required={editing === 'new'}
-              minLength={12}
-              maxLength={128}
-              disabled={busy}
-            />
-          </label>
+          {(editing === 'new' || editing?.id !== actor?.id) && (
+            <label>
+              {editing === 'new' ? 'Password' : 'New admin password (optional)'}
+              <input
+                name="password"
+                type="password"
+                autoComplete="new-password"
+                required={editing === 'new'}
+                minLength={12}
+                maxLength={128}
+                disabled={busy}
+              />
+            </label>
+          )}
           <p className="muted">
             Use at least 12 characters. Passwords apply to administrator
-            accounts only.
+            accounts only. Set a password when promoting a user. Change your own
+            password in Settings.
           </p>
           {formError && (
             <p className="error-banner" role="alert">

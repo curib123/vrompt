@@ -1,2 +1,4 @@
-import Link from 'next/link';
-export default function Page() { return <main className="content-page"><Link href="/">← Vrompt</Link><h1>How Auto works</h1><p className="muted">Auto considers the task, complexity, context, required capabilities, availability, reliability, your plan and remaining allowance. It chooses the least expensive model that meets those constraints and shows you which model answered.</p></main>; }
+import { redirect } from 'next/navigation';
+export default function Page() {
+  redirect('/#how-auto-works');
+}
