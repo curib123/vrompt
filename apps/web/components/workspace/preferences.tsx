@@ -3,7 +3,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/components/providers/auth-provider';
 import { useTheme } from '@/components/theme/theme-provider';
-import { apiRequest, type Model } from '@/lib/api';
+import { apiRequest } from '@/lib/api';
 export type Preferences = {
   displayName: string;
   defaultModelId: string | null;
@@ -13,27 +13,17 @@ export function UserPreferences() {
   const { user, accessToken, logout } = useAuth();
   const { theme, setTheme } = useTheme();
   const [preferences, setPreferences] = useState<Preferences>();
-  const [models, setModels] = useState<Model[]>([]);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState('');
   useEffect(() => {
     if (!accessToken) return;
     const controller = new AbortController();
-    void Promise.all([
-      apiRequest<Preferences>('/workspace/preferences', {
-        accessToken,
-        signal: controller.signal,
-      }),
-      apiRequest<Model[]>('/workspace/models', {
-        accessToken,
-        signal: controller.signal,
-      }),
-    ])
-      .then(([p, m]) => {
-        setPreferences(p);
-        setModels(m);
-      })
+    void apiRequest<Preferences>('/workspace/preferences', {
+      accessToken,
+      signal: controller.signal,
+    })
+      .then(setPreferences)
       .catch((e: Error) => {
         if (!controller.signal.aborted) setError(e.message);
       });
@@ -50,7 +40,7 @@ export function UserPreferences() {
         await apiRequest<Preferences>('/workspace/preferences', {
           accessToken: accessToken!,
           method: 'PATCH',
-          body: JSON.stringify(preferences),
+          body: JSON.stringify({ ...preferences, defaultModelId: null }),
         }),
       );
       setNotice('Your preferences are saved.');
@@ -103,35 +93,9 @@ export function UserPreferences() {
                 }
               />
             </label>
-            <label>
-              Default model
-              <select
-                value={preferences.defaultModelId ?? ''}
-                disabled={busy}
-                onChange={(e) =>
-                  setPreferences({
-                    ...preferences,
-                    defaultModelId: e.target.value || null,
-                  })
-                }
-              >
-                <option value="">Auto — recommended</option>
-                {preferences.defaultModelId &&
-                  !models.some((m) => m.id === preferences.defaultModelId) && (
-                    <option value={preferences.defaultModelId}>
-                      Previously selected model (unavailable)
-                    </option>
-                  )}
-                {models.map((model) => (
-                  <option key={model.id} value={model.id}>
-                    {model.displayName}
-                  </option>
-                ))}
-              </select>
-            </label>
             <p className="muted">
-              New chats use this model when it is available on your plan.
-              Otherwise, they start with Auto.
+              Every new chat starts with Auto ? Recommended. Choose a model in
+              the chat whenever you need one.
             </p>
             <label>
               Send a message with

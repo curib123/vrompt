@@ -70,6 +70,7 @@ export const envValidationSchema = Joi.object({
   GOOGLE_AI_API_KEY: Joi.string().allow('').default(''),
   ANTHROPIC_API_KEY: Joi.string().allow('').default(''),
   MISTRAL_API_KEY: Joi.string().allow('').default(''),
+  GROQ_API_KEY: Joi.string().allow('').default(''),
   CHAT_STORAGE_DIR: Joi.string().default('./private-chat-files'),
   ADMIN_BOOTSTRAP_EMAIL: Joi.string().email().allow('').default(''),
   ADMIN_BOOTSTRAP_USERNAME: Joi.string().min(3).max(32).allow('').default(''),

@@ -94,7 +94,10 @@ export class ChatService {
     )
       throw new BadRequestException('Files exceed this selection’s allowance.');
     let history = await this.prisma.message.findMany({
-      where: { conversationId, status: 'SUCCEEDED' },
+      where: {
+        conversationId,
+        status: { in: ['SUCCEEDED', 'FAILED', 'CANCELLED', 'INTERRUPTED'] },
+      },
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
       take: 100,
     });
@@ -105,11 +108,13 @@ export class ChatService {
       );
       if (index < 1 || history[index - 1]?.role !== 'user')
         throw new BadRequestException(
-          'Choose a completed assistant message to regenerate.',
+          'Choose a finished or failed assistant message to retry.',
         );
       input.content = history[index - 1]!.content;
       history = history.slice(0, index - 1);
     }
+    // Failed responses remain selectable for retry, but never become model context.
+    history = history.filter((message) => message.status === 'SUCCEEDED');
     const olderContext =
       history.length > 8
         ? relevantContext(

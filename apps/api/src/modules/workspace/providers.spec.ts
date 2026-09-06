@@ -4,6 +4,7 @@ import {
   emptyUsage,
   estimateCost,
   GoogleProvider,
+  GroqProvider,
   MistralProvider,
   OpenAIProvider,
   readEvents,
@@ -104,6 +105,94 @@ describe('Provider protocol normalization', () => {
       );
     },
   );
+  it('streams Groq content and records final usage without exposing reasoning', async () => {
+    const fetchMock = jest.spyOn(global, 'fetch').mockResolvedValue(
+      new Response(
+        stream([
+          {
+            choices: [{ delta: { reasoning: 'internal', content: 'Answer' } }],
+          },
+          {
+            choices: [{ finish_reason: 'stop' }],
+            x_groq: {
+              usage: {
+                prompt_tokens: 10,
+                completion_tokens: 8,
+                completion_tokens_details: { reasoning_tokens: 4 },
+              },
+            },
+          },
+        ]),
+      ),
+    );
+    const usage = emptyUsage(),
+      delta = jest.fn();
+    await new GroqProvider().stream(
+      model,
+      [{ role: 'user', content: 'hello' }],
+      [],
+      100,
+      new AbortController().signal,
+      delta,
+      usage,
+    );
+    expect(fetchMock.mock.calls[0]![0]).toBe(
+      'https://api.groq.com/openai/v1/chat/completions',
+    );
+    expect(
+      JSON.parse(fetchMock.mock.calls[0]![1]!.body as string),
+    ).toMatchObject({
+      model: 'exact-requested-model',
+      max_completion_tokens: 100,
+      stream: true,
+    });
+    expect(delta.mock.calls).toEqual([['Answer']]);
+    expect(usage).toMatchObject({
+      input: 10,
+      output: 8,
+      reasoning: 4,
+      reported: true,
+    });
+  });
+  it('rejects interrupted Groq streams and unsupported files before sending', async () => {
+    const fetchMock = jest
+      .spyOn(global, 'fetch')
+      .mockResolvedValue(
+        new Response(
+          stream([{ choices: [{ delta: { content: 'partial' } }] }]),
+        ),
+      );
+    const provider = new GroqProvider();
+    const args = [
+      model,
+      [{ role: 'user', content: 'hi' }],
+      [],
+      100,
+      new AbortController().signal,
+      jest.fn(),
+      emptyUsage(),
+    ] as const;
+    await expect(provider.stream(...args)).rejects.toThrow();
+    fetchMock.mockClear();
+    await expect(
+      provider.stream(
+        model,
+        [],
+        [
+          {
+            name: 'test.pdf',
+            mimeType: 'application/pdf',
+            data: Buffer.from('test'),
+          },
+        ],
+        100,
+        new AbortController().signal,
+        jest.fn(),
+        emptyUsage(),
+      ),
+    ).rejects.toThrow();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
   it('does not treat a disconnected stream as successful', async () => {
     jest
       .spyOn(global, 'fetch')

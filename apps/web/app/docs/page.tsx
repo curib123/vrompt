@@ -45,8 +45,8 @@ export default function Page() {
             'The workspace shows remaining daily and monthly allowances and credits. Wait for the displayed reset or review the available plans in Billing. Stopped requests may count if processing has already occurred.',
           ],
           [
-            'How do I change my default model?',
-            'Open Settings, choose an available default model, and save preferences. New chats use that model when available; otherwise, they start with Auto.',
+            'How do I choose a model?',
+            'Every new chat starts with Auto — Recommended. Use the model selector in chat to choose an available model on your plan. Your manual choice stays selected for that conversation.',
           ],
           [
             'How can I remove my work?',

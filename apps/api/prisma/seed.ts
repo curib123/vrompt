@@ -9,6 +9,21 @@ const prisma = new PrismaClient();
 
 const modelSeed = [
   {
+    provider: ModelProvider.GROQ,
+    providerModelId: 'openai/gpt-oss-20b',
+    displayName: 'GPT-OSS 20B',
+    description: 'Fast reasoning and coding, hosted by Groq.',
+    qualityTier: 2,
+    routingPriority: 25,
+    routingCostScore: 0.375,
+    inputPrice: 0.075,
+    cachedInputPrice: 0.075,
+    outputPrice: 0.3,
+    maxContext: 131072,
+    maxOutput: 8192,
+    capabilities: ['text', 'coding', 'reasoning'],
+  },
+  {
     provider: ModelProvider.OPENAI,
     providerModelId: 'gpt-4o-mini',
     displayName: 'GPT-4o mini',
@@ -25,14 +40,14 @@ const modelSeed = [
   },
   {
     provider: ModelProvider.GOOGLE,
-    providerModelId: 'gemini-2.0-flash',
-    displayName: 'Gemini 2.0 Flash',
+    providerModelId: 'gemini-2.5-flash-lite',
+    displayName: 'Gemini 2.5 Flash-Lite',
     description: 'Low-latency model for everyday work and files.',
     qualityTier: 2,
     routingPriority: 20,
     routingCostScore: 0.18,
     inputPrice: 0.1,
-    cachedInputPrice: 0.025,
+    cachedInputPrice: 0.01,
     outputPrice: 0.4,
     maxContext: 1000000,
     maxOutput: 8192,
@@ -40,15 +55,15 @@ const modelSeed = [
   },
   {
     provider: ModelProvider.ANTHROPIC,
-    providerModelId: 'claude-3-5-haiku-latest',
-    displayName: 'Claude 3.5 Haiku',
+    providerModelId: 'claude-haiku-4-5-20251001',
+    displayName: 'Claude Haiku 4.5',
     description: 'Clear, concise responses with strong instruction following.',
     qualityTier: 2,
     routingPriority: 10,
     routingCostScore: 0.3,
-    inputPrice: 0.8,
-    cachedInputPrice: 0.08,
-    outputPrice: 4,
+    inputPrice: 1,
+    cachedInputPrice: 0.1,
+    outputPrice: 5,
     maxContext: 200000,
     maxOutput: 4096,
     capabilities: ['text', 'vision', 'files'],
@@ -61,9 +76,9 @@ const modelSeed = [
     qualityTier: 2,
     routingPriority: 15,
     routingCostScore: 0.16,
-    inputPrice: 0.1,
-    cachedInputPrice: 0.03,
-    outputPrice: 0.3,
+    inputPrice: 0.15,
+    cachedInputPrice: 0.015,
+    outputPrice: 0.6,
     maxContext: 128000,
     maxOutput: 4096,
     capabilities: ['text', 'coding', 'vision', 'image_generation'],
@@ -135,8 +150,7 @@ async function main() {
       create: {
         ...seed,
         enabled: true,
-        autoAvailable:
-          index < 2 || seed.capabilities.includes('image_generation'),
+        autoAvailable: true,
         displayOrder: index,
       },
     });
@@ -174,7 +188,7 @@ async function main() {
       ratePerMinute: 2,
       allowedFeatures: ['chat'],
       routing: {
-        allowedModelIds: models.slice(0, 2).map((m) => m.id),
+        allowedModelIds: models.map((m) => m.id),
         maxAttempts: 1,
         minimumQualityTier: 1,
         costWeight: 1,
@@ -185,14 +199,7 @@ async function main() {
   const modelIds = models.map((model) => model.id);
   for (const plan of plans) {
     const routing = {
-      allowedModelIds: models
-        .filter(
-          (m) =>
-            plan.code !== 'FREE' ||
-            m.providerModelId === 'gpt-4o-mini' ||
-            m.providerModelId === 'gemini-2.0-flash',
-        )
-        .map((m) => m.id),
+      allowedModelIds: modelIds,
       attemptTimeoutSeconds: 30,
       maxAttempts: 3,
       minimumQualityTier: 1,
@@ -206,7 +213,7 @@ async function main() {
         },
       ],
     };
-    const buckets = plan.code === 'FREE' ? ['AUTO'] : ['AUTO', ...modelIds];
+    const buckets = ['AUTO', ...modelIds];
     for (const bucket of buckets) {
       await prisma.generationPolicy.upsert({
         where: { planId_bucket: { planId: plan.id, bucket } },

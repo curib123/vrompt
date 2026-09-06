@@ -26,7 +26,7 @@ Native image generation is distinct from image understanding. A model with `visi
 5. Persist `CHAT_STORAGE_DIR`. Compose now mounts the `vrompt-private-files` volume at `/var/lib/vrompt/private-chat-files`. Copy any existing private files into it before replacing a running container; a new volume does not migrate old files automatically.
 6. Run authenticated live smoke tests with each configured provider: generate, refresh, download, edit an uploaded image, cancel, exhaust allowance, and deny access from another account.
 
-The seed includes development examples and image entitlements. Do not rerun it against production to enable this feature: it also updates plans, prices, model settings, and allowances.
+The optional development seed inserts missing examples and image entitlements without overwriting existing configuration. It refuses production environments. Configure production image capabilities and allowances through Admin after testing the exact provider/model.
 
 Image requests currently use generation-count allowances. Reported token usage is retained, but image/tool billing is marked estimated because token prices alone may omit tool charges or modality-specific prices. Do not use those estimates as invoice totals. Validate current provider pricing before enabling paid plans.
 

@@ -35,7 +35,7 @@ const modelFields: Field[] = [
   {
     key: 'provider',
     label: 'Provider',
-    options: ['OPENAI', 'GOOGLE', 'ANTHROPIC', 'MISTRAL'],
+    options: ['OPENAI', 'GOOGLE', 'ANTHROPIC', 'MISTRAL', 'GROQ'],
   },
   { key: 'providerModelId', label: 'Provider model ID' },
   { key: 'category', label: 'Category' },

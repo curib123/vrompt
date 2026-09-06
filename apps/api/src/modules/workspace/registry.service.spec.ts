@@ -10,6 +10,8 @@ describe('Routing and reset boundaries', () => {
       maxContext: 2000,
       routingCostScore: new Prisma.Decimal(1),
       routingPriority: 0,
+      inputPrice: new Prisma.Decimal(1),
+      outputPrice: new Prisma.Decimal(2),
     },
     {
       id: 'strong',
@@ -18,9 +20,12 @@ describe('Routing and reset boundaries', () => {
       maxContext: 10000,
       routingCostScore: new Prisma.Decimal(5),
       routingPriority: 0,
+      inputPrice: new Prisma.Decimal(5),
+      outputPrice: new Prisma.Decimal(10),
     },
   ] as AIModel[];
   const policy = {
+    maxOutput: 512,
     routing: {
       minimumQualityTier: 1,
       costWeight: 1,
@@ -68,7 +73,12 @@ describe('Routing and reset boundaries', () => {
     expect(
       rankModels(
         [
-          { ...models[0]!, routingCostScore: new Prisma.Decimal(5) },
+          {
+            ...models[0]!,
+            inputPrice: new Prisma.Decimal(5),
+            outputPrice: new Prisma.Decimal(10),
+            routingCostScore: new Prisma.Decimal(5),
+          },
           { ...models[1]!, routingPriority: 10 },
         ],
         policy,
@@ -82,5 +92,18 @@ describe('Routing and reset boundaries', () => {
     expect(() =>
       validate(policySchema, { bucket: 'AUTO', dailyLimit: -1 }),
     ).toThrow();
+  });
+  it('uses configured API prices ahead of a stale routing score', () => {
+    const ranked = rankModels(
+      [
+        { ...models[0]!, routingCostScore: new Prisma.Decimal(100) },
+        { ...models[1]!, routingCostScore: new Prisma.Decimal(0) },
+      ],
+      policy,
+      'write a welcome email',
+      ['text'],
+      1000,
+    );
+    expect(ranked[0]?.id).toBe('cheap');
   });
 });

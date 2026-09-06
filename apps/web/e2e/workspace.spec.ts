@@ -598,3 +598,112 @@ test('a saved session cookie does not hide landing pricing or legal pages', asyn
     await expect(page.locator('main section').first()).toBeVisible();
   }
 });
+
+test('every New Chat starts with Auto and clears drafts despite a legacy default', async ({
+  page,
+}) => {
+  await mockApi(page);
+  await page.route('**/workspace/preferences', (route) =>
+    route.fulfill({
+      json: { displayName: 'Alex', defaultModelId: modelId, sendOnEnter: true },
+    }),
+  );
+  await page.goto('/chat');
+  const picker = page.getByRole('combobox', { name: 'Choose AI model' });
+  const composer = page.getByRole('textbox', { name: 'Message', exact: true });
+  await expect(picker).toHaveValue('AUTO');
+  await expect(
+    page.getByRole('heading', { name: 'Hello, Alex.' }),
+  ).toBeVisible();
+  await picker.selectOption(modelId);
+  await composer.fill('Draft to discard');
+  await page.getByRole('link', { name: 'New Chat', exact: true }).click();
+  await expect(picker).toHaveValue('AUTO');
+  await expect(composer).toHaveValue('');
+  await composer.fill('Another draft');
+  await page.getByRole('link', { name: 'New Chat', exact: true }).click();
+  await expect(composer).toHaveValue('');
+  await page.getByRole('button', { name: 'Account menu' }).click();
+  await expect(
+    page.getByRole('link', { name: 'Manage subscription' }),
+  ).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(
+    page.getByRole('link', { name: 'Manage subscription' }),
+  ).toBeHidden();
+  await expect(page.locator('.workspace-brand')).toHaveAttribute('href', '/');
+  await page.screenshot({
+    path: 'test-results/chat-desktop.png',
+    fullPage: true,
+  });
+});
+
+test('failed empty responses can be retried and Enter uses Auto once', async ({
+  page,
+}) => {
+  await mockApi(page);
+  await page.route('**/workspace/preferences', (route) =>
+    route.fulfill({
+      json: { displayName: 'Alex', defaultModelId: null, sendOnEnter: true },
+    }),
+  );
+  const failed = {
+    id: 'failed-response',
+    role: 'assistant',
+    content: '',
+    status: 'FAILED',
+    modelName: 'Configured model',
+  };
+  await page.route('**/workspace/conversations/' + conversationId, (route) =>
+    route.fulfill({
+      json: {
+        id: conversationId,
+        title: 'Retry conversation',
+        attachments: [],
+        messages: [
+          {
+            id: 'original-prompt',
+            role: 'user',
+            content: 'Help me write',
+            status: 'SUCCEEDED',
+          },
+          failed,
+        ],
+      },
+    }),
+  );
+  const requests: Record<string, unknown>[] = [];
+  await page.route(
+    '**/conversations/' + conversationId + '/messages',
+    async (route) => {
+      requests.push(route.request().postDataJSON());
+      await route.fulfill({
+        contentType: 'text/event-stream',
+        body:
+          'data: ' +
+          JSON.stringify({
+            type: 'done',
+            status: 'SUCCEEDED',
+            messageId: 'retry-result',
+            usage,
+          }) +
+          '\n\n',
+      });
+    },
+  );
+  await page.goto('/chat?id=' + conversationId);
+  await page.getByRole('button', { name: 'Retry response' }).click();
+  await expect.poll(() => requests.length).toBe(1);
+  expect(requests[0]).toMatchObject({
+    mode: 'AUTO',
+    regenerateMessageId: 'failed-response',
+  });
+  const composer = page.getByRole('textbox', { name: 'Message', exact: true });
+  await expect(composer).toBeEnabled();
+  await composer.fill('Next prompt');
+  await composer.press('Shift+Enter');
+  expect(requests).toHaveLength(1);
+  await composer.press('Enter');
+  await expect.poll(() => requests.length).toBe(2);
+  expect(requests[1]).toMatchObject({ mode: 'AUTO', content: 'Next prompt' });
+});

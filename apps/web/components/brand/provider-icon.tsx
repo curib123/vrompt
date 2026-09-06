@@ -1,5 +1,11 @@
 export function ProviderIcon({ provider }: { provider: string }) {
   const key = provider.toLowerCase();
+  if (key === 'groq')
+    return (
+      <span aria-hidden="true" className="model-symbol model-symbol-groq">
+        groq
+      </span>
+    );
   if (Object.hasOwn(providerNames, key))
     return (
       <span aria-hidden="true" className={`model-symbol model-symbol-${key}`}>
@@ -34,4 +40,5 @@ export const providerNames: Record<string, string> = {
   google: 'Gemini',
   anthropic: 'Claude',
   mistral: 'Mistral',
+  groq: 'Groq',
 };

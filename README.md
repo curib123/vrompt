@@ -121,7 +121,7 @@ The responsive interface uses the Vrompt brand palette, a local Inter variable f
 - `/admin/plans`: plan prices, workspace limits, and daily/monthly generation allowances.
 - `/admin/users`: searchable accounts, administrator creation, role/status changes, and password reset.
 - `/admin/billing`, `/admin/analytics`, `/admin/audit`: payment/webhook monitoring, currency-separated costs, and recorded changes.
-- `/settings`: persisted display name, default model, and message-send behavior; appearance is saved per device.
+- `/settings`: persisted display name and message-send behavior; appearance is saved per device.
 
 Apply all migrations before running the app:
 
@@ -132,15 +132,15 @@ npm run prisma:deploy --workspace @vrompt/api
 
 The application supports active USER and ADMIN roles. Legacy moderator records remain available for historical data, but cannot sign in or use protected endpoints. An administrator can explicitly reassign a legacy account from Users. No accounts are automatically promoted.
 
-Public model cards come from `/api/v1/catalog/models`. Enabled models within their availability dates appear with an availability flag. Missing credentials or maintenance prevent generation; plan-specific access is enforced separately. The reference artwork's Llama logo does not imply a Meta provider integration; supported adapters are OpenAI, Google, Anthropic, and Mistral. Provider marks are bundled locally under `apps/web/public/providers`.
+Public model cards come from `/api/v1/catalog/models`. Only enabled, configured models within their availability dates appear. Maintenance or missing credentials hide them; the chat selector also enforces plan-specific access. The reference artwork's Llama logo does not imply a Meta provider integration; supported adapters are OpenAI, Google, Anthropic, Groq, and Mistral. Provider marks are bundled locally under `apps/web/public/providers`.
 
 The landing page contains the hero, supported providers, Why Vrompt, Auto explanation, models, pricing, and final signup action. Old `/features`, `/auto`, `/models`, and `/pricing` URLs redirect to the matching section. Signup and login use the same OAuth modal and preserve a selected plan, model, or prompt through sign-in.
 
-The app can run without AI or payment credentials. Chat keeps the composer available for drafting, explains that generation is unavailable, and prevents submission without consuming credits. No synthetic AI responses are generated. Configure a provider key and enable an applicable model/routing policy in Admin to enable real generation.
+The app can run without AI or payment credentials. Chat keeps the composer available for drafting, explains that generation is unavailable, and prevents submission without consuming credits. No synthetic AI responses are generated. On a fresh install, migrations create bounded starter models and policies for all five providers. Add a valid provider key to the private environment and recreate/redeploy the API to enable its models. Existing custom pools stay explicit; review these in Admin if they intentionally exclude a provider.
 
 Payments default to **test** mode. Add `PAYMONGO_SECRET_KEY=sk_test_...` and `PAYMONGO_WEBHOOK_SECRET` to the private environment and restart the API to enable test checkout. Register `/api/v1/webhooks/paymongo` with PayMongo using a publicly reachable HTTPS API URL. Missing credentials or a key/mode mismatch disable paid checkout. A browser redirect never grants a paid plan: a verified matching webhook must activate access. Paid access is renewed by checkout, with no automatic card charge. Configure plan prices, currency, and allowances in Admin; USD card acceptance must be enabled on the merchant account when using USD plans.
 
-Migration `0033` removes identified legacy demo accounts and their copied prompt data, without matching real OAuth users or accounts with billing history. `0034` introduces revocable session families and signs out existing sessions once. `0035` disables only the old seeded launch promotion while retaining billing references. Back up an existing database before applying cleanup migrations.
+Migration `0033` removes identified legacy demo accounts and their copied prompt data, without matching real OAuth users or accounts with billing history. `0034` introduces revocable session families and signs out existing sessions once. `0035` disables only the old seeded launch promotion while retaining billing references. Migrations `0036`?`0038` add Groq, current production starter models and policies, replace retired IDs in pools, and update the original Mistral price card. Back up an existing database before applying cleanup migrations.
 
 Authentication uses memory-only access tokens, rotating HttpOnly refresh cookies, issuer/audience validation, OAuth state and PKCE, and immediate session revocation on logout, password changes, suspension, or role changes. Cookie-authenticated mutations require `X-Vrompt-Client: web` and validate browser origin. The API enforces USER/ADMIN roles and ownership independently of UI restrictions. Admin promotion requires a password; self-demotion and self-suspension are rejected.
 
@@ -162,7 +162,7 @@ Important configuration groups include:
 | -------------- | ------------------------------------------------------------------------------------------------- | --------------------------------------- |
 | Web            | `NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_API_BASE_URL`, `INTERNAL_API_BASE_URL`                       | Browser and server API routing          |
 | Data           | `DATABASE_URL`, `REDIS_URL`                                                                       | PostgreSQL and Redis connections        |
-| AI             | `OPENAI_API_KEY`, `GOOGLE_AI_API_KEY`, `ANTHROPIC_API_KEY`, `MISTRAL_API_KEY`, `CHAT_STORAGE_DIR` | Server-side providers and private files |
+| AI             | `OPENAI_API_KEY`, `GOOGLE_AI_API_KEY`, `ANTHROPIC_API_KEY`, `MISTRAL_API_KEY`, `GROQ_API_KEY`, `CHAT_STORAGE_DIR` | Server-side providers and private files |
 | Authentication | `JWT_*`, `GOOGLE_*`, `GITHUB_*`                                                                   | Tokens and OAuth callbacks              |
 | Staff          | `ADMIN_BOOTSTRAP_*`                                                                               | Initial control-panel accounts          |
 | Media          | `MEDIA_STORAGE_DRIVER`, `MEDIA_STORAGE_LOCAL_DIR`, `CLOUDINARY_*`                                 | Local or Cloudinary evidence storage    |
@@ -273,3 +273,9 @@ For local development, avoid deleting volumes. The PostgreSQL volume contains ap
 ## License
 
 This repository is private and currently marked `UNLICENSED` in its package metadata.
+
+### Isolated generation ledger verification
+
+After applying migrations to the dedicated local database `vrompt_mvp_review_20260906`, run `apps/api/test/generation-ledger.live.cjs` in the API environment with `GENERATION_REVIEW=true`. The script refuses production environments and always uses that isolated database. It uses the real chat service, model registry, quotas, transactions and accounting tables with a fixture provider transport. It checks Auto/manual continuation, recorded tokens and cost, credit deductions, idempotency, concurrent reservation limits, failed-response retry and immutable records. Fixture records stay in the isolated database; they never enter the application database.
+
+Starter model references (checked September 6, 2026): [Groq models](https://console.groq.com/docs/models), [Gemini pricing](https://ai.google.dev/gemini-api/docs/pricing), [Gemini retirements](https://ai.google.dev/gemini-api/docs/deprecations), [Claude pricing](https://platform.claude.com/docs/en/about-claude/pricing), [Claude retirements](https://platform.claude.com/docs/en/about-claude/model-deprecations), [Mistral pricing](https://docs.mistral.ai/inference/pricing). Admin prices remain editable; verify them when changing models.

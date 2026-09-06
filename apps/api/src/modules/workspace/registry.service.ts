@@ -15,7 +15,7 @@ const integer = (max: number) =>
 export const modelSchema = Joi.object({
   creditCost: integer(100000).default(1),
   provider: Joi.string()
-    .valid('OPENAI', 'GOOGLE', 'ANTHROPIC', 'MISTRAL')
+    .valid('OPENAI', 'GOOGLE', 'ANTHROPIC', 'MISTRAL', 'GROQ')
     .required(),
   providerModelId: Joi.string()
     .pattern(/^[a-zA-Z0-9._:/-]+$/)
@@ -161,6 +161,11 @@ export function rankModels(
   const required = [
     ...new Set([...capabilities, ...matched.flatMap((r) => r.capabilities)]),
   ];
+  // Compare estimated API spend for the same request budget, after checking fit.
+  const inputTokens = Math.max(0, context - policy.maxOutput);
+  const cost = (model: AIModel) =>
+    inputTokens * Number(model.inputPrice) +
+    policy.maxOutput * Number(model.outputPrice);
   return models
     .filter(
       (m) =>
@@ -170,8 +175,8 @@ export function rankModels(
     )
     .sort(
       (a, b) =>
-        (Number(a.routingCostScore) - Number(b.routingCostScore)) *
-          (routing.costWeight ?? 1) ||
+        (cost(a) - cost(b)) * (routing.costWeight ?? 1) ||
+        Number(a.routingCostScore) - Number(b.routingCostScore) ||
         b.routingPriority - a.routingPriority ||
         a.id.localeCompare(b.id),
     );

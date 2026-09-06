@@ -24,6 +24,9 @@ apps/api/private-chat-files/
 packages/*/dist/
 
 # env
+.env*
+!.env.example
+!.env.production.example
 .env
 .env.production
 .env.local

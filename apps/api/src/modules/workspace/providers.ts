@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { AIModel, ModelProvider, Prisma } from '@prisma/client';
 
 export type ProviderOptions = {
@@ -88,6 +88,7 @@ async function request(
     headers: { 'Content-Type': 'application/json', ...headers },
     body: JSON.stringify(body),
     signal,
+    redirect: 'error',
   });
   if (!response.ok) {
     await response.body?.cancel();
@@ -102,7 +103,7 @@ async function request(
 
 export class OpenAIProvider implements AIProvider {
   available() {
-    return Boolean(process.env.OPENAI_API_KEY);
+    return Boolean(process.env.OPENAI_API_KEY?.trim());
   }
   async stream(
     model: AIModel,
@@ -196,7 +197,7 @@ export class OpenAIProvider implements AIProvider {
 
 export class GoogleProvider implements AIProvider {
   available() {
-    return Boolean(process.env.GOOGLE_AI_API_KEY);
+    return Boolean(process.env.GOOGLE_AI_API_KEY?.trim());
   }
   async stream(
     model: AIModel,
@@ -272,7 +273,7 @@ export class GoogleProvider implements AIProvider {
 
 export class AnthropicProvider implements AIProvider {
   available() {
-    return Boolean(process.env.ANTHROPIC_API_KEY);
+    return Boolean(process.env.ANTHROPIC_API_KEY?.trim());
   }
   async stream(
     model: AIModel,
@@ -357,7 +358,7 @@ export class AnthropicProvider implements AIProvider {
 
 export class MistralProvider implements AIProvider {
   available() {
-    return Boolean(process.env.MISTRAL_API_KEY);
+    return Boolean(process.env.MISTRAL_API_KEY?.trim());
   }
   async stream(
     model: AIModel,
@@ -474,14 +475,80 @@ export class MistralProvider implements AIProvider {
   }
 }
 
+export class GroqProvider implements AIProvider {
+  available() {
+    return Boolean(process.env.GROQ_API_KEY?.trim());
+  }
+  async stream(
+    model: AIModel,
+    messages: ProviderMessage[],
+    files: ProviderFile[],
+    maxOutput: number,
+    signal: AbortSignal,
+    delta: (text: string) => void,
+    usage: NormalizedUsage,
+    options?: ProviderOptions,
+  ) {
+    if (options?.feature === 'image_generation')
+      throw new ProviderFailure('UNSUPPORTED_FEATURE', false);
+    const input = messages.map((message) => ({ ...message }));
+    for (const file of files) {
+      if (file.mimeType !== 'text/plain')
+        throw new ProviderFailure('UNSUPPORTED_FILE', false);
+      input[input.length - 1]!.content +=
+        `\nFile ${file.name}:\n${file.data.toString('utf8')}`;
+    }
+    const body = await request(
+      'https://api.groq.com/openai/v1/chat/completions',
+      { Authorization: `Bearer ${process.env.GROQ_API_KEY}` },
+      {
+        model: model.providerModelId,
+        messages: input,
+        max_completion_tokens: maxOutput,
+        stream: true,
+      },
+      signal,
+    );
+    let complete = false;
+    for await (const event of readEvents(body)) {
+      if (event.error) throw new ProviderFailure('PROVIDER_ERROR');
+      const choice = event.choices?.[0];
+      if (typeof choice?.delta?.content === 'string')
+        delta(choice.delta.content);
+      if (choice?.finish_reason) complete = true;
+      const u = event.usage ?? event.x_groq?.usage;
+      if (u)
+        Object.assign(usage, {
+          input: u.prompt_tokens ?? 0,
+          cached: u.prompt_tokens_details?.cached_tokens ?? 0,
+          output: u.completion_tokens ?? 0,
+          reasoning: u.completion_tokens_details?.reasoning_tokens ?? 0,
+          raw: u,
+          reported: true,
+        });
+    }
+    if (!complete) throw new ProviderFailure('INTERRUPTED_STREAM');
+  }
+}
+
 @Injectable()
-export class ProviderRegistry {
+export class ProviderRegistry implements OnModuleInit {
   private readonly providers: Record<ModelProvider, AIProvider> = {
     OPENAI: new OpenAIProvider(),
     GOOGLE: new GoogleProvider(),
     ANTHROPIC: new AnthropicProvider(),
     MISTRAL: new MistralProvider(),
+    GROQ: new GroqProvider(),
   };
+  onModuleInit() {
+    const status = Object.entries(this.providers)
+      .map(
+        ([name, provider]) =>
+          `${name}: ${provider.available() ? 'configured' : 'disabled (missing key)'}`,
+      )
+      .join(', ');
+    new Logger(ProviderRegistry.name).log(status);
+  }
   get(provider: ModelProvider) {
     return this.providers[provider];
   }

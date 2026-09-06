@@ -78,11 +78,20 @@ describe('Auto orchestration', () => {
     );
     const events: any[] = [];
     const controller = new AbortController();
-    const run = (mode: 'AUTO' | 'MANUAL' = 'AUTO') =>
+    const run = (
+      mode: 'AUTO' | 'MANUAL' = 'AUTO',
+      retry: { regenerateMessageId?: string } = {},
+    ) =>
       service.generate(
         'user',
         'conversation',
-        { requestId: 'request', content: 'hello', mode, modelId: 'first' },
+        {
+          requestId: 'request',
+          content: 'hello',
+          mode,
+          modelId: 'first',
+          ...retry,
+        },
         controller.signal,
         (e) => events.push(e),
       );
@@ -197,6 +206,23 @@ describe('Auto orchestration', () => {
     await expect(s.run()).rejects.toThrow('No suitable Auto model');
   });
 
+  it('retries an empty failed assistant response using its original prompt', async () => {
+    const s = setup();
+    s.prisma.message.findMany.mockResolvedValue([
+      { id: 'failed', role: 'assistant', content: '', status: 'FAILED' },
+      {
+        id: 'prompt',
+        role: 'user',
+        content: 'Original request',
+        status: 'SUCCEEDED',
+      },
+    ]);
+    await s.run('AUTO', { regenerateMessageId: 'failed' });
+    expect(s.stream).toHaveBeenCalled();
+    expect(s.stream.mock.calls[0]![1]).toEqual([
+      { role: 'user', content: 'Original request' },
+    ]);
+  });
   it('does not contact a provider when quota reservation fails', async () => {
     const s = setup();
     s.quota.reserve.mockRejectedValue(new Error('quota exhausted'));

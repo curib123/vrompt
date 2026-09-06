@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useEffectEvent, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/components/providers/auth-provider';
@@ -28,6 +28,7 @@ export function Chat() {
   const router = useRouter();
   const params = useSearchParams();
   const id = params.get('id');
+  const newChat = params.get('new');
   const requestedModel = params.get('model');
   const [catalog, setCatalog] = useState<Model[] | null>(null);
   const [catalogError, setCatalogError] = useState(false);
@@ -52,6 +53,14 @@ export function Chat() {
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const abort = useRef<AbortController | null>(null);
+  const viewVersion = useRef(0);
+  const previousView = useRef<string | null>(null);
+  const loadConversation = useEffectEvent((conversationId: string) =>
+    apiRequest<Conversation & { messages: Message[]; attachments: ChatFile[] }>(
+      `/workspace/conversations/${conversationId}`,
+      { accessToken: accessToken! },
+    ),
+  );
   const bottom = useRef<HTMLDivElement>(null);
   const upload = useRef<HTMLInputElement>(null);
   const allowance = usage?.allowances.find((a) => a.bucket === selected);
@@ -130,6 +139,22 @@ export function Chat() {
       .catch((e) => setError(e.message));
   }, [accessToken, availabilityAttempt]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
+    if (createdNavigation.current === id && id) {
+      createdNavigation.current = null;
+      return;
+    }
+    viewVersion.current += 1;
+    abort.current?.abort();
+    abort.current = null;
+    // A route change starts a separate conversation, including a second New Chat click.
+    setBusy(false);
+    const view = `${user?.id ?? 'guest'}:${id ?? ''}:${newChat ?? ''}`;
+    if (previousView.current !== view) {
+      setText('');
+      previousView.current = view;
+    }
+    setFeature('chat');
+    setSelectionNotice('');
     const inserted = sessionStorage.getItem('vrompt-insert-prompt');
     // Synchronize a prompt handed off through browser session storage.
     if (inserted) {
@@ -137,25 +162,20 @@ export function Chat() {
       setText(inserted);
       sessionStorage.removeItem('vrompt-insert-prompt');
     }
-    if (!accessToken) return;
-    if (createdNavigation.current === id && id) {
-      createdNavigation.current = null;
-      return;
-    }
     let current = true;
     modelChosenByUser.current = false;
     setError('');
     setSelected('AUTO');
+    setMessages([]);
+    setFiles([]);
+    setSelectedFiles([]);
     if (!id) {
-      setMessages([]);
-      setFiles([]);
-      setSelectedFiles([]);
+      setProjectId(params.get('project') ?? '');
       setTitle('New conversation');
       return;
     }
-    void apiRequest<
-      Conversation & { messages: Message[]; attachments: ChatFile[] }
-    >(`/workspace/conversations/${id}`, { accessToken })
+    if (!user) return;
+    void loadConversation(id)
       .then((c) => {
         if (current) {
           setMessages(c.messages);
@@ -171,9 +191,9 @@ export function Chat() {
     return () => {
       current = false;
     };
-  }, [id, accessToken]);
+  }, [id, newChat, user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
-    // Apply persisted defaults only to a new conversation.
+    // A direct model link is an explicit selection; otherwise every new chat is Auto.
     if (
       !id &&
       !createdNavigation.current &&
@@ -186,9 +206,7 @@ export function Chat() {
           ? 'AUTO'
           : models.some((model) => model.id === requestedModel)
             ? requestedModel!
-            : models.some((model) => model.id === preferences.defaultModelId)
-              ? preferences.defaultModelId!
-              : 'AUTO',
+            : 'AUTO',
       );
       if (
         requestedModel &&
@@ -205,13 +223,14 @@ export function Chat() {
         );
       } else setSelectionNotice('');
     }
-  }, [id, preferences, models, requestedModel, catalog]);
+  }, [id, newChat, preferences, models, requestedModel, catalog]);
   useEffect(() => {
-    bottom.current?.scrollIntoView({ behavior: 'smooth' });
+    if (messages.length) bottom.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
   useEffect(() => () => abort.current?.abort(), []);
   async function ensureConversation() {
     if (id) return id;
+    const version = viewVersion.current;
     const c = await apiRequest<Conversation>('/workspace/conversations', {
       accessToken: accessToken!,
       method: 'POST',
@@ -220,12 +239,22 @@ export function Chat() {
         projectId: projectId || null,
       }),
     });
+    if (version !== viewVersion.current)
+      throw new DOMException('Conversation changed', 'AbortError');
     createdNavigation.current = c.id;
+    setTitle(c.title);
     router.replace(`/chat?id=${c.id}`);
     return c.id;
   }
   async function send(regenerate?: Message) {
-    if (busy || !chatAvailable || (!text.trim() && !regenerate)) return;
+    if (
+      abort.current ||
+      busy ||
+      !chatAvailable ||
+      (!text.trim() && !regenerate)
+    )
+      return;
+    const version = viewVersion.current;
     setBusy(true);
     setError('');
     const content = regenerate ? 'Regenerate' : text.trim();
@@ -234,6 +263,7 @@ export function Chat() {
     let conversationId = id;
     try {
       conversationId = accessToken ? await ensureConversation() : null;
+      if (controller.signal.aborted) return;
       const response = await fetch(
         `${getApiBaseUrl()}${accessToken ? `/workspace/conversations/${conversationId}/messages` : '/guest/messages'}`,
         {
@@ -277,8 +307,10 @@ export function Chat() {
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
       let buffer = '';
+      let completed = false;
       while (true) {
         const { value, done } = await reader.read();
+        if (version !== viewVersion.current) return;
         if (done) break;
         buffer += decoder.decode(value, { stream: true });
         let boundary: number;
@@ -316,6 +348,7 @@ export function Chat() {
             );
           if (event.type === 'error') setError(event.message);
           if (event.type === 'done') {
+            completed = true;
             setUsage(event.usage);
             setMessages((old) =>
               old.map((m) =>
@@ -327,10 +360,16 @@ export function Chat() {
           }
         }
       }
+      if (!completed)
+        throw new Error(
+          'The connection ended before the response finished. Please retry.',
+        );
     } catch (e) {
+      if (version !== viewVersion.current) return;
       if (!(e instanceof DOMException && e.name === 'AbortError'))
         setError(e instanceof Error ? e.message : 'Unable to send message.');
     } finally {
+      if (version !== viewVersion.current) return;
       setBusy(false);
       abort.current = null;
       if (conversationId) {
@@ -340,7 +379,7 @@ export function Chat() {
         }>(`/workspace/conversations/${conversationId}`, {
           accessToken: accessToken ?? undefined,
         }).catch(() => null);
-        if (c) {
+        if (c && version === viewVersion.current) {
           setMessages(c.messages);
           setFiles(c.attachments);
         }
@@ -370,7 +409,7 @@ export function Chat() {
       <header className="chat-toolbar">
         <div className="chat-toolbar-title">
           <span className="eyebrow">YOUR WORKSPACE</span>
-          <strong>New chat</strong>
+          <strong>{id ? title : 'New chat'}</strong>
         </div>
         <div className="chat-model-picker">
           <select
@@ -632,9 +671,9 @@ export function Chat() {
                 {m.artifacts?.map((a) => (
                   <GeneratedImage key={a.id} file={a} />
                 ))}
-                {m.role === 'assistant' &&
-                  (m.content || Boolean(m.artifacts?.length)) && (
-                    <div className="message-actions">
+                {m.role === 'assistant' && m.status !== 'RESERVED' && (
+                  <div className="message-actions">
+                    {m.content && (
                       <button
                         onClick={() =>
                           void navigator.clipboard
@@ -648,17 +687,20 @@ export function Chat() {
                       >
                         Copy response
                       </button>
-                      <button
-                        disabled={busy || !accessToken}
-                        onClick={() => void send(m)}
-                      >
-                        Regenerate
-                      </button>
-                      {!['SUCCEEDED', 'RESERVED'].includes(m.status) && (
-                        <span>{m.status.toLowerCase()}</span>
-                      )}
-                    </div>
-                  )}
+                    )}
+                    <button
+                      disabled={busy || !accessToken}
+                      onClick={() => void send(m)}
+                    >
+                      {m.status === 'SUCCEEDED'
+                        ? 'Regenerate'
+                        : 'Retry response'}
+                    </button>
+                    {!['SUCCEEDED', 'RESERVED'].includes(m.status) && (
+                      <span>{m.status.toLowerCase()}</span>
+                    )}
+                  </div>
+                )}
               </article>
             ))}
           </>

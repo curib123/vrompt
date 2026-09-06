@@ -1,7 +1,7 @@
 'use client';
 import Link from 'next/link';
 import type { Route } from 'next';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { BrandLockup } from '@/components/brand/brand-mark';
 import { useAuth } from '@/components/providers/auth-provider';
@@ -49,6 +49,7 @@ export function WorkspaceShell({
   const { user, isLoading, logout } = useAuth();
   const { toggleTheme } = useTheme();
   const pathname = usePathname();
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [logoutError, setLogoutError] = useState('');
   const { announcement } = useSiteSettings();
@@ -65,8 +66,9 @@ export function WorkspaceShell({
         menuButton.current?.focus();
       }
       if (event.key !== 'Tab') return;
-      const targets =
-        sidebar.current?.querySelectorAll<HTMLElement>('a,button');
+      const targets = Array.from(
+        sidebar.current?.querySelectorAll<HTMLElement>('a,button') ?? [],
+      ).filter((element) => element.getClientRects().length > 0);
       if (!targets?.length) return;
       const first = targets[0],
         last = targets[targets.length - 1];
@@ -131,7 +133,7 @@ export function WorkspaceShell({
         >
           <Icon name="menu" />
         </button>
-        <Link aria-label="Vrompt workspace" href="/chat">
+        <Link aria-label="Vrompt home" href="/">
           <BrandLockup compact />
         </Link>
       </header>
@@ -147,11 +149,7 @@ export function WorkspaceShell({
         id="workspace-navigation"
         className={`workspace-sidebar ${open ? 'is-open' : ''}`}
       >
-        <Link
-          aria-label="Vrompt workspace"
-          className="workspace-brand"
-          href={admin ? '/admin' : '/chat'}
-        >
+        <Link aria-label="Vrompt home" className="workspace-brand" href="/">
           <BrandLockup compact />
         </Link>
         <p className="eyebrow">
@@ -162,7 +160,19 @@ export function WorkspaceShell({
             <Link
               key={href}
               href={href as Route}
-              onClick={() => setOpen(false)}
+              onClick={(event) => {
+                setOpen(false);
+                if (
+                  href === '/chat' &&
+                  !event.ctrlKey &&
+                  !event.metaKey &&
+                  !event.shiftKey &&
+                  !event.altKey
+                ) {
+                  event.preventDefault();
+                  router.push(`/chat?new=${crypto.randomUUID()}`);
+                }
+              }}
               aria-current={pathname === href ? 'page' : undefined}
             >
               <Icon name={navigationIcons[href] ?? 'grid'} />
@@ -174,10 +184,11 @@ export function WorkspaceShell({
           <Link href="/docs">
             <Icon name="help" /> Help & getting started
           </Link>
-          <button onClick={toggleTheme}>
-            <Icon name="sun" /> Change theme
-          </button>
-          <div className="sidebar-account">
+          <button
+            className="sidebar-account"
+            popoverTarget="account-actions"
+            aria-label="Account menu"
+          >
             <span className="account-avatar">
               {user?.username.slice(0, 2).toUpperCase() ?? 'V'}
             </span>
@@ -185,19 +196,40 @@ export function WorkspaceShell({
               <strong>{user?.username ?? 'Welcome to Vrompt'}</strong>
               <small>{user?.email ?? 'Temporary guest chat'}</small>
             </span>
-          </div>
-          {user && (
-            <button
-              onClick={() => {
-                setLogoutError('');
-                void logout().catch(() =>
-                  setLogoutError('Unable to sign out. Please retry.'),
-                );
-              }}
-            >
-              <Icon name="logout" /> Sign out
+            <Icon name="settings" />
+          </button>
+          <div
+            id="account-actions"
+            popover="auto"
+            className="account-menu"
+            onClick={(event) => event.currentTarget.hidePopover()}
+          >
+            {user && (
+              <Link href={admin ? '/admin/settings' : '/settings'}>
+                <Icon name="settings" /> Settings
+              </Link>
+            )}
+            {user && (
+              <Link href={admin ? '/admin/billing' : '/billing'}>
+                <Icon name="card" /> Manage subscription
+              </Link>
+            )}
+            <button onClick={toggleTheme}>
+              <Icon name="sun" /> Change theme
             </button>
-          )}
+            {user && (
+              <button
+                onClick={() => {
+                  setLogoutError('');
+                  void logout().catch(() =>
+                    setLogoutError('Unable to sign out. Please retry.'),
+                  );
+                }}
+              >
+                <Icon name="logout" /> Sign out
+              </button>
+            )}
+          </div>
           {logoutError && (
             <p role="alert" className="error-banner">
               {logoutError}

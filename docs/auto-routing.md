@@ -24,11 +24,11 @@ The protected policy API accepts these fields under `routing`:
 }
 ```
 
-Use actual registry UUIDs. An empty or missing pool disables Auto; newly registered models do not join existing pools automatically. Manual policies also accept this shape, with an empty pool. Unknown UUIDs are rejected. The development seed limits Free Auto to the example OpenAI and Gemini chat models; Pro gets the example pool. Do not rerun the seed to update production policies.
+Use actual registry UUIDs. An empty or missing pool disables Auto; newly registered models do not join existing pools automatically. Manual policies also accept this shape, with an empty pool. Unknown UUIDs are rejected. Production migrations provide a bounded starter pool for Free and Pro across all supported providers; missing keys remove unavailable candidates. Do not rerun the seed to update production policies.
 
 Migration `0027_auto_model_pools` snapshots currently enabled Auto models into existing policies that lack a pool. This preserves existing access, including existing Free access; review each plan's pool after migration. It does not retroactively decide which of your models should be paid-only. Apply reviewed pending migrations before deploying this code, or older policies with missing pools will fail closed.
 
-Cost score is the primary ordering after quality/capability filtering. Priority only breaks equal-cost ties, followed by model UUID for stable results. `costWeight: 0` intentionally makes priority primary. Scores remain operator-configured, not live price quotes or measured answer quality. Keyword rules provide inexpensive, deterministic task classification; they do not semantically understand every request. Existing rules are preserved by migration; new seed policies include example technical keywords.
+Estimated API spend (input context and the same output budget at the configured token prices) is the primary ordering after quality/capability filtering. Routing cost score, priority, then model UUID break ties. `costWeight: 0` disables price ordering and uses the configured score. Prices and scores remain operator-configured, not live quotes or measured answer quality. Keyword rules provide inexpensive, deterministic task classification; they do not semantically understand every request. Existing rules are preserved by migration; new seed policies include example technical keywords.
 
 ## Reliability
 

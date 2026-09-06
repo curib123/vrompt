@@ -8,3 +8,10 @@ apps/web/test-results
 **/coverage
 apps/api/dist
 packages/*/dist
+storage
+**/*.dump
+**/*.pem
+**/*.key
+**/private-chat-files
+**/storage
+**/*.log
