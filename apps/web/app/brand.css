@@ -2649,3 +2649,42 @@ html {
   font-weight: 700;
   letter-spacing: -1px;
 }
+
+.feedback-modal {
+  max-width: 500px;
+}
+.feedback-modal-body {
+  display: grid;
+  gap: 20px;
+}
+.feedback-modal-icon {
+  display: grid;
+  width: 48px;
+  height: 48px;
+  place-items: center;
+  border-radius: 16px;
+}
+.feedback-modal-icon svg {
+  width: 24px;
+  height: 24px;
+}
+.feedback-modal-success .feedback-modal-icon {
+  color: #047857;
+  background: #d1fae5;
+}
+.feedback-modal-warning .feedback-modal-icon {
+  color: #b45309;
+  background: #fef3c7;
+}
+.feedback-modal-error .feedback-modal-icon {
+  color: #b91c1c;
+  background: #fee2e2;
+}
+.feedback-modal-actions {
+  justify-content: flex-end;
+  margin-top: 0;
+}
+.feedback-destructive-button {
+  background: #dc2626 !important;
+  box-shadow: 0 10px 24px rgb(220 38 38 / 20%) !important;
+}

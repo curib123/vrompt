@@ -12,6 +12,7 @@ import { useEffect, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/components/providers/auth-provider';
 import { useAuthDialog } from '@/components/providers/auth-dialog-provider';
+import { useFeedback } from '@/components/ui/feedback-modal';
 import {
   apiRequest,
   type Conversation,
@@ -22,6 +23,7 @@ import {
 
 export function Conversations() {
   const { accessToken } = useAuth();
+  const { alert, confirm } = useFeedback();
   const [items, setItems] = useState<Conversation[]>([]);
   const [query, setQuery] = useState('');
   const [error, setError] = useState('');
@@ -45,12 +47,16 @@ export function Conversations() {
   }, [accessToken, query]);
   async function change(c: Conversation, remove = false) {
     const title = remove ? null : window.prompt('Conversation name', c.title);
-    if (
-      remove
-        ? !window.confirm('Delete this conversation and its files?')
-        : !title?.trim()
-    )
-      return;
+    if (remove) {
+      const accepted = await confirm({
+        title: 'Delete conversation?',
+        message:
+          'This removes the conversation and its attached files. This action cannot be undone.',
+        confirmLabel: 'Delete conversation',
+        destructive: true,
+      });
+      if (!accepted) return;
+    } else if (!title?.trim()) return;
     try {
       await apiRequest(`/workspace/conversations/${c.id}`, {
         accessToken: accessToken!,
@@ -62,8 +68,17 @@ export function Conversations() {
           ? old.filter((x) => x.id !== c.id)
           : old.map((x) => (x.id === c.id ? { ...x, title: title! } : x)),
       );
+      alert({
+        tone: 'success',
+        title: remove ? 'Conversation deleted' : 'Conversation renamed',
+        message: remove
+          ? 'The conversation and its files were removed.'
+          : 'Your conversation title was updated.',
+      });
     } catch (e) {
-      setError((e as Error).message);
+      const message = (e as Error).message;
+      setError(message);
+      alert({ tone: 'error', title: 'Could not update conversation', message });
     }
   }
   return (
@@ -102,6 +117,7 @@ export function Conversations() {
 }
 export function SavedPrompts() {
   const { accessToken } = useAuth();
+  const { alert, confirm } = useFeedback();
   const router = useRouter();
   const [items, setItems] = useState<SavedPrompt[]>([]);
   const [editing, setEditing] = useState<string>();
@@ -135,8 +151,15 @@ export function SavedPrompts() {
       setContent('');
       setEditing(undefined);
       await load();
+      alert({
+        tone: 'success',
+        title: editing ? 'Prompt updated' : 'Prompt saved',
+        message: 'Your saved prompt is ready to use in chat.',
+      });
     } catch (e) {
-      setError((e as Error).message);
+      const message = (e as Error).message;
+      setError(message);
+      alert({ tone: 'error', title: 'Could not save prompt', message });
     }
   }
   return (
@@ -198,14 +221,35 @@ export function SavedPrompts() {
               Edit
             </button>
             <button
-              onClick={() => {
-                if (window.confirm('Delete this saved prompt?'))
-                  void apiRequest(`/workspace/saved-prompts/${p.id}`, {
+              onClick={async () => {
+                const accepted = await confirm({
+                  title: 'Delete saved prompt?',
+                  message:
+                    'This removes the reusable prompt from your library.',
+                  confirmLabel: 'Delete prompt',
+                  destructive: true,
+                });
+                if (!accepted) return;
+                try {
+                  await apiRequest(`/workspace/saved-prompts/${p.id}`, {
                     accessToken: accessToken!,
                     method: 'DELETE',
-                  })
-                    .then(load)
-                    .catch((e) => setError(e.message));
+                  });
+                  await load();
+                  alert({
+                    tone: 'success',
+                    title: 'Prompt deleted',
+                    message: 'The saved prompt was removed from your library.',
+                  });
+                } catch (e) {
+                  const message = (e as Error).message;
+                  setError(message);
+                  alert({
+                    tone: 'error',
+                    title: 'Could not delete prompt',
+                    message,
+                  });
+                }
               }}
             >
               Delete
@@ -401,6 +445,7 @@ export function BillingPage() {
 }
 function BillingContent() {
   const { openLogin } = useAuthDialog();
+  const { alert } = useFeedback();
   const { accessToken, user } = useAuth();
   const router = useRouter();
   const requestedPlan = useSearchParams().get('plan');
@@ -435,9 +480,14 @@ function BillingContent() {
     }
     setSelected(plan.id);
     if (plans.data?.checkoutAvailable === false) {
-      setError(
-        'Paid checkout is temporarily unavailable. You can continue using your free workspace.',
-      );
+      const message =
+        'Paid checkout is temporarily unavailable. You can continue using your free workspace.';
+      setError(message);
+      alert({
+        tone: 'warning',
+        title: 'Checkout is unavailable',
+        message,
+      });
       return;
     }
     setBusy(true);

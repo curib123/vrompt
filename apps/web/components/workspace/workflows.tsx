@@ -2,6 +2,7 @@
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/components/providers/auth-provider';
+import { useFeedback } from '@/components/ui/feedback-modal';
 import { apiRequest, type Model } from '@/lib/api';
 import type { Project } from './projects';
 type Step = { name: string; prompt: string; modelId: string | null };
@@ -27,6 +28,7 @@ const first: Step = {
 };
 export function Workflows() {
   const { accessToken } = useAuth();
+  const { alert, confirm } = useFeedback();
   const [items, setItems] = useState<Workflow[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [models, setModels] = useState<Model[]>([]);
@@ -71,8 +73,15 @@ export function Workflows() {
       setEditing(undefined);
       setName('');
       await load();
+      alert({
+        tone: 'success',
+        title: editing ? 'Workflow updated' : 'Workflow created',
+        message: 'Your workflow is ready to run from this workspace.',
+      });
     } catch (e) {
-      setError((e as Error).message);
+      const message = (e as Error).message;
+      setError(message);
+      alert({ tone: 'error', title: 'Could not save workflow', message });
     } finally {
       setBusy(false);
     }
@@ -93,8 +102,17 @@ export function Workflows() {
         },
       );
       setRuns((old) => [result, ...old]);
+      alert({
+        tone: 'success',
+        title: 'Workflow completed',
+        message: 'The execution output is available in your chat history.',
+      });
     } catch (e) {
-      setError((e as Error).message);
+      const message = (e as Error).message;
+      setError(message);
+      if (!(e instanceof DOMException && e.name === 'AbortError')) {
+        alert({ tone: 'error', title: 'Workflow failed', message });
+      }
     } finally {
       setBusy(false);
       abort.current = null;
@@ -267,20 +285,36 @@ export function Workflows() {
             </button>
             <button
               disabled={busy}
-              onClick={() =>
-                void apiRequest(`/workspace/workflows/${w.id}`, {
-                  accessToken: accessToken!,
-                  method: 'PATCH',
-                  body: JSON.stringify({
-                    projectId: w.projectId,
-                    name: w.name,
-                    steps: w.steps,
-                    enabled: !w.enabled,
-                  }),
-                })
-                  .then(load)
-                  .catch((e) => setError(e.message))
-              }
+              onClick={async () => {
+                try {
+                  await apiRequest(`/workspace/workflows/${w.id}`, {
+                    accessToken: accessToken!,
+                    method: 'PATCH',
+                    body: JSON.stringify({
+                      projectId: w.projectId,
+                      name: w.name,
+                      steps: w.steps,
+                      enabled: !w.enabled,
+                    }),
+                  });
+                  await load();
+                  alert({
+                    tone: 'success',
+                    title: w.enabled ? 'Workflow disabled' : 'Workflow enabled',
+                    message: w.enabled
+                      ? 'It will stay saved until you enable it again.'
+                      : 'It can now be run from this page.',
+                  });
+                } catch (e) {
+                  const message = (e as Error).message;
+                  setError(message);
+                  alert({
+                    tone: 'error',
+                    title: 'Could not update workflow',
+                    message,
+                  });
+                }
+              }}
             >
               {w.enabled ? 'Disable' : 'Enable'}
             </button>
@@ -297,18 +331,35 @@ export function Workflows() {
             </button>
             <button
               disabled={busy}
-              onClick={() => {
-                if (
-                  window.confirm(
-                    'Delete this workflow and its run history? Execution conversations remain saved.',
-                  )
-                )
-                  void apiRequest(`/workspace/workflows/${w.id}`, {
+              onClick={async () => {
+                const accepted = await confirm({
+                  title: 'Delete workflow?',
+                  message:
+                    'This removes the workflow and its run history. Execution conversations remain saved.',
+                  confirmLabel: 'Delete workflow',
+                  destructive: true,
+                });
+                if (!accepted) return;
+                try {
+                  await apiRequest(`/workspace/workflows/${w.id}`, {
                     accessToken: accessToken!,
                     method: 'DELETE',
-                  })
-                    .then(load)
-                    .catch((e) => setError(e.message));
+                  });
+                  await load();
+                  alert({
+                    tone: 'success',
+                    title: 'Workflow deleted',
+                    message: 'The workflow and its run history were removed.',
+                  });
+                } catch (e) {
+                  const message = (e as Error).message;
+                  setError(message);
+                  alert({
+                    tone: 'error',
+                    title: 'Could not delete workflow',
+                    message,
+                  });
+                }
               }}
             >
               Delete

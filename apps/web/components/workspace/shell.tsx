@@ -9,6 +9,7 @@ import { useTheme } from '@/components/theme/theme-provider';
 import { Icon, type IconName } from '@/components/ui/icon';
 import { useSiteSettings } from '@/components/providers/site-settings-provider';
 import { SignInButton } from '@/components/providers/auth-dialog-provider';
+import { useFeedback } from '@/components/ui/feedback-modal';
 const navigationIcons: Record<string, IconName> = {
   '/chat': 'chat',
   '/conversations': 'history',
@@ -47,6 +48,7 @@ export function WorkspaceShell({
   admin?: boolean;
 }) {
   const { user, isLoading, logout } = useAuth();
+  const { alert, confirm } = useFeedback();
   const { toggleTheme } = useTheme();
   const pathname = usePathname();
   const router = useRouter();
@@ -219,11 +221,29 @@ export function WorkspaceShell({
             </button>
             {user && (
               <button
-                onClick={() => {
+                onClick={async () => {
+                  const accepted = await confirm({
+                    title: 'Sign out?',
+                    message:
+                      'Your saved workspace stays private and will be available when you sign in again.',
+                    confirmLabel: 'Sign out',
+                  });
+                  if (!accepted) return;
                   setLogoutError('');
-                  void logout().catch(() =>
-                    setLogoutError('Unable to sign out. Please retry.'),
-                  );
+                  try {
+                    await logout();
+                  } catch (error) {
+                    const message =
+                      error instanceof Error
+                        ? error.message
+                        : 'Unable to sign out. Please retry.';
+                    setLogoutError(message);
+                    alert({
+                      tone: 'error',
+                      title: 'Could not sign out',
+                      message,
+                    });
+                  }
                 }}
               >
                 <Icon name="logout" /> Sign out

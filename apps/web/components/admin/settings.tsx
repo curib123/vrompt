@@ -4,6 +4,7 @@ import { apiRequest } from '@/lib/api';
 import { useSiteSettings } from '@/components/providers/site-settings-provider';
 import { useAdminResource } from './use-admin-resource';
 import { AdminPassword } from './password';
+import { useFeedback } from '@/components/ui/feedback-modal';
 
 type Setting = {
   key: string;
@@ -31,7 +32,17 @@ function SettingEditor({
   const [value, setValue] = useState(String(setting.value));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const { alert, confirm } = useFeedback();
   async function save(reset = false) {
+    if (reset) {
+      const accepted = await confirm({
+        title: 'Reset setting?',
+        message: `Restore “${setting.label}” to its default value?`,
+        confirmLabel: 'Reset setting',
+        destructive: true,
+      });
+      if (!accepted) return;
+    }
     setBusy(true);
     setError('');
     try {
@@ -56,8 +67,17 @@ function SettingEditor({
       );
       setValue(String(result.value));
       onSaved();
+      alert({
+        tone: 'success',
+        title: reset ? 'Setting reset' : 'Setting saved',
+        message: reset
+          ? `${setting.label} is back to its default value.`
+          : `${setting.label} was updated successfully.`,
+      });
     } catch (e) {
-      setError((e as Error).message);
+      const message = (e as Error).message;
+      setError(message);
+      alert({ tone: 'error', title: 'Could not save setting', message });
     } finally {
       setBusy(false);
     }

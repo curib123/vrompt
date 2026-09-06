@@ -2,6 +2,7 @@
 import { useState, type FormEvent } from 'react';
 import { useAuth } from '@/components/providers/auth-provider';
 import { Modal } from '@/components/ui/modal';
+import { useFeedback } from '@/components/ui/feedback-modal';
 import { Icon } from '@/components/ui/icon';
 import { apiRequest } from '@/lib/api';
 import { useAdminResource } from './use-admin-resource';
@@ -24,6 +25,7 @@ type Page<T> = {
 
 export function AdminUsers() {
   const { user: actor } = useAuth();
+  const { alert } = useFeedback();
   const [query, setQuery] = useState('');
   const [search, setSearch] = useState('');
   const [role, setRole] = useState('');
@@ -69,8 +71,15 @@ export function AdminUsers() {
       setEditing(null);
       setNotice('Account changes saved.');
       refresh();
+      alert({
+        tone: 'success',
+        title: editing === 'new' ? 'Administrator created' : 'Account updated',
+        message: 'The account changes are now active.',
+      });
     } catch (e) {
-      setFormError((e as Error).message);
+      const message = (e as Error).message;
+      setFormError(message);
+      alert({ tone: 'error', title: 'Could not save account', message });
     } finally {
       setBusy(false);
     }

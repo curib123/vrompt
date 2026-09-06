@@ -2,6 +2,7 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/components/providers/auth-provider';
+import { useFeedback } from '@/components/ui/feedback-modal';
 import { apiRequest, type Model, type Conversation } from '@/lib/api';
 
 export type Project = {
@@ -26,6 +27,7 @@ const empty = {
 };
 export function Projects() {
   const { accessToken } = useAuth();
+  const { alert, confirm } = useFeedback();
   const [items, setItems] = useState<Project[]>([]);
   const [models, setModels] = useState<Model[]>([]);
   const [query, setQuery] = useState('');
@@ -64,8 +66,15 @@ export function Projects() {
       setEditing(undefined);
       setForm(empty);
       await load();
+      alert({
+        tone: 'success',
+        title: editing ? 'Project updated' : 'Project created',
+        message: 'Your project is ready for new chats and workflows.',
+      });
     } catch (e) {
-      setError((e as Error).message);
+      const message = (e as Error).message;
+      setError(message);
+      alert({ tone: 'error', title: 'Could not save project', message });
     } finally {
       setBusy(false);
     }
@@ -196,18 +205,35 @@ export function Projects() {
                 Edit
               </button>
               <button
-                onClick={() => {
-                  if (
-                    window.confirm(
-                      'Delete this Project and its workflows? Chats, files and Saved Prompts remain in your workspace.',
-                    )
-                  )
-                    void apiRequest(`/workspace/projects/${p.id}`, {
+                onClick={async () => {
+                  const accepted = await confirm({
+                    title: 'Delete project?',
+                    message:
+                      'This removes the project and its workflows. Chats, files, and saved prompts remain in your workspace.',
+                    confirmLabel: 'Delete project',
+                    destructive: true,
+                  });
+                  if (!accepted) return;
+                  try {
+                    await apiRequest(`/workspace/projects/${p.id}`, {
                       accessToken: accessToken!,
                       method: 'DELETE',
-                    })
-                      .then(load)
-                      .catch((e) => setError(e.message));
+                    });
+                    await load();
+                    alert({
+                      tone: 'success',
+                      title: 'Project deleted',
+                      message: 'The project and its workflows were removed.',
+                    });
+                  } catch (e) {
+                    const message = (e as Error).message;
+                    setError(message);
+                    alert({
+                      tone: 'error',
+                      title: 'Could not delete project',
+                      message,
+                    });
+                  }
                 }}
               >
                 Delete

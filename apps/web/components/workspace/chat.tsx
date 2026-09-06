@@ -19,11 +19,13 @@ import { BrandMark } from '@/components/brand/brand-mark';
 import { ProviderIcon } from '@/components/brand/provider-icon';
 import { useSiteSettings } from '@/components/providers/site-settings-provider';
 import { Icon } from '@/components/ui/icon';
+import { useFeedback } from '@/components/ui/feedback-modal';
 import { starterTasks } from '@/components/brand/landing';
 import type { Preferences } from './preferences';
 import { SignInButton } from '@/components/providers/auth-dialog-provider';
 export function Chat() {
   const { accessToken, user } = useAuth();
+  const { alert } = useFeedback();
   const { settings } = useSiteSettings();
   const router = useRouter();
   const params = useSearchParams();
@@ -366,8 +368,12 @@ export function Chat() {
         );
     } catch (e) {
       if (version !== viewVersion.current) return;
-      if (!(e instanceof DOMException && e.name === 'AbortError'))
-        setError(e instanceof Error ? e.message : 'Unable to send message.');
+      if (!(e instanceof DOMException && e.name === 'AbortError')) {
+        const message =
+          e instanceof Error ? e.message : 'Unable to send message.';
+        setError(message);
+        alert({ tone: 'error', title: 'Message could not be sent', message });
+      }
     } finally {
       if (version !== viewVersion.current) return;
       setBusy(false);
@@ -401,7 +407,9 @@ export function Chat() {
       setFiles((old) => [...old.filter((f) => f.id !== added.id), added]);
       setSelectedFiles((old) => [...old, added.id]);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Upload failed.');
+      const message = e instanceof Error ? e.message : 'Upload failed.';
+      setError(message);
+      alert({ tone: 'error', title: 'File could not be uploaded', message });
     }
   }
   return (

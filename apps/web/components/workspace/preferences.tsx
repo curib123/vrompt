@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useAuth } from '@/components/providers/auth-provider';
 import { useTheme } from '@/components/theme/theme-provider';
 import { apiRequest } from '@/lib/api';
+import { useFeedback } from '@/components/ui/feedback-modal';
 export type Preferences = {
   displayName: string;
   defaultModelId: string | null;
@@ -11,6 +12,7 @@ export type Preferences = {
 };
 export function UserPreferences() {
   const { user, accessToken, logout } = useAuth();
+  const { alert, confirm } = useFeedback();
   const { theme, setTheme } = useTheme();
   const [preferences, setPreferences] = useState<Preferences>();
   const [error, setError] = useState('');
@@ -44,8 +46,15 @@ export function UserPreferences() {
         }),
       );
       setNotice('Your preferences are saved.');
+      alert({
+        tone: 'success',
+        title: 'Preferences saved',
+        message: 'Your workspace will use these preferences for future chats.',
+      });
     } catch (e) {
-      setError((e as Error).message);
+      const message = (e as Error).message;
+      setError(message);
+      alert({ tone: 'error', title: 'Could not save preferences', message });
     } finally {
       setBusy(false);
     }
@@ -153,7 +162,27 @@ export function UserPreferences() {
         <div className="row">
           <Link href="/billing">Manage subscription</Link>
           <Link href="/privacy">Privacy policy</Link>
-          <button className="secondary-button" onClick={() => void logout()}>
+          <button
+            className="secondary-button"
+            onClick={async () => {
+              const accepted = await confirm({
+                title: 'Sign out?',
+                message: 'You can sign back in whenever you want to continue.',
+                confirmLabel: 'Sign out',
+              });
+              if (!accepted) return;
+              try {
+                await logout();
+              } catch (error) {
+                const message =
+                  error instanceof Error
+                    ? error.message
+                    : 'Unable to sign out. Please retry.';
+                setError(message);
+                alert({ tone: 'error', title: 'Could not sign out', message });
+              }
+            }}
+          >
             Sign out
           </button>
         </div>

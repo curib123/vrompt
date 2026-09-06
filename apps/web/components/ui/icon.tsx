@@ -24,6 +24,8 @@ const paths = {
   sun: 'M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1 1m12 12 1 1M5 19l1-1M18 6l1-1',
   search: 'M10 3a7 7 0 1 0 0 14 7 7 0 0 0 0-14m5 12 6 6',
   check: 'm5 12 4 4L19 6',
+  warning: 'M12 3 2 21h20L12 3Zm0 6v4m0 4h.01',
+  error: 'M6 6l12 12M18 6 6 18',
 } as const;
 export type IconName = keyof typeof paths;
 export function Icon({
