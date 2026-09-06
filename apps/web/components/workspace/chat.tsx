@@ -15,13 +15,18 @@ import {
 } from '@/lib/api';
 import { GeneratedImage } from './generated-image';
 import type { Project } from './projects';
+import { BrandMark } from '@/components/brand/brand-mark';
+import { ProviderIcon } from '@/components/brand/provider-icon';
+import { useSiteSettings } from '@/components/providers/site-settings-provider';
 import { Icon } from '@/components/ui/icon';
 import { useFeedback } from '@/components/ui/feedback-modal';
+import { starterTasks } from '@/components/brand/landing';
 import type { Preferences } from './preferences';
 import { SignInButton } from '@/components/providers/auth-dialog-provider';
 export function Chat() {
   const { accessToken, user } = useAuth();
   const { alert } = useFeedback();
+  const { settings } = useSiteSettings();
   const router = useRouter();
   const params = useSearchParams();
   const id = params.get('id');
@@ -42,6 +47,7 @@ export function Chat() {
   const [selected, setSelected] = useState('AUTO');
   const [messages, setMessages] = useState<Message[]>([]);
   const [files, setFiles] = useState<ChatFile[]>([]);
+  const [recent, setRecent] = useState<Conversation[]>([]);
   const [prompts, setPrompts] = useState<SavedPrompt[]>([]);
   const [usage, setUsage] = useState<Usage>();
   const [text, setText] = useState('');
@@ -83,14 +89,16 @@ export function Chat() {
   async function refresh() {
     if (!accessToken) return;
     const options = { accessToken };
-    const [m, u, p] = await Promise.all([
+    const [m, u, p, r] = await Promise.all([
       apiRequest<Model[]>('/workspace/models', options),
       apiRequest<Usage>('/workspace/usage', options),
       apiRequest<SavedPrompt[]>('/workspace/saved-prompts', options),
+      apiRequest<Conversation[]>('/workspace/conversations', options),
     ]);
     setModels(m);
     setUsage(u);
     setPrompts(p);
+    setRecent(r);
   }
   useEffect(() => {
     if (!accessToken) {
@@ -546,16 +554,104 @@ export function Chat() {
       <div className="chat-scroll">
         {!messages.length ? (
           <section className="chat-welcome">
-            <p className="eyebrow">READY WHEN YOU ARE</p>
-            <h1 className="chat-welcome-title">
+            <BrandMark className="welcome-mark" />
+            <p className="eyebrow">ONE WORKSPACE. MORE POSSIBILITIES.</p>
+            <h1>
               {user
                 ? `Hello, ${preferences?.displayName || user.username}.`
-                : 'What would you like to work on?'}
+                : 'A little help. A lot of possibility.'}
             </h1>
-            <p className="muted chat-welcome-subtitle">
-              Start with <strong>Auto · Recommended</strong>, or choose a model
-              from the menu above whenever you need more control.
+            <p className="muted">
+              The right AI for <span className="teal-text">every task.</span>
             </p>
+            <div className="chat-section-label">
+              <span>Choose how you want to work</span>
+              <small>Auto is recommended</small>
+            </div>
+            <div className="available-models">
+              <button
+                className={`model-choice ${selected === 'AUTO' ? 'selected' : ''}`}
+                disabled={busy}
+                onClick={() => {
+                  modelChosenByUser.current = true;
+                  setSelectionNotice('');
+                  setSelected('AUTO');
+                  setFeature('chat');
+                }}
+              >
+                <ProviderIcon provider="auto" />
+                <span>
+                  <strong>Auto</strong>
+                  <small>Best for your task</small>
+                </span>
+              </button>
+              {models.map((model) => (
+                <button
+                  className={`model-choice ${selected === model.id ? 'selected' : ''}`}
+                  key={model.id}
+                  disabled={busy}
+                  onClick={() => {
+                    modelChosenByUser.current = true;
+                    setSelectionNotice('');
+                    setSelected(model.id);
+                    setFeature('chat');
+                  }}
+                >
+                  <ProviderIcon provider={model.provider} />
+                  <span>
+                    <strong>{model.displayName}</strong>
+                    <small>
+                      {model.description || model.provider.toLowerCase()}
+                    </small>
+                  </span>
+                </button>
+              ))}
+            </div>
+            <div className="chat-section-label quick-label">
+              <span>Start with a task</span>
+              <small>Pick a shortcut or write your own prompt below</small>
+            </div>
+            <div className="task-cards">
+              {starterTasks.map((task) => (
+                <button
+                  key={task.key}
+                  onClick={() => {
+                    setText(
+                      String(
+                        settings[`workspace.${task.key}Prompt`] ||
+                          `Help me ${task.title.toLowerCase()}.`,
+                      ),
+                    );
+                    document
+                      .querySelector<HTMLTextAreaElement>('.composer textarea')
+                      ?.focus();
+                  }}
+                >
+                  <span className={`task-icon ${task.key}`}>
+                    <Icon name={task.icon} />
+                  </span>
+                  <span>
+                    <strong>{task.title}</strong>
+                    <small>{task.detail}</small>
+                  </span>
+                  <span className="task-arrow">↗</span>
+                </button>
+              ))}
+            </div>
+            {recent.length > 0 && (
+              <div className="panel">
+                <p className="eyebrow">CONTINUE A CONVERSATION</p>
+                {recent.slice(0, 3).map((c) => (
+                  <button
+                    className="row"
+                    key={c.id}
+                    onClick={() => router.push(`/chat?id=${c.id}`)}
+                  >
+                    {c.title} →
+                  </button>
+                ))}
+              </div>
+            )}
           </section>
         ) : (
           <>

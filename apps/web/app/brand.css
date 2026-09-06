@@ -2689,51 +2689,68 @@ html {
   box-shadow: 0 10px 24px rgb(220 38 38 / 20%) !important;
 }
 
-/* Focused chat workspace: give the conversation and composer room to breathe. */
+/* Roomy chat workspace: keep the welcome guidance visible without crowding the composer. */
 .chat-page {
   width: 100%;
-  max-width: 1540px;
+  max-width: none;
+  margin: 0;
 }
 .chat-toolbar {
   padding-right: clamp(20px, 4vw, 64px);
   padding-left: clamp(20px, 4vw, 64px);
 }
 .chat-scroll {
-  padding: clamp(28px, 4vh, 56px) clamp(20px, 5vw, 96px) 20px;
+  padding: clamp(24px, 4vh, 52px) clamp(20px, 4vw, 72px) 26px;
 }
 .chat-is-new .chat-scroll {
   display: block;
-  padding-top: clamp(42px, 10vh, 112px);
+  padding-top: clamp(24px, 5vh, 64px);
 }
 .chat-welcome,
 .chat-is-new .chat-welcome {
-  width: min(100%, 920px);
-  max-width: 920px;
-  margin: 0 auto 36px;
-  padding: 12px 0 22px;
+  width: min(100%, 1240px);
+  max-width: 1240px;
+  margin: 0 auto 42px;
+  padding: 16px 0 28px;
   text-align: left;
 }
-.chat-welcome-title,
-.chat-welcome h1.chat-welcome-title {
-  max-width: 760px;
-  margin: 12px 0 0;
-  font-size: clamp(38px, 5vw, 64px);
+.chat-welcome h1 {
+  max-width: 900px;
+  margin: 14px 0 8px;
+  font-size: clamp(34px, 4vw, 52px);
   line-height: 1.04;
   letter-spacing: -0.06em;
 }
-.chat-welcome-subtitle {
-  max-width: 650px;
-  margin-top: 18px;
-  font-size: 17px;
+.chat-welcome > .muted {
+  max-width: 720px;
+  margin-top: 0;
+  font-size: 18px;
 }
-.chat-welcome-subtitle strong {
-  color: var(--brand-teal-deep);
-  font-weight: 700;
+.chat-welcome .available-models {
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 12px;
+  margin-top: 22px;
+}
+.chat-welcome .model-choice {
+  min-width: 0;
+  min-height: 76px;
+  padding: 14px 16px;
+}
+.chat-welcome .task-cards {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 14px;
+}
+.chat-welcome .task-cards button {
+  min-height: 84px;
+  padding: 15px 16px;
 }
 .composer-wrap {
-  max-width: 1100px;
-  padding-right: clamp(20px, 5vw, 96px);
-  padding-left: clamp(20px, 5vw, 96px);
+  width: min(100%, 1240px);
+  max-width: 1240px;
+  padding-right: clamp(20px, 4vw, 72px);
+  padding-left: clamp(20px, 4vw, 72px);
+  margin: 0 auto;
 }
 .composer {
   border-radius: 18px;
@@ -2764,18 +2781,23 @@ html {
     display: none;
   }
   .chat-is-new .chat-scroll {
-    padding: 52px 20px 12px;
+    padding: 36px 20px 12px;
   }
   .chat-welcome,
   .chat-is-new .chat-welcome {
     padding: 0 0 20px;
   }
-  .chat-welcome-title,
-  .chat-welcome h1.chat-welcome-title {
-    font-size: clamp(34px, 10vw, 48px);
+  .chat-welcome h1 {
+    font-size: clamp(32px, 10vw, 46px);
   }
-  .chat-welcome-subtitle {
+  .chat-welcome > .muted {
     font-size: 15px;
+  }
+  .chat-welcome .available-models {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .chat-welcome .task-cards {
+    grid-template-columns: 1fr;
   }
   .composer-wrap {
     padding-right: 12px;
