@@ -2688,3 +2688,103 @@ html {
   background: #dc2626 !important;
   box-shadow: 0 10px 24px rgb(220 38 38 / 20%) !important;
 }
+
+/* Focused chat workspace: give the conversation and composer room to breathe. */
+.chat-page {
+  width: 100%;
+  max-width: 1540px;
+}
+.chat-toolbar {
+  padding-right: clamp(20px, 4vw, 64px);
+  padding-left: clamp(20px, 4vw, 64px);
+}
+.chat-scroll {
+  padding: clamp(28px, 4vh, 56px) clamp(20px, 5vw, 96px) 20px;
+}
+.chat-is-new .chat-scroll {
+  display: block;
+  padding-top: clamp(42px, 10vh, 112px);
+}
+.chat-welcome,
+.chat-is-new .chat-welcome {
+  width: min(100%, 920px);
+  max-width: 920px;
+  margin: 0 auto 36px;
+  padding: 12px 0 22px;
+  text-align: left;
+}
+.chat-welcome-title,
+.chat-welcome h1.chat-welcome-title {
+  max-width: 760px;
+  margin: 12px 0 0;
+  font-size: clamp(38px, 5vw, 64px);
+  line-height: 1.04;
+  letter-spacing: -0.06em;
+}
+.chat-welcome-subtitle {
+  max-width: 650px;
+  margin-top: 18px;
+  font-size: 17px;
+}
+.chat-welcome-subtitle strong {
+  color: var(--brand-teal-deep);
+  font-weight: 700;
+}
+.composer-wrap {
+  max-width: 1100px;
+  padding-right: clamp(20px, 5vw, 96px);
+  padding-left: clamp(20px, 5vw, 96px);
+}
+.composer {
+  border-radius: 18px;
+  padding: 16px;
+}
+.composer textarea {
+  min-height: 76px;
+  padding: 8px 6px;
+  font-size: 16px;
+}
+.message {
+  max-width: 1000px;
+}
+.message.user {
+  max-width: 780px;
+  margin-left: auto;
+}
+.chat-options {
+  padding-right: clamp(20px, 4vw, 64px);
+  padding-left: clamp(20px, 4vw, 64px);
+}
+@media (max-width: 700px) {
+  .chat-toolbar {
+    padding-right: 16px;
+    padding-left: 16px;
+  }
+  .chat-toolbar > .muted {
+    display: none;
+  }
+  .chat-is-new .chat-scroll {
+    padding: 52px 20px 12px;
+  }
+  .chat-welcome,
+  .chat-is-new .chat-welcome {
+    padding: 0 0 20px;
+  }
+  .chat-welcome-title,
+  .chat-welcome h1.chat-welcome-title {
+    font-size: clamp(34px, 10vw, 48px);
+  }
+  .chat-welcome-subtitle {
+    font-size: 15px;
+  }
+  .composer-wrap {
+    padding-right: 12px;
+    padding-left: 12px;
+  }
+  .composer {
+    padding: 12px;
+  }
+  .composer textarea {
+    min-height: 72px;
+  }
+}
