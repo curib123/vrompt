@@ -2810,3 +2810,124 @@ html {
     min-height: 72px;
   }
 }
+
+/* Shared page chrome keeps identity and account access visible across the workspace. */
+.workspace-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 18;
+  min-height: 74px;
+  padding: 14px clamp(20px, 4vw, 64px);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  border-bottom: 1px solid
+    color-mix(in srgb, var(--brand-soft) 72%, transparent);
+  background: color-mix(in srgb, var(--brand-surface) 90%, transparent);
+  backdrop-filter: blur(18px);
+}
+.workspace-topbar-title {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+.workspace-topbar-title .eyebrow {
+  font-size: 8px;
+  letter-spacing: 0.18em;
+}
+.workspace-topbar-title strong {
+  overflow: hidden;
+  color: var(--brand-ink);
+  font-size: 17px;
+  font-weight: 680;
+  letter-spacing: -0.025em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.workspace-topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.workspace-topbar-help,
+.workspace-topbar-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--brand-soft);
+  background: var(--brand-surface);
+  color: var(--brand-mid);
+  transition: 160ms ease;
+}
+.workspace-topbar-help {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+}
+.workspace-topbar-help:hover,
+.workspace-topbar-avatar:hover {
+  border-color: var(--brand-teal);
+  color: var(--brand-ink);
+  background: var(--brand-paper);
+}
+.workspace-topbar-help svg {
+  width: 18px;
+  height: 18px;
+}
+.workspace-topbar-avatar {
+  gap: 9px;
+  min-height: 40px;
+  padding: 3px 10px 3px 4px;
+  border-radius: 999px;
+  color: var(--brand-ink);
+  font-size: 12px;
+  font-weight: 600;
+}
+.workspace-topbar-avatar .account-avatar {
+  width: 32px;
+  height: 32px;
+  background: linear-gradient(145deg, var(--brand-azure), var(--brand-teal));
+  font-size: 10px;
+}
+.workspace-topbar-user {
+  max-width: 130px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.account-menu {
+  inset: auto 24px 24px auto;
+}
+.chat-page {
+  height: calc(100dvh - 74px);
+}
+@media (max-width: 760px) {
+  .workspace-topbar {
+    top: 58px;
+    min-height: 66px;
+    padding: 11px 16px;
+  }
+  .workspace-topbar-title .eyebrow {
+    display: none;
+  }
+  .workspace-topbar-title strong {
+    font-size: 15px;
+  }
+  .workspace-topbar-help {
+    display: none;
+  }
+  .workspace-topbar-avatar {
+    min-height: 38px;
+  }
+  .workspace-topbar-avatar .account-avatar {
+    width: 30px;
+    height: 30px;
+  }
+  .workspace-topbar-user {
+    max-width: 100px;
+  }
+  .chat-page {
+    height: calc(100dvh - 124px);
+  }
+}

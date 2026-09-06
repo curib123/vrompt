@@ -120,6 +120,9 @@ export function WorkspaceShell({
         ['/admin/settings', 'Settings'],
       ]
     : workspaceLinks;
+  const pageTitle =
+    links.find(([href]) => href === pathname)?.[1] ??
+    (admin ? 'Administration' : 'Workspace');
   return (
     <div className="workspace-shell">
       <a className="skip-link" href="#workspace-content">
@@ -189,7 +192,7 @@ export function WorkspaceShell({
           <button
             className="sidebar-account"
             popoverTarget="account-actions"
-            aria-label="Account menu"
+            aria-label="Account details"
           >
             <span className="account-avatar">
               {user?.username.slice(0, 2).toUpperCase() ?? 'V'}
@@ -260,6 +263,36 @@ export function WorkspaceShell({
         </div>
       </aside>
       <main className="workspace-main" id="workspace-content">
+        <header className="workspace-topbar">
+          <div className="workspace-topbar-title">
+            <span className="eyebrow">
+              {admin ? 'ADMINISTRATION' : 'YOUR AI WORKSPACE'}
+            </span>
+            <strong>{pageTitle}</strong>
+          </div>
+          <div className="workspace-topbar-actions">
+            <Link
+              className="workspace-topbar-help"
+              href="/docs"
+              aria-label="Help and getting started"
+            >
+              <Icon name="help" />
+            </Link>
+            <button
+              className="workspace-topbar-avatar"
+              popoverTarget="account-actions"
+              aria-label="Account menu"
+              type="button"
+            >
+              <span className="account-avatar">
+                {user?.username.slice(0, 2).toUpperCase() ?? 'V'}
+              </span>
+              <span className="workspace-topbar-user">
+                {user?.username ?? 'Guest'}
+              </span>
+            </button>
+          </div>
+        </header>
         {announcement && (
           <div className="site-announcement">{announcement}</div>
         )}
