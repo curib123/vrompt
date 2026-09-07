@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useId, useRef } from 'react';
 import type { ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 
@@ -22,6 +22,8 @@ export function Modal({
   open: boolean;
   title: string;
 }) {
+  const titleId = useId();
+  const descriptionId = useId();
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
@@ -85,13 +87,14 @@ export function Modal({
   return createPortal(
     <div
       aria-modal="true"
-      aria-describedby="modal-description"
-      aria-labelledby="modal-title"
+      aria-describedby={descriptionId}
+      aria-labelledby={titleId}
       className="fixed inset-0 z-[100] flex items-end justify-center bg-black/50 p-4 md:items-center"
       role="dialog"
     >
       <button
         aria-label="Close modal overlay"
+        tabIndex={-1}
         className="absolute inset-0"
         onClick={onClose}
         type="button"
@@ -107,13 +110,13 @@ export function Modal({
           <div className="space-y-2">
             <h3
               className="text-xl font-semibold text-black dark:text-white"
-              id="modal-title"
+              id={titleId}
             >
               {title}
             </h3>
             <p
               className="text-sm text-zinc-600 dark:text-zinc-400"
-              id="modal-description"
+              id={descriptionId}
             >
               {description}
             </p>

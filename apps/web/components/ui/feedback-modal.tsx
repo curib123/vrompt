@@ -2,6 +2,7 @@
 
 import {
   createContext,
+  useEffect,
   useCallback,
   useContext,
   useRef,
@@ -140,7 +141,14 @@ const FeedbackContext = createContext<FeedbackContextValue | null>(null);
 
 export function FeedbackProvider({ children }: { children: ReactNode }) {
   const [dialog, setDialog] = useState<Dialog | null>(null);
+  const [notice, setNotice] = useState<AlertInput | null>(null);
   const resolverRef = useRef<((result: boolean) => void) | null>(null);
+
+  useEffect(() => {
+    if (!notice) return;
+    const timer = setTimeout(() => setNotice(null), 8000);
+    return () => clearTimeout(timer);
+  }, [notice]);
 
   const closeConfirm = useCallback((result: boolean) => {
     resolverRef.current?.(result);
@@ -149,6 +157,12 @@ export function FeedbackProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const alert = useCallback((input: AlertInput) => {
+    if (input.tone === 'success') {
+      setNotice(input);
+      return;
+    }
+    resolverRef.current?.(false);
+    resolverRef.current = null;
     setDialog({ kind: 'alert', input });
   }, []);
 
@@ -163,6 +177,29 @@ export function FeedbackProvider({ children }: { children: ReactNode }) {
   return (
     <FeedbackContext.Provider value={{ alert, confirm }}>
       {children}
+      <div
+        className="feedback-notice-region"
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+      >
+        {notice && (
+          <div className="feedback-notice">
+            <Icon name="check" />
+            <div>
+              <strong>{notice.title}</strong>
+              <p>{notice.message}</p>
+            </div>
+            <button
+              type="button"
+              aria-label="Dismiss notification"
+              onClick={() => setNotice(null)}
+            >
+              ×
+            </button>
+          </div>
+        )}
+      </div>
       {dialog?.kind === 'alert' && (
         <AlertModal {...dialog.input} onClose={() => setDialog(null)} open />
       )}

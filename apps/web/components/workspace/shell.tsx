@@ -32,7 +32,6 @@ const navigationIcons: Record<string, IconName> = {
 export const workspaceLinks = [
   ['/chat', 'New Chat'],
   ['/conversations', 'Conversations'],
-  ['/models', 'Models'],
   ['/projects', 'Projects'],
   ['/saved-prompts', 'Saved Prompts'],
   ['/workflows', 'Workflows'],
@@ -95,13 +94,34 @@ export function WorkspaceShell({
   if (!user && (admin || pathname !== '/chat'))
     return (
       <main className="center-page">
-        <h1>Your AI workspace awaits.</h1>
-        <p>Sign in to keep your conversations private and synced.</p>
-        <SignInButton className="primary-button">Sign in</SignInButton>
+        <h1>
+          {admin ? 'Sign in to administration' : 'Your AI workspace awaits.'}
+        </h1>
+        <p>
+          {admin
+            ? 'Use your administrator account to manage Vrompt.'
+            : 'Sign in to keep your conversations private and synced.'}
+        </p>
+        {admin ? (
+          <Link className="primary-button" href="/staff/login">
+            Administrator sign in
+          </Link>
+        ) : (
+          <SignInButton className="primary-button">Sign in</SignInButton>
+        )}
+        <Link href="/">Back to home</Link>
       </main>
     );
   if (admin && user?.role !== 'ADMIN')
-    return <main className="center-page">Administrator access required.</main>;
+    return (
+      <main className="center-page">
+        <h1>Administrator access required.</h1>
+        <p>Use your workspace to continue.</p>
+        <Link className="primary-button" href="/chat">
+          Back to chat
+        </Link>
+      </main>
+    );
   if (!admin && user && user.role !== 'USER')
     return (
       <main className="center-page">
@@ -120,9 +140,6 @@ export function WorkspaceShell({
         ['/admin/settings', 'Settings'],
       ]
     : workspaceLinks;
-  const pageTitle =
-    links.find(([href]) => href === pathname)?.[1] ??
-    (admin ? 'Administration' : 'Workspace');
   return (
     <div className="workspace-shell">
       <a className="skip-link" href="#workspace-content">
@@ -178,6 +195,11 @@ export function WorkspaceShell({
                   router.push(`/chat?new=${crypto.randomUUID()}`);
                 }
               }}
+              className={
+                href === (admin ? '/admin/users' : '/usage')
+                  ? 'navigation-section-start'
+                  : undefined
+              }
               aria-current={pathname === href ? 'page' : undefined}
             >
               <Icon name={navigationIcons[href] ?? 'grid'} />
@@ -189,20 +211,6 @@ export function WorkspaceShell({
           <Link href="/docs">
             <Icon name="help" /> Help & getting started
           </Link>
-          <button
-            className="sidebar-account"
-            popoverTarget="account-actions"
-            aria-label="Account details"
-          >
-            <span className="account-avatar">
-              {user?.username.slice(0, 2).toUpperCase() ?? 'V'}
-            </span>
-            <span>
-              <strong>{user?.username ?? 'Welcome to Vrompt'}</strong>
-              <small>{user?.email ?? 'Temporary guest chat'}</small>
-            </span>
-            <Icon name="settings" />
-          </button>
           <div
             id="account-actions"
             popover="auto"
@@ -216,7 +224,8 @@ export function WorkspaceShell({
             )}
             {user && (
               <Link href={admin ? '/admin/billing' : '/billing'}>
-                <Icon name="card" /> Manage subscription
+                <Icon name="card" />{' '}
+                {admin ? 'Billing operations' : 'Manage subscription'}
               </Link>
             )}
             <button onClick={toggleTheme}>
@@ -262,22 +271,14 @@ export function WorkspaceShell({
           <Link href="/">About Vrompt</Link>
         </div>
       </aside>
-      <main className="workspace-main" id="workspace-content">
+      <main className="workspace-main" id="workspace-content" tabIndex={-1}>
         <header className="workspace-topbar">
           <div className="workspace-topbar-title">
             <span className="eyebrow">
-              {admin ? 'ADMINISTRATION' : 'YOUR AI WORKSPACE'}
+              {admin ? 'Administration' : 'Workspace'}
             </span>
-            <strong>{pageTitle}</strong>
           </div>
           <div className="workspace-topbar-actions">
-            <Link
-              className="workspace-topbar-help"
-              href="/docs"
-              aria-label="Help and getting started"
-            >
-              <Icon name="help" />
-            </Link>
             <button
               className="workspace-topbar-avatar"
               popoverTarget="account-actions"

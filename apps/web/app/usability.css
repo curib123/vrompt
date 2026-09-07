@@ -1,0 +1,202 @@
+/* Shared workspace rhythm and accessible feedback. */
+.workspace-sidebar nav a.navigation-section-start {
+  margin-top: 16px;
+}
+.workspace-topbar-title .eyebrow {
+  font-size: 11px;
+  letter-spacing: 0.12em;
+}
+.content-page > .eyebrow,
+.resource-page-header .resource-eyebrow {
+  display: none;
+}
+.content-page {
+  width: 100%;
+  max-width: 1280px;
+  padding: 36px clamp(20px, 4vw, 64px) 64px;
+}
+.content-page > h1,
+.resource-page-header h1 {
+  font-size: clamp(28px, 3vw, 36px);
+  letter-spacing: -0.035em;
+}
+.content-page > .muted {
+  max-width: 72ch;
+  margin-bottom: 24px;
+}
+.panel {
+  box-shadow: none;
+  background: var(--brand-surface);
+}
+.panel .panel,
+[role='dialog'] form.panel {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.row > *,
+.resource-card-main,
+.setting-control {
+  min-width: 0;
+}
+.row,
+.resource-card,
+.data-table td {
+  overflow-wrap: anywhere;
+}
+.row-actions {
+  flex-wrap: wrap;
+  align-items: center;
+}
+.row-actions button,
+.row-actions a {
+  min-height: 36px;
+}
+button:disabled {
+  cursor: not-allowed;
+}
+.feedback-notice-region {
+  position: fixed;
+  z-index: 120;
+  right: 24px;
+  bottom: max(24px, env(safe-area-inset-bottom));
+  width: min(440px, calc(100vw - 32px));
+  pointer-events: none;
+}
+.feedback-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--brand-teal-deep);
+  border-radius: 14px;
+  background: var(--brand-surface);
+  box-shadow: 0 8px 32px var(--brand-shadow);
+  pointer-events: auto;
+}
+.feedback-notice > svg {
+  flex: 0 0 20px;
+  color: var(--brand-teal-deep);
+}
+.feedback-notice p {
+  margin: 4px 0 0;
+  color: var(--brand-mid);
+  font-size: 13px;
+}
+.feedback-notice button {
+  margin-left: auto;
+  min-width: 32px;
+  min-height: 32px;
+}
+.page-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 20px;
+  margin-bottom: 24px;
+}
+.page-heading h1 {
+  margin: 0 0 8px;
+  font-size: clamp(28px, 3vw, 36px);
+  font-weight: 650;
+  letter-spacing: -0.035em;
+}
+.page-heading p {
+  margin: 0;
+}
+.page-heading > button,
+.page-heading > a {
+  flex-shrink: 0;
+}
+.list-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 20px 0;
+}
+.list-toolbar input {
+  width: min(100%, 440px);
+}
+.list-toolbar .muted {
+  margin-left: auto;
+  white-space: nowrap;
+}
+.resource-state {
+  padding: 28px 0;
+  color: var(--brand-mid);
+}
+.resource-state h2 {
+  color: var(--brand-ink);
+}
+.resource-state a {
+  color: var(--brand-azure-deep);
+  text-decoration: underline;
+}
+.resource-state button {
+  margin-top: 12px;
+}
+.editor-form {
+  display: grid;
+  gap: 18px;
+}
+.editor-form label {
+  display: grid;
+  gap: 8px;
+}
+.editor-form :is(input, textarea, select) {
+  width: 100%;
+}
+.prompt-preview {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.usage-meter {
+  width: 100%;
+  height: 8px;
+  accent-color: var(--brand-teal-deep);
+}
+.settings-sections {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 24px 0;
+}
+.settings-sections a {
+  padding: 9px 13px;
+  border: 1px solid var(--brand-soft);
+  border-radius: 9px;
+  font-size: 13px;
+}
+.settings-group {
+  scroll-margin-top: 100px;
+}
+.data-table th {
+  white-space: nowrap;
+}
+@media (max-width: 760px) {
+  .workspace-topbar-title .eyebrow {
+    display: block;
+  }
+  .content-page {
+    padding: 24px 16px 48px;
+  }
+  .page-heading {
+    flex-wrap: wrap;
+  }
+  .row {
+    flex-wrap: wrap;
+  }
+  .feedback-notice-region {
+    right: 16px;
+  }
+  .settings-group {
+    scroll-margin-top: 145px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}

@@ -9,6 +9,35 @@ import {
 } from '@/components/ui/feedback-modal';
 
 describe('feedback modal primitives', () => {
+  it('announces success without moving focus or blocking the next action', () => {
+    function Save() {
+      const { alert } = useFeedback();
+      return (
+        <button
+          onClick={() =>
+            alert({ tone: 'success', title: 'Saved', message: 'Ready to use.' })
+          }
+        >
+          Save
+        </button>
+      );
+    }
+    render(
+      <FeedbackProvider>
+        <Save />
+      </FeedbackProvider>,
+    );
+    const button = screen.getByRole('button', { name: 'Save' });
+    button.focus();
+    fireEvent.click(button);
+    expect(screen.getByRole('status')).toHaveTextContent('Saved');
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(button).toHaveFocus();
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Dismiss notification' }),
+    );
+    expect(screen.getByRole('status')).toBeEmptyDOMElement();
+  });
   it.each([
     ['success', 'Success'],
     ['warning', 'Warning'],

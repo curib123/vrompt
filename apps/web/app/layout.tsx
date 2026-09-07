@@ -4,6 +4,7 @@ import { AppProviders } from '@/components/providers/app-providers';
 import './globals.css';
 import './workspace.css';
 import './brand.css';
+import './usability.css';
 
 const themeInitScript = `
   (() => {
