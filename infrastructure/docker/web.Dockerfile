@@ -7,7 +7,12 @@ COPY apps/api/package.json apps/api/package.json
 COPY apps/web/package.json apps/web/package.json
 COPY packages/config/package.json packages/config/package.json
 
-RUN npm ci
+RUN --mount=type=cache,target=/root/.npm \
+  npm ci \
+    --fetch-retries=10 \
+    --fetch-retry-mintimeout=20000 \
+    --fetch-retry-maxtimeout=120000 \
+    --fetch-timeout=600000
 
 FROM dependencies AS build
 
