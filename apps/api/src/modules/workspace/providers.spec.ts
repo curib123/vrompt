@@ -224,4 +224,33 @@ describe('Provider protocol normalization', () => {
     });
     expect(cost.toString()).toBe('0.00023');
   });
+  it('sends the configured minimum reasoning effort only for reasoning models', async () => {
+    const fetchMock = jest.spyOn(global, 'fetch').mockResolvedValue(
+      new Response(
+        stream([
+          {
+            type: 'response.completed',
+            response: { usage: { input_tokens: 1, output_tokens: 1 } },
+          },
+        ]),
+      ),
+    );
+    await new OpenAIProvider().stream(
+      {
+        ...model,
+        capabilities: ['text', 'reasoning'],
+        capabilityStates: { reasoning: 'NATIVE_PROVIDER' },
+      },
+      [{ role: 'user', content: 'hi' }],
+      [],
+      10,
+      new AbortController().signal,
+      jest.fn(),
+      emptyUsage(),
+      { reasoningLevel: 'low' },
+    );
+    expect(
+      JSON.parse(fetchMock.mock.calls[0]![1]!.body as string),
+    ).toMatchObject({ reasoning: { effort: 'low' } });
+  });
 });

@@ -12,6 +12,23 @@ import { RoutingHealth } from './routing';
 const money = Joi.number().min(0).max(1000000).required();
 const integer = (max: number) =>
   Joi.number().integer().min(1).max(max).required();
+const capabilityNames = [
+  'text',
+  'vision',
+  'files',
+  'coding',
+  'reasoning',
+  'long_context',
+  'image_generation',
+  'prompt_caching',
+  'tools',
+  'web_search',
+  'code_execution',
+  'maps',
+  'computer_use',
+  'mcp',
+];
+const reasoningLevels = ['low', 'medium', 'high', 'xhigh'];
 export const modelSchema = Joi.object({
   creditCost: integer(100000).default(1),
   provider: Joi.string()
@@ -25,20 +42,23 @@ export const modelSchema = Joi.object({
   description: Joi.string().max(500).allow('').default(''),
   category: Joi.string().max(40).default('general'),
   capabilities: Joi.array()
-    .items(
-      Joi.string().valid(
-        'text',
-        'vision',
-        'files',
-        'coding',
-        'reasoning',
-        'long_context',
-        'image_generation',
-        'prompt_caching',
-      ),
-    )
+    .items(Joi.string().valid(...capabilityNames))
     .min(1)
     .required(),
+  capabilityStates: Joi.object()
+    .pattern(
+      Joi.string().valid(...capabilityNames),
+      Joi.string().valid('NATIVE_PROVIDER', 'VROMPT', 'UNAVAILABLE'),
+    )
+    .default({}),
+  reasoningLevels: Joi.array()
+    .items(Joi.string().valid(...reasoningLevels))
+    .unique()
+    .min(1)
+    .default(['low']),
+  defaultReasoningLevel: Joi.string()
+    .valid(...reasoningLevels)
+    .default('low'),
   enabled: Joi.boolean().default(false),
   manualAvailable: Joi.boolean().default(true),
   autoAvailable: Joi.boolean().default(false),
@@ -143,6 +163,14 @@ type Routing = {
     capabilities: string[];
   }[];
 };
+type ModelInput = Omit<
+  Prisma.AIModelUncheckedCreateInput,
+  'capabilities' | 'capabilityStates' | 'reasoningLevels'
+> & {
+  capabilities: string[];
+  capabilityStates: Record<string, string>;
+  reasoningLevels: string[];
+};
 export function rankModels(
   models: AIModel[],
   policy: GenerationPolicy,
@@ -171,7 +199,7 @@ export function rankModels(
       (m) =>
         m.qualityTier >= tier &&
         m.maxContext >= context &&
-        required.every((c) => m.capabilities.includes(c)),
+        required.every((c) => supportsCapability(m, c)),
     )
     .sort(
       (a, b) =>
@@ -180,6 +208,14 @@ export function rankModels(
         b.routingPriority - a.routingPriority ||
         a.id.localeCompare(b.id),
     );
+}
+
+export function supportsCapability(model: AIModel, capability: string) {
+  const states = (model.capabilityStates ?? {}) as Record<string, string>;
+  return (
+    model.capabilities.includes(capability) &&
+    (states[capability] ?? 'NATIVE_PROVIDER') !== 'UNAVAILABLE'
+  );
 }
 
 @Injectable()
@@ -203,16 +239,22 @@ export class ModelRegistryService {
         },
         orderBy: { displayOrder: 'asc' },
       })
-    ).map((m) => ({
-      ...m,
-      available: !m.maintenance && this.providers.get(m.provider).available(),
-    }));
+    ).map((m) => {
+      const configured = m.capabilityStates as Record<string, string>;
+      return {
+        ...m,
+        capabilityStates: Object.fromEntries(
+          m.capabilities.map((capability) => [
+            capability,
+            configured[capability] ?? 'NATIVE_PROVIDER',
+          ]),
+        ),
+        available: !m.maintenance && this.providers.get(m.provider).available(),
+      };
+    });
   }
   async saveModel(actorId: string, input: unknown, id?: string) {
-    const data = validate<Prisma.AIModelUncheckedCreateInput>(
-      modelSchema,
-      input,
-    );
+    const data = validate<ModelInput>(modelSchema, input);
     if (
       Array.isArray(data.capabilities) &&
       data.capabilities.includes('image_generation') &&
@@ -221,6 +263,21 @@ export class ModelRegistryService {
       throw new BadRequestException(
         'Image generation is currently integrated for OpenAI, Google and Mistral only.',
       );
+    const modelReasoningLevels = data.reasoningLevels ?? ['low'];
+    const defaultReasoningLevel = data.defaultReasoningLevel ?? 'low';
+    data.reasoningLevels = modelReasoningLevels;
+    data.defaultReasoningLevel = defaultReasoningLevel;
+    if (!modelReasoningLevels.includes(defaultReasoningLevel))
+      throw new BadRequestException(
+        'Default reasoning level must be one of the supported reasoning levels.',
+      );
+    for (const [capability, state] of Object.entries(
+      data.capabilityStates as Record<string, string>,
+    ))
+      if (state !== 'UNAVAILABLE' && !data.capabilities.includes(capability))
+        throw new BadRequestException(
+          `Capability ${capability} must be enabled before it can be marked available.`,
+        );
     if (id && data.fallbackId === id)
       throw new BadRequestException('A model cannot fall back to itself');
     if (

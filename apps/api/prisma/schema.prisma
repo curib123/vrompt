@@ -667,6 +667,9 @@ model AIModel {
   description      String             @default("") @db.VarChar(500)
   category         String             @default("general") @db.VarChar(40)
   capabilities     String[]           @default(["text"])
+  capabilityStates Json               @default("{}")
+  reasoningLevels  String[]           @default(["low"])
+  defaultReasoningLevel String         @default("low") @db.VarChar(12)
   enabled          Boolean            @default(false)
   manualAvailable  Boolean            @default(true)
   autoAvailable    Boolean            @default(false)
@@ -841,6 +844,8 @@ model UsageRecord {
   latencyMs         Int
   status            GenerationStatus
   errorCategory     String?          @db.VarChar(100)
+  creditUnits       Int              @default(0)
+  toolUsage         Json             @default("{}")
   createdAt         DateTime         @default(now())
 
   @@index([userId, createdAt])

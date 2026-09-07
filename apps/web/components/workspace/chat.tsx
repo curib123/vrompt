@@ -23,6 +23,16 @@ import { useFeedback } from '@/components/ui/feedback-modal';
 import { starterTasks } from '@/components/brand/landing';
 import type { Preferences } from './preferences';
 import { SignInButton } from '@/components/providers/auth-dialog-provider';
+
+function availableCapabilities(model?: Model) {
+  if (!model) return [];
+  return model.capabilities.filter(
+    (capability) => model.capabilityStates?.[capability] !== 'UNAVAILABLE',
+  );
+}
+function capabilityLabel(capability: string) {
+  return capability.replaceAll('_', ' ');
+}
 export function Chat() {
   const { accessToken, user } = useAuth();
   const { alert } = useFeedback();
@@ -535,9 +545,9 @@ export function Chat() {
                 disabled={
                   !allowance?.allowedFeatures?.includes('image_generation') ||
                   (selected !== 'AUTO' &&
-                    !models
-                      .find((m) => m.id === selected)
-                      ?.capabilities.includes('image_generation'))
+                    !availableCapabilities(
+                      models.find((m) => m.id === selected),
+                    ).includes('image_generation'))
                 }
               >
                 Generate image
@@ -547,7 +557,9 @@ export function Chat() {
           <span className="muted">
             {selected === 'AUTO'
               ? 'Auto selects a model that supports this task.'
-              : models.find((m) => m.id === selected)?.capabilities.join(', ')}
+              : availableCapabilities(models.find((m) => m.id === selected))
+                  .map(capabilityLabel)
+                  .join(', ')}
           </span>
         </div>
       </details>
@@ -603,6 +615,18 @@ export function Chat() {
                     <small>
                       {model.description || model.provider.toLowerCase()}
                     </small>
+                    {Object.entries(model.capabilityStates ?? {}).length >
+                      0 && (
+                      <small>
+                        {Object.entries(model.capabilityStates ?? {})
+                          .filter(([, state]) => state !== 'UNAVAILABLE')
+                          .map(
+                            ([capability, state]) =>
+                              `${state === 'VROMPT' ? 'Vrompt' : 'Native'}: ${capabilityLabel(capability)}`,
+                          )
+                          .join(' · ')}
+                      </small>
+                    )}
                   </span>
                 </button>
               ))}

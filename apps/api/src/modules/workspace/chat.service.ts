@@ -9,7 +9,11 @@ import { createHash } from 'node:crypto';
 import { AIModel, GenerationStatus, Prisma, RoutingMode } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { QuotaService } from './quota.service';
-import { ModelRegistryService, rankModels } from './registry.service';
+import {
+  ModelRegistryService,
+  rankModels,
+  supportsCapability,
+} from './registry.service';
 import {
   emptyUsage,
   estimateCost,
@@ -50,6 +54,9 @@ export class ChatService {
         displayName: m.displayName,
         description: m.description,
         capabilities: m.capabilities,
+        capabilityStates: m.capabilityStates,
+        reasoningLevels: m.reasoningLevels,
+        defaultReasoningLevel: m.defaultReasoningLevel,
       }));
   }
   async generate(
@@ -202,7 +209,7 @@ export class ChatService {
           'This model is temporarily unavailable. Use recommended alternative.',
         );
       if (
-        capabilities.some((c) => !candidates[0]!.capabilities.includes(c)) ||
+        capabilities.some((c) => !supportsCapability(candidates[0]!, c)) ||
         context + policy.maxOutput > candidates[0]!.maxContext
       )
         throw new BadRequestException(
@@ -239,12 +246,13 @@ export class ChatService {
     const fingerprint = createHash('sha256')
       .update(JSON.stringify({ conversationId, input }))
       .digest('hex');
+    const creditUnits = Math.max(...candidates.map((m) => m.creditCost ?? 1));
     await this.quota.reserve(
       userId,
       input.requestId,
       fingerprint,
       policy,
-      Math.max(...candidates.map((m) => m.creditCost ?? 1)),
+      creditUnits,
     );
     let text = '';
     const artifacts: {
@@ -326,6 +334,9 @@ export class ChatService {
             usage,
             {
               feature: input.feature,
+              reasoningLevel: supportsCapability(model, 'reasoning')
+                ? model.defaultReasoningLevel
+                : undefined,
               image: async (mimeType, base64) => {
                 consumed = true;
                 if (artifacts.length >= 4)
@@ -404,6 +415,11 @@ export class ChatService {
               Date.now() - start,
               attemptStatus,
               errorCategory,
+              creditUnits,
+              {
+                requestedFeature: input.feature ?? 'chat',
+                generatedArtifacts: artifacts.length,
+              },
             ),
           );
         }
@@ -471,6 +487,8 @@ export class ChatService {
     latencyMs: number,
     status: GenerationStatus,
     errorCategory?: string,
+    creditUnits = 0,
+    toolUsage: Prisma.InputJsonValue = {},
   ): Prisma.UsageRecordUncheckedCreateInput {
     return {
       userId,
@@ -503,6 +521,8 @@ export class ChatService {
       latencyMs,
       status,
       errorCategory,
+      creditUnits,
+      toolUsage,
     };
   }
 }

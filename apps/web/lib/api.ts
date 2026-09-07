@@ -67,6 +67,12 @@ export type Model = {
   displayName: string;
   description: string;
   capabilities: string[];
+  capabilityStates?: Record<
+    string,
+    'NATIVE_PROVIDER' | 'VROMPT' | 'UNAVAILABLE'
+  >;
+  reasoningLevels?: string[];
+  defaultReasoningLevel?: string;
   enabled?: boolean;
   maintenance?: boolean;
 };

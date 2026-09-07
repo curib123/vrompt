@@ -11,6 +11,9 @@ export class CatalogController {
       displayName: model.displayName,
       description: model.description,
       capabilities: model.capabilities,
+      capabilityStates: model.capabilityStates,
+      reasoningLevels: model.reasoningLevels,
+      defaultReasoningLevel: model.defaultReasoningLevel,
       available: model.available,
       autoAvailable: model.autoAvailable,
     }));

@@ -3,6 +3,7 @@ import { AIModel, ModelProvider, Prisma } from '@prisma/client';
 
 export type ProviderOptions = {
   feature?: 'chat' | 'image_generation';
+  reasoningLevel?: string;
   image?: (mimeType: string, base64: string) => Promise<void>;
 };
 export type ProviderMessage = { role: string; content: string };
@@ -151,6 +152,12 @@ export class OpenAIProvider implements AIProvider {
         max_output_tokens: maxOutput,
         stream: true,
         store: false,
+        ...(options?.reasoningLevel &&
+        model.capabilities.includes('reasoning') &&
+        (model.capabilityStates as Record<string, string>).reasoning !==
+          'UNAVAILABLE'
+          ? { reasoning: { effort: options.reasoningLevel } }
+          : {}),
         ...(options?.feature === 'image_generation'
           ? {
               tools: [{ type: 'image_generation', output_format: 'png' }],

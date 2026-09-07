@@ -49,6 +49,11 @@ const modelFields: Field[] = [
   },
   { key: 'autoAvailable', label: 'Available to Auto', type: 'checkbox' },
   {
+    key: 'defaultReasoningLevel',
+    label: 'Default reasoning level',
+    options: ['low', 'medium', 'high', 'xhigh'],
+  },
+  {
     key: 'inputPrice',
     label: 'Input price (USD / million tokens)',
     type: 'number',
@@ -225,6 +230,12 @@ const capabilities = [
   'long_context',
   'image_generation',
   'prompt_caching',
+  'tools',
+  'web_search',
+  'code_execution',
+  'maps',
+  'computer_use',
+  'mcp',
 ];
 type Kind = 'model' | 'plan' | 'policy';
 const defaults: Record<Kind, Values> = {
@@ -238,6 +249,9 @@ const defaults: Record<Kind, Values> = {
     maintenance: false,
     manualAvailable: true,
     autoAvailable: false,
+    reasoningLevels: ['low'],
+    defaultReasoningLevel: 'low',
+    capabilityStates: '{}',
     inputPrice: 0,
     cachedInputPrice: 0,
     outputPrice: 0,
@@ -314,7 +328,19 @@ function Editor({
       : kind === 'plan'
         ? planFields
         : policyFields;
-  const [values, setValues] = useState<Values>({ ...defaults[kind], ...item });
+  const [values, setValues] = useState<Values>({
+    ...defaults[kind],
+    ...item,
+    ...(kind === 'model'
+      ? {
+          capabilityStates: JSON.stringify(
+            item?.capabilityStates ?? {},
+            null,
+            2,
+          ),
+        }
+      : {}),
+  });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [advanced, setAdvanced] = useState(
@@ -341,6 +367,8 @@ function Editor({
       if (kind === 'model')
         Object.assign(body, {
           capabilities: values.capabilities,
+          capabilityStates: JSON.parse(String(values.capabilityStates ?? '{}')),
+          reasoningLevels: values.reasoningLevels,
           currency: 'USD',
           fallbackId: values.fallbackId || null,
           additionalPrices: JSON.parse(advanced),
@@ -501,6 +529,46 @@ function Editor({
               );
             })}
           </fieldset>
+        )}
+        {kind === 'model' && (
+          <>
+            <fieldset className="capability-fieldset">
+              <legend>Supported reasoning levels</legend>
+              {['low', 'medium', 'high', 'xhigh'].map((level) => (
+                <label key={level}>
+                  <input
+                    type="checkbox"
+                    checked={selected('reasoningLevels').includes(level)}
+                    onChange={(e) =>
+                      set(
+                        'reasoningLevels',
+                        e.target.checked
+                          ? [...selected('reasoningLevels'), level]
+                          : selected('reasoningLevels').filter(
+                              (value) => value !== level,
+                            ),
+                      )
+                    }
+                  />
+                  {level}
+                </label>
+              ))}
+            </fieldset>
+            <details className="advanced-config">
+              <summary>Capability availability</summary>
+              <p className="muted">
+                Map a capability to NATIVE_PROVIDER, VROMPT, or UNAVAILABLE.
+                Only enabled, non-unavailable capabilities are exposed to users
+                and routing.
+              </p>
+              <textarea
+                aria-label="Capability availability"
+                rows={8}
+                value={String(values.capabilityStates ?? '{}')}
+                onChange={(e) => set('capabilityStates', e.target.value)}
+              />
+            </details>
+          </>
         )}
         {kind === 'model' && (
           <label className="config-label">

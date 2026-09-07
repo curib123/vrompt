@@ -1,5 +1,10 @@
 import { AIModel, GenerationPolicy, Prisma } from '@prisma/client';
-import { rankModels, policySchema, validate } from './registry.service';
+import {
+  rankModels,
+  policySchema,
+  supportsCapability,
+  validate,
+} from './registry.service';
 import { periods } from './quota.service';
 describe('Routing and reset boundaries', () => {
   const models = [
@@ -105,5 +110,17 @@ describe('Routing and reset boundaries', () => {
       1000,
     );
     expect(ranked[0]?.id).toBe('cheap');
+  });
+  it('excludes a configured unavailable capability without breaking legacy models', () => {
+    expect(supportsCapability(models[0]!, 'text')).toBe(true);
+    expect(
+      supportsCapability(
+        {
+          ...models[1]!,
+          capabilityStates: { coding: 'UNAVAILABLE' },
+        },
+        'coding',
+      ),
+    ).toBe(false);
   });
 });
