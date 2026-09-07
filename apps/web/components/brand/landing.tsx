@@ -123,8 +123,8 @@ export function Landing() {
         <section className="brand-hero mvp-hero" aria-labelledby="hero-title">
           <div className="hero-copy">
             <span className="brand-pill">
-              <BrandMark className="brand-symbol" /> MULTIPLE AIs. A SMARTER
-              YOU.
+              <BrandMark className="brand-symbol" /> The right AI for every
+              task.
             </span>
             <h1 id="hero-title">
               One account.
