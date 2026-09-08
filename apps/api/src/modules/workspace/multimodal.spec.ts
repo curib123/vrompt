@@ -249,8 +249,15 @@ describe('Private generated images', () => {
     const old = process.env.CHAT_STORAGE_DIR;
     process.env.CHAT_STORAGE_DIR = root;
     let record: any;
-    const prisma = {
+    const prisma: any = {
+      $queryRaw: jest.fn(),
+      conversation: {
+        findFirst: jest.fn().mockResolvedValue({ id: 'conversation' }),
+      },
       attachment: {
+        aggregate: jest
+          .fn()
+          .mockResolvedValue({ _sum: { size: 0 }, _count: { id: 0 } }),
         create: jest.fn(async ({ data }) => {
           record = data;
           return data;
@@ -260,7 +267,13 @@ describe('Private generated images', () => {
         ),
       },
     };
-    const service = new AttachmentService(prisma as any, {} as any);
+    prisma.$transaction = (fn: any) => fn(prisma);
+    const service = new AttachmentService(prisma, {
+      policies: async () => ({
+        plan: { code: 'PRO' },
+        policies: [{ allowedFeatures: ['image_generation'] }],
+      }),
+    } as any);
     try {
       await service.saveGenerated('owner', 'conversation', 'image/png', png);
       expect(record.generated).toBe(true);

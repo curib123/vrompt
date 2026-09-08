@@ -7,6 +7,32 @@ import {
 } from './registry.service';
 import { periods } from './quota.service';
 describe('Routing and reset boundaries', () => {
+  it('blocks unsupported adapter tasks even when the catalog enables them', () => {
+    const configured = {
+      provider: 'ANTHROPIC',
+      capabilities: ['image_generation', 'web_search', 'file_generation'],
+      capabilityStates: {},
+      additionalPrices: { maxImageOutputCostUsd: 1 },
+    } as unknown as AIModel;
+    for (const task of configured.capabilities)
+      expect(supportsCapability(configured, task)).toBe(false);
+    expect(
+      supportsCapability(
+        { ...configured, provider: 'MISTRAL', capabilities: ['files'] },
+        'files',
+      ),
+    ).toBe(false);
+    expect(
+      supportsCapability(
+        {
+          ...configured,
+          provider: 'GOOGLE',
+          capabilities: ['files', 'vision'],
+        },
+        'files',
+      ),
+    ).toBe(true);
+  });
   const models = [
     {
       id: 'cheap',

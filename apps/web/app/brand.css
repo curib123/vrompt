@@ -171,22 +171,6 @@
   text-decoration: underline;
   text-underline-offset: 3px;
 }
-.auth-guest {
-  display: inline-flex;
-  justify-content: center;
-  align-items: center;
-  gap: 8px;
-  margin-top: 17px;
-  min-height: 36px;
-  color: var(--brand-mid);
-  font-size: 10px;
-}
-.auth-guest:hover {
-  color: var(--brand-teal-deep);
-}
-.auth-guest svg {
-  width: 14px;
-}
 .auth-registration-note {
   margin-top: 16px;
   font-size: 11px;
@@ -2686,16 +2670,43 @@ html {
   text-decoration: underline;
   text-underline-offset: 3px;
 }
-.chat-guest-note {
-  margin: 10px 0 0;
-  color: var(--brand-mid);
-  font-size: 12px;
-  text-align: center;
+.composer-credit-balance {
+  display: block;
+  margin-top: 3px;
 }
-.chat-guest-note button {
+.plan-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  padding: 5px 10px;
+  border: 1px solid var(--brand-soft);
+  border-radius: 999px;
+  background: var(--brand-paper);
   color: var(--brand-ink);
-  text-decoration: underline;
-  text-underline-offset: 3px;
+  font-size: 11px;
+  font-weight: 650;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+.plan-badge[data-plan='starter'] {
+  border-color: var(--brand-azure);
+}
+.plan-badge[data-plan='pro'],
+.plan-badge[data-plan='max'] {
+  border-color: var(--brand-teal);
+  background: color-mix(in srgb, var(--brand-teal) 9%, var(--brand-surface));
+}
+.plan-badge:focus-visible {
+  outline: 2px solid var(--brand-azure-deep);
+  outline-offset: 3px;
+}
+.sidebar-plan {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 4px 0 12px;
 }
 .chat-option-fields {
   display: grid;

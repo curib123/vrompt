@@ -22,7 +22,6 @@ import { Icon } from '@/components/ui/icon';
 import { Modal } from '@/components/ui/modal';
 import { starterTasks } from '@/components/brand/landing';
 import type { Preferences } from './preferences';
-import { SignInButton } from '@/components/providers/auth-dialog-provider';
 
 function availableCapabilities(model?: Model) {
   if (!model) return [];
@@ -90,11 +89,30 @@ export function Chat() {
     : 1;
   const canAfford = (price: number | null) =>
     price !== null && (!usage?.credits || usage.credits.remaining >= price);
+  const selectedCapabilities = availableCapabilities(
+    models.find((model) => model.id === selected),
+  );
+  const acceptsPdf =
+    selected === 'AUTO' || selectedCapabilities.includes('files');
+  const acceptsImage =
+    selected === 'AUTO' || selectedCapabilities.includes('vision');
+  const acceptsFile = (mime: string) =>
+    mime === 'application/pdf'
+      ? acceptsPdf
+      : mime.startsWith('image/')
+        ? acceptsImage
+        : mime === 'text/plain';
+  const attachmentsValid =
+    selectedFiles.length <= (allowance?.maxFiles ?? 0) &&
+    files
+      .filter((file) => selectedFiles.includes(file.id))
+      .every((file) => acceptsFile(file.mimeType));
   const canSend =
     chatAvailable &&
     Boolean(allowance) &&
     !allowanceExhausted &&
-    canAfford(creditPrice);
+    canAfford(creditPrice) &&
+    attachmentsValid;
   const canAttach = Boolean(accessToken && allowance?.maxFiles);
   const canGenerateImage =
     allowance?.allowedFeatures?.includes('image_generation') &&
@@ -130,37 +148,7 @@ export function Chat() {
     setPrompts(p);
   }
   useEffect(() => {
-    if (!accessToken) {
-      void apiRequest<{
-        enabled: boolean;
-        dailyLimit: number;
-        monthlyLimit: number;
-        creditCosts?: { chat: number | null; image_generation: number | null };
-      }>('/guest/configuration')
-        .then((g) =>
-          setUsage({
-            plan: 'Guest',
-            resets: { daily: '', monthly: '' },
-            allowances: g.enabled
-              ? [
-                  {
-                    bucket: 'AUTO',
-                    creditCosts: g.creditCosts,
-                    allowedFeatures: ['chat'],
-                    dailyLimit: g.dailyLimit,
-                    dailyRemaining: g.dailyLimit,
-                    monthlyLimit: g.monthlyLimit,
-                    monthlyRemaining: g.monthlyLimit,
-                    maxFiles: 0,
-                    maxFileBytes: 0,
-                  },
-                ]
-              : [],
-          }),
-        )
-        .catch((e) => setError(e.message));
-      return;
-    }
+    if (!accessToken) return;
     void apiRequest<Project[]>('/workspace/projects', { accessToken })
       .then(setProjects)
       .catch((e) => setError(e.message));
@@ -181,7 +169,7 @@ export function Chat() {
     abort.current = null;
     // A route change starts a separate conversation, including a second New Chat click.
     setBusy(false);
-    const view = `${user?.id ?? 'guest'}:${id ?? ''}:${newChat ?? ''}`;
+    const view = `${user?.id ?? ''}:${id ?? ''}:${newChat ?? ''}`;
     if (previousView.current !== view) {
       setText('');
       previousView.current = view;
@@ -291,10 +279,12 @@ export function Chat() {
       : 1;
     if (
       abort.current ||
+      !accessToken ||
       busy ||
       !chatAvailable ||
       !allowance ||
       allowanceExhausted ||
+      !attachmentsValid ||
       !canAfford(requestCredits) ||
       (!text.trim() && !regenerate)
     )
@@ -307,15 +297,15 @@ export function Chat() {
     abort.current = controller;
     let conversationId = id;
     try {
-      conversationId = accessToken ? await ensureConversation() : null;
+      conversationId = await ensureConversation();
       if (controller.signal.aborted) return;
       const response = await fetch(
-        `${getApiBaseUrl()}${accessToken ? `/workspace/conversations/${conversationId}/messages` : '/guest/messages'}`,
+        `${getApiBaseUrl()}/workspace/conversations/${conversationId}/messages`,
         {
           method: 'POST',
           credentials: 'include',
           headers: {
-            ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+            Authorization: `Bearer ${accessToken}`,
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
@@ -437,10 +427,27 @@ export function Chat() {
   async function attach(file?: File) {
     if (!file || !accessToken || busy || !canAttach) return;
     setError('');
+    if (selectedFiles.length >= (allowance?.maxFiles ?? 0)) {
+      setError('Deselect a file before attaching another to this message.');
+      return;
+    }
+    if (file.size > (allowance?.maxFileBytes ?? 0)) {
+      setError('This file exceeds the selected plan’s file size limit.');
+      return;
+    }
+    const uploadMime = /\.(txt|md|csv)$/i.test(file.name)
+      ? 'text/plain'
+      : file.type;
+    if (!acceptsFile(uploadMime)) {
+      setError(
+        'This model does not support that file type. Choose Auto or a compatible model.',
+      );
+      return;
+    }
     try {
       const conversationId = await ensureConversation();
       const body = new FormData();
-      body.set('file', file);
+      body.set('file', new File([file], file.name, { type: uploadMime }));
       const added = await apiRequest<ChatFile>(
         `/workspace/conversations/${conversationId}/files`,
         { accessToken, method: 'POST', body },
@@ -613,6 +620,12 @@ export function Chat() {
         <div ref={bottom} />
       </div>
       <div className="composer-wrap">
+        {!attachmentsValid && (
+          <p role="alert">
+            Deselect incompatible or excess files before sending, or choose a
+            model that supports them.
+          </p>
+        )}
         {error && (
           <div className="error-banner" role="alert">
             {error}{' '}
@@ -658,7 +671,12 @@ export function Chat() {
                 type="checkbox"
                 aria-label={`Include ${f.name}`}
                 checked={selectedFiles.includes(f.id)}
-                disabled={busy}
+                disabled={
+                  busy ||
+                  (!selectedFiles.includes(f.id) &&
+                    (selectedFiles.length >= (allowance?.maxFiles ?? 0) ||
+                      !acceptsFile(f.mimeType)))
+                }
                 onChange={(e) =>
                   setSelectedFiles((old) =>
                     e.target.checked
@@ -762,7 +780,13 @@ export function Chat() {
                 type="file"
                 hidden
                 ref={upload}
-                accept=".pdf,.png,.jpg,.jpeg,.txt,.md,.csv"
+                accept={[
+                  '.txt',
+                  '.md',
+                  '.csv',
+                  ...(acceptsPdf ? ['.pdf'] : []),
+                  ...(acceptsImage ? ['.png', '.jpg', '.jpeg'] : []),
+                ].join(',')}
                 onChange={(e) => {
                   void attach(e.target.files?.[0]);
                   e.target.value = '';
@@ -772,7 +796,7 @@ export function Chat() {
                 <button
                   className="composer-attach"
                   aria-label="Attach a file"
-                  title="Attach a file"
+                  title={`Attach up to ${allowance?.maxFiles} file(s) per message, ${Math.floor((allowance?.maxFileBytes ?? 0) / 1_000_000)} MB each`}
                   disabled={busy}
                   onClick={() => upload.current?.click()}
                 >
@@ -822,9 +846,16 @@ export function Chat() {
                       ? 'Pricing for this task is not available yet.'
                       : !canAfford(creditPrice)
                         ? `This response needs ${creditPrice} credits. You have ${usage?.credits?.remaining ?? 0}.`
-                        : `${creditPrice} ${creditPrice === 1 ? 'credit' : 'credits'} per response · ${allowance.dailyRemaining} messages left today`
+                        : `${creditPrice} ${creditPrice === 1 ? 'credit' : 'credits'} per response · ${allowance.dailyRemaining} ${allowance.dailyRemaining === 1 ? 'message' : 'messages'} left today`
                     : 'Checking your allowance…'}
             {accessToken && <Link href="/usage">View usage</Link>}
+            {usage?.credits && (
+              <span className="composer-credit-balance">
+                {usage.credits.remaining}{' '}
+                {usage.credits.remaining === 1 ? 'credit' : 'credits'} left this
+                month
+              </span>
+            )}
           </span>
           <span className="composer-keyboard-hint">
             {preferences?.sendOnEnter === false
@@ -832,12 +863,6 @@ export function Chat() {
               : 'Enter to send · Shift + Enter for a new line'}
           </span>
         </div>
-        {!accessToken && (
-          <p className="chat-guest-note">
-            Temporary chat.{' '}
-            <SignInButton>Sign in to save your conversations</SignInButton>
-          </p>
-        )}
       </div>
       <Modal
         open={optionsOpen}
@@ -847,6 +872,13 @@ export function Chat() {
         className="chat-options-dialog"
       >
         <div className="chat-option-fields">
+          <p className="muted">
+            {canAttach
+              ? `Select up to ${allowance?.maxFiles} file(s) per message, up to ${Math.floor((allowance?.maxFileBytes ?? 0) / 1_000_000)} MB each. `
+              : 'File uploads are unavailable on this selection. '}
+            Images require a compatible model.{' '}
+            <Link href="/docs">File and storage limits</Link>
+          </p>
           <label>
             Task
             <select
@@ -865,6 +897,12 @@ export function Chat() {
             {!canGenerateImage && (
               <small>
                 Image generation is unavailable for this model or plan.
+              </small>
+            )}
+            {canGenerateImage && (
+              <small>
+                One image per response, up to 10 MB. The displayed image credit
+                price applies.
               </small>
             )}
           </label>

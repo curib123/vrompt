@@ -70,18 +70,29 @@ describe('Auto orchestration', () => {
       available: jest.fn().mockResolvedValue(models),
       health: new RoutingHealth(),
     };
+    const files = {
+      forConversation: jest.fn().mockResolvedValue([]),
+      assertImageCapacity: jest.fn(),
+      saveGenerated: jest
+        .fn()
+        .mockResolvedValue({ id: 'image', mimeType: 'image/png' }),
+    };
     const service = new ChatService(
       prisma,
       quota as any,
       registry as any,
       { get: () => ({ stream }) } as any,
-      { forConversation: async () => [] } as any,
+      files as any,
     );
     const events: any[] = [];
     const controller = new AbortController();
     const run = (
       mode: 'AUTO' | 'MANUAL' = 'AUTO',
-      retry: { regenerateMessageId?: string; maxCredits?: number } = {},
+      retry: {
+        regenerateMessageId?: string;
+        maxCredits?: number;
+        feature?: 'chat' | 'image_generation';
+      } = {},
     ) =>
       service.generate(
         'user',
@@ -106,8 +117,61 @@ describe('Auto orchestration', () => {
       events,
       controller,
       run,
+      files,
     };
   }
+
+  it('routes an image upload only to a vision-capable model', async () => {
+    const s = setup();
+    s.files.forConversation.mockResolvedValue([
+      { name: 'photo.png', mimeType: 'image/png', data: Buffer.from('image') },
+    ]);
+    s.models[1]!.capabilities.push('vision');
+    await s.run();
+    expect(s.stream.mock.calls[0]![0].id).toBe('second');
+  });
+  it('rejects unsupported manual files and excess file counts before charging or calling providers', async () => {
+    const s = setup();
+    Object.assign(s.policy, { bucket: 'first', modelId: 'first' });
+    s.files.forConversation.mockResolvedValue([
+      { name: 'photo.png', mimeType: 'image/png', data: Buffer.from('image') },
+    ]);
+    await expect(s.run('MANUAL')).rejects.toThrow('does not support');
+    s.policy.maxFiles = 0;
+    await expect(s.run('MANUAL')).rejects.toThrow('Files exceed');
+    expect(s.quota.reserve).not.toHaveBeenCalled();
+    expect(s.stream).not.toHaveBeenCalled();
+  });
+  it('blocks images excluded by the plan or full storage before provider work', async () => {
+    const s = setup();
+    await expect(
+      s.run('AUTO', { feature: 'image_generation' }),
+    ).rejects.toThrow('not included');
+    s.policy.allowedFeatures.push('image_generation');
+    s.files.assertImageCapacity.mockRejectedValue(new Error('Storage full'));
+    await expect(
+      s.run('AUTO', { feature: 'image_generation' }),
+    ).rejects.toThrow('Storage full');
+    expect(s.quota.reserve).not.toHaveBeenCalled();
+    expect(s.stream).not.toHaveBeenCalled();
+  });
+  it('saves only one image from a response and does not retry a consumed image request', async () => {
+    const s = setup();
+    s.policy.allowedFeatures.push('image_generation');
+    Object.assign(s.policy.routing, { imageCreditCost: 35 });
+    Object.assign(s.models[0]!, {
+      provider: 'GOOGLE',
+      capabilities: ['text', 'image_generation'],
+      additionalPrices: { maxImageOutputCostUsd: 0.25 },
+    });
+    s.stream.mockImplementationOnce(async (...args: any[]) => {
+      await args[7].image('image/png', 'first');
+      await args[7].image('image/png', 'second');
+    });
+    await s.run('AUTO', { feature: 'image_generation' });
+    expect(s.files.saveGenerated).toHaveBeenCalledTimes(1);
+    expect(s.stream).toHaveBeenCalledTimes(1);
+  });
 
   it('falls back once after a retryable error and finalizes a single reservation', async () => {
     const s = setup();

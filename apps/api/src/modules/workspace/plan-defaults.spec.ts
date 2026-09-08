@@ -45,22 +45,27 @@ const models = [
 })) as unknown as AIModel[];
 
 describe('four subscription tiers', () => {
-  it('orders the public plans and keeps the guest trial separate', () => {
+  it('orders the four plans and does not seed guest access', () => {
+    expect(creditPlans).not.toHaveProperty('GUEST');
     expect(publicPlanCodes).toEqual(['FREE', 'STARTER', 'PRO', 'MAX']);
     expect(
       publicPlanCodes.map((code) => creditPlans[code].monthlyCredits),
     ).toEqual([30, 100, 250, 600]);
     expect(
       publicPlanCodes.map((code) => creditPlans[code].originalPrice),
-    ).toEqual([0, 499, 999, 1999]);
+    ).toEqual([0, 599, 1199, 2499]);
   });
-  it('keeps modeled provider work below 25 percent of each paid monthly price', () => {
+  it('keeps provider budgets below 20 percent per allowance and 40 percent across two calendar resets', () => {
     for (const code of ['STARTER', 'PRO', 'MAX'] as const) {
       const plan = creditPlans[code];
       expect(
         (plan.monthlyCredits * PROVIDER_USD_PER_CREDIT) /
           (plan.originalPrice / 100),
-      ).toBeLessThan(0.25);
+      ).toBeLessThan(0.2);
+      expect(
+        (2 * plan.monthlyCredits * PROVIDER_USD_PER_CREDIT) /
+          (plan.originalPrice / 100),
+      ).toBeLessThan(0.4);
     }
   });
   it('limits Starter to economical manual models and keeps premium access in Pro and Max', () => {
@@ -80,7 +85,7 @@ describe('four subscription tiers', () => {
       ]);
   });
   it('uses only supported Auto providers and retains affordable routes in every tier', () => {
-    for (const code of [...publicPlanCodes, 'GUEST'] as const) {
+    for (const code of publicPlanCodes) {
       const p = defaultCreditPolicy('plan', code, models) as GenerationPolicy;
       const pool = (p.routing as { allowedModelIds: string[] }).allowedModelIds;
       expect(pool).not.toContain('retired');

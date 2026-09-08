@@ -9,6 +9,18 @@ import { basename, extname, resolve } from 'node:path';
 import { PrismaService } from '../prisma/prisma.service';
 import { QuotaService } from './quota.service';
 import type { ProviderFile } from './providers';
+import type { Prisma } from '@prisma/client';
+
+export const MAX_GENERATED_IMAGE_BYTES = 10_000_000;
+export function storageAllowance(code?: string) {
+  return (
+    {
+      STARTER: { bytes: 50_000_000, files: 100 },
+      PRO: { bytes: 250_000_000, files: 500 },
+      MAX: { bytes: 1_000_000_000, files: 2000 },
+    }[code ?? ''] ?? { bytes: 0, files: 0 }
+  );
+}
 
 export function validateFile(file: Express.Multer.File) {
   const extension = extname(file.originalname).toLowerCase();
@@ -46,6 +58,39 @@ export class AttachmentService {
     private readonly prisma: PrismaService,
     private readonly quota: QuotaService,
   ) {}
+  private async checkStorage(
+    db: Pick<Prisma.TransactionClient, 'attachment'>,
+    userId: string,
+    bytes: number,
+    code?: string,
+  ) {
+    const limit = storageAllowance(code);
+    const usage = await db.attachment.aggregate({
+      where: { userId },
+      _sum: { size: true },
+      _count: { id: true },
+    });
+    if (
+      (usage._sum.size ?? 0) + bytes > limit.bytes ||
+      usage._count.id >= limit.files
+    )
+      throw new BadRequestException(
+        'File storage allowance reached. Delete unused files or choose a larger plan.',
+      );
+  }
+  async assertImageCapacity(userId: string) {
+    const { plan, policies } = await this.quota.policies(userId);
+    if (!policies.some((p) => p.allowedFeatures.includes('image_generation')))
+      throw new BadRequestException(
+        'Image generation is not included in your plan.',
+      );
+    await this.checkStorage(
+      this.prisma,
+      userId,
+      MAX_GENERATED_IMAGE_BYTES,
+      plan?.code,
+    );
+  }
   async owned(userId: string, id: string) {
     const file = await this.prisma.attachment.findFirst({
       where: { id, userId },
@@ -59,7 +104,7 @@ export class AttachmentService {
     mimeType: string,
     base64: string,
   ) {
-    if (base64.length > 28_000_000)
+    if (base64.length > Math.ceil(MAX_GENERATED_IMAGE_BYTES / 3) * 4)
       throw new BadRequestException('Generated image exceeds storage limit');
     const extension =
       mimeType === 'image/png'
@@ -70,27 +115,44 @@ export class AttachmentService {
     if (!extension)
       throw new BadRequestException('Unsupported generated image format');
     const data = Buffer.from(base64, 'base64');
+    if (data.length > MAX_GENERATED_IMAGE_BYTES)
+      throw new BadRequestException('Generated image exceeds storage limit');
     validateFile({
       originalname: `image${extension}`,
       mimetype: mimeType,
       buffer: data,
     } as Express.Multer.File);
+    const { plan, policies } = await this.quota.policies(userId);
+    if (!policies.some((p) => p.allowedFeatures.includes('image_generation')))
+      throw new BadRequestException(
+        'Image generation is not included in your plan.',
+      );
     const key = randomUUID();
     await mkdir(this.root, { recursive: true });
     await writeFile(resolve(this.root, key), data, { flag: 'wx', mode: 0o600 });
     try {
-      return await this.prisma.attachment.create({
-        data: {
-          id: key,
-          storageKey: key,
-          userId,
-          conversationId,
-          generated: true,
-          name: `generated${extension}`,
-          mimeType,
-          size: data.length,
-        },
-        select: { id: true, name: true, mimeType: true, size: true },
+      return await this.prisma.$transaction(async (tx) => {
+        await tx.$queryRaw`SELECT id FROM "User" WHERE id = ${userId}::uuid FOR UPDATE`;
+        await this.checkStorage(tx, userId, data.length, plan?.code);
+        if (
+          !(await tx.conversation.findFirst({
+            where: { id: conversationId, userId },
+          }))
+        )
+          throw new NotFoundException('Conversation not found');
+        return tx.attachment.create({
+          data: {
+            id: key,
+            storageKey: key,
+            userId,
+            conversationId,
+            generated: true,
+            name: `generated${extension}`,
+            mimeType,
+            size: data.length,
+          },
+          select: { id: true, name: true, mimeType: true, size: true },
+        });
       });
     } catch (error) {
       await unlink(resolve(this.root, key));
@@ -104,8 +166,12 @@ export class AttachmentService {
   ) {
     if (!file) throw new BadRequestException('Choose a file');
     validateFile(file);
-    const { policies } = await this.quota.policies(userId);
-    if (!policies.some((p) => p.maxFiles > 0 && p.maxFileBytes >= file.size))
+    const { plan, policies } = await this.quota.policies(userId);
+    if (
+      !policies.some(
+        (p) => p.maxFiles > 0 && p.maxFileBytes >= file.buffer.length,
+      )
+    )
       throw new BadRequestException('File exceeds your plan allowance.');
     const key = randomUUID();
     await mkdir(this.root, { recursive: true });
@@ -115,6 +181,8 @@ export class AttachmentService {
     });
     try {
       return await this.prisma.$transaction(async (tx) => {
+        await tx.$queryRaw`SELECT id FROM "User" WHERE id = ${userId}::uuid FOR UPDATE`;
+        await this.checkStorage(tx, userId, file.buffer.length, plan?.code);
         await tx.$queryRaw`SELECT id FROM "Conversation" WHERE id = ${conversationId}::uuid FOR UPDATE`;
         if (
           !(await tx.conversation.findFirst({
@@ -122,11 +190,6 @@ export class AttachmentService {
           }))
         )
           throw new NotFoundException('Conversation not found');
-        const count = await tx.attachment.count({
-          where: { conversationId, generated: false },
-        });
-        if (count >= Math.max(...policies.map((p) => p.maxFiles)))
-          throw new BadRequestException('Conversation file allowance reached.');
         return tx.attachment.create({
           data: {
             id: key,
@@ -135,7 +198,7 @@ export class AttachmentService {
             conversationId,
             name: basename(file.originalname).slice(0, 200),
             mimeType: file.mimetype,
-            size: file.size,
+            size: file.buffer.length,
           },
           select: { id: true, name: true, size: true, mimeType: true },
         });

@@ -18,20 +18,10 @@ export const creditPlans = {
     maxProjects: 30,
     maxWorkflows: 50,
     monthlyCredits: 250,
-    originalPrice: 999,
+    originalPrice: 1199,
     billingInterval: BillingInterval.MONTH,
     description:
       '250 monthly credits for regular work, with manual models, files and image generation.',
-  },
-  GUEST: {
-    name: 'Guest',
-    displayOrder: 4,
-    maxProjects: 0,
-    maxWorkflows: 0,
-    monthlyCredits: 3,
-    originalPrice: 0,
-    billingInterval: BillingInterval.MONTH,
-    description: 'A temporary Auto text chat trial, with 1 message a day.',
   },
   STARTER: {
     name: 'Starter',
@@ -39,7 +29,7 @@ export const creditPlans = {
     maxProjects: 5,
     maxWorkflows: 0,
     monthlyCredits: 100,
-    originalPrice: 499,
+    originalPrice: 599,
     billingInterval: BillingInterval.MONTH,
     description:
       '100 monthly credits for everyday questions, economical manual models and one file per message.',
@@ -50,7 +40,7 @@ export const creditPlans = {
     maxProjects: 100,
     maxWorkflows: 150,
     monthlyCredits: 600,
-    originalPrice: 1999,
+    originalPrice: 2499,
     billingInterval: BillingInterval.MONTH,
     description:
       '600 monthly credits for bigger workloads, with all supported models, images and more workspace capacity.',
@@ -113,7 +103,6 @@ export function defaultCreditPolicy(
   const pro = code === 'PRO' || code === 'MAX';
   const starter = code === 'STARTER';
   const paid = pro || starter;
-  const guest = code === 'GUEST';
   const auto = !model;
   const imageModels = models.filter(
     (m) =>
@@ -129,24 +118,16 @@ export function defaultCreditPolicy(
     bucket: model?.id ?? 'AUTO',
     modelId: model?.id ?? null,
     enabled: paid || auto,
-    dailyLimit: code === 'MAX' ? 100 : pro ? 50 : starter ? 15 : guest ? 1 : 5,
+    dailyLimit: code === 'MAX' ? 100 : pro ? 50 : starter ? 15 : 5,
     monthlyLimit: creditPlans[code].monthlyCredits,
-    maxInputChars: pro ? 12000 : starter ? 8000 : guest ? 2000 : 4000,
-    maxContext: pro
-      ? auto
-        ? 16384
-        : 32768
-      : starter
-        ? 16384
-        : guest
-          ? 4096
-          : 8192,
-    maxOutput: pro ? (auto ? 2048 : 4096) : starter ? 2048 : guest ? 512 : 1024,
+    maxInputChars: pro ? 12000 : starter ? 8000 : 4000,
+    maxContext: pro ? (auto ? 16384 : 32768) : starter ? 16384 : 8192,
+    maxOutput: pro ? (auto ? 2048 : 4096) : starter ? 2048 : 1024,
     maxFiles: pro ? 2 : starter ? 1 : 0,
     maxFileBytes: paid ? 5_000_000 : 1,
     maxDurationSeconds: paid ? 90 : 30,
     concurrency: code === 'MAX' ? 3 : pro ? 2 : 1,
-    ratePerMinute: code === 'MAX' ? 30 : pro ? 15 : starter ? 6 : guest ? 2 : 3,
+    ratePerMinute: code === 'MAX' ? 30 : pro ? 15 : starter ? 6 : 3,
     allowedFeatures: imageEnabled ? ['chat', 'image_generation'] : ['chat'],
     routing: {
       allowedModelIds: models

@@ -224,15 +224,6 @@ export function AuthDialogProvider({ children }: { children: ReactNode }) {
                 </Link>
                 .
               </p>
-              <button
-                className="auth-guest"
-                onClick={() => {
-                  close();
-                  router.push('/chat');
-                }}
-              >
-                Explore a temporary chat <Icon name="arrow" />
-              </button>
             </div>
           </dialog>,
           document.body,

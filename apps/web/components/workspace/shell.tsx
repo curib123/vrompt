@@ -10,6 +10,7 @@ import { Icon, type IconName } from '@/components/ui/icon';
 import { useSiteSettings } from '@/components/providers/site-settings-provider';
 import { SignInButton } from '@/components/providers/auth-dialog-provider';
 import { useFeedback } from '@/components/ui/feedback-modal';
+import { PlanBadge } from '@/components/billing/plan-badge';
 const navigationIcons: Record<string, IconName> = {
   '/chat': 'chat',
   '/conversations': 'history',
@@ -96,7 +97,7 @@ export function WorkspaceShell({
   }, [open]);
   if (isLoading)
     return <main className="center-page">Opening your workspace…</main>;
-  if (!user && (admin || pathname !== '/chat'))
+  if (!user)
     return (
       <main className="center-page">
         <h1>
@@ -209,10 +210,13 @@ export function WorkspaceShell({
           ))}
         </nav>
         <div className="sidebar-bottom">
+          <div className="sidebar-plan">
+            <span>{admin ? 'Access' : 'Your plan'}</span>
+            <PlanBadge />
+          </div>
           <Link href="/docs">
             <Icon name="help" /> Help & getting started
           </Link>
-          {!user && <SignInButton>Sign in to save your work</SignInButton>}
         </div>
       </aside>
       <div
@@ -281,6 +285,7 @@ export function WorkspaceShell({
             </strong>
           </div>
           <div className="workspace-topbar-actions">
+            <PlanBadge />
             <button
               className="workspace-topbar-avatar"
               popoverTarget="account-actions"
@@ -290,9 +295,7 @@ export function WorkspaceShell({
               <span className="account-avatar">
                 {user?.username.slice(0, 2).toUpperCase() ?? 'V'}
               </span>
-              <span className="workspace-topbar-user">
-                {user?.username ?? 'Guest'}
-              </span>
+              <span className="workspace-topbar-user">{user.username}</span>
             </button>
           </div>
         </header>

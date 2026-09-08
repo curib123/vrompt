@@ -80,7 +80,7 @@ test('four subscription plans and only the four requested provider brands are sh
     ...plans.plans[0],
     id: name.toUpperCase(),
     name,
-    priceCentavos: [0, 499, 999, 1999][index],
+    priceCentavos: [0, 599, 1199, 2499][index],
     monthlyCredits: [30, 100, 250, 600][index],
     manualModelCount: [0, 3, 5, 5][index],
   }));
@@ -145,6 +145,60 @@ test('four subscription plans and only the four requested provider brands are sh
 });
 
 type TestRole = 'USER' | 'ADMIN' | 'guest';
+test('file selection respects per-message limits and model capabilities before sending', async ({
+  page,
+}) => {
+  await mockApi(page);
+  await page.route('**/workspace/usage', (route) =>
+    route.fulfill({
+      json: {
+        ...usage,
+        allowances: usage.allowances.map((item) => ({
+          ...item,
+          maxFiles: 1,
+          maxFileBytes: 5_000_000,
+        })),
+      },
+    }),
+  );
+  await page.route(`**/workspace/conversations/${conversationId}`, (route) =>
+    route.fulfill({
+      json: {
+        id: conversationId,
+        title: 'Files',
+        messages: [],
+        attachments: [
+          { id: 'photo', name: 'photo.png', mimeType: 'image/png', size: 100 },
+          { id: 'notes', name: 'notes.txt', mimeType: 'text/plain', size: 100 },
+        ],
+      },
+    }),
+  );
+  await page.goto(`/chat?id=${conversationId}`);
+  await page
+    .getByRole('textbox', { name: 'Message' })
+    .fill('Describe this file');
+  await page.getByRole('checkbox', { name: 'Include photo.png' }).check();
+  await expect(
+    page.getByRole('checkbox', { name: 'Include notes.txt' }),
+  ).toBeDisabled();
+  await page.locator('.composer select').selectOption(modelId);
+  await expect(page.locator('input[type="file"]')).toHaveAttribute(
+    'accept',
+    '.txt,.md,.csv',
+  );
+  await expect(
+    page.getByRole('button', { name: 'Send', exact: true }),
+  ).toBeDisabled();
+  await expect(page.locator('.composer-wrap [role="alert"]')).toContainText(
+    'Deselect incompatible',
+  );
+  await page.getByRole('checkbox', { name: 'Include photo.png' }).uncheck();
+  await page.getByRole('checkbox', { name: 'Include notes.txt' }).check();
+  await expect(
+    page.getByRole('button', { name: 'Send', exact: true }),
+  ).toBeEnabled();
+});
 async function mockApi(
   page: Page,
   session: TestRole | (() => TestRole) = 'USER',
@@ -181,8 +235,6 @@ async function mockApi(
       body = { plan: 'FREE', subscription: null, latestPayment: null };
     else if (path === '/workspace/preferences')
       body = { displayName: 'Alex', defaultModelId: null, sendOnEnter: false };
-    else if (path === '/guest/configuration')
-      body = { enabled: true, dailyLimit: 3, monthlyLimit: 10 };
     else if (
       path === '/workspace/conversations' &&
       route.request().method() === 'POST'
@@ -444,6 +496,112 @@ test('sign-in remembers the originating workspace before OAuth redirect', async 
     await page.evaluate(() => sessionStorage.getItem('vrompt-oauth-return-to')),
   ).toBe('/projects');
 });
+
+test('signed-out visitors can read public pages but cannot use any workspace tool', async ({
+  page,
+}) => {
+  await mockApi(page, 'guest');
+  const privateRequests: string[] = [];
+  page.on('request', (request) => {
+    if (/\/api\/v1\/(workspace|guest)\//.test(request.url()))
+      privateRequests.push(request.url());
+  });
+  for (const path of [
+    '/chat',
+    '/projects',
+    '/workflows',
+    '/conversations',
+    '/saved-prompts',
+    '/usage',
+    '/billing',
+    '/settings',
+  ]) {
+    await page.goto(path);
+    await expect(
+      page.getByRole('button', { name: 'Sign in', exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole('textbox', { name: 'Message', exact: true }),
+    ).toHaveCount(0);
+    await expect(page.locator('.workspace-sidebar')).toHaveCount(0);
+  }
+  expect(privateRequests).toEqual([]);
+  for (const path of ['/', '/docs', '/privacy', '/terms']) {
+    await page.goto(path);
+    await expect(page.locator('main h1')).toBeVisible();
+  }
+  await page.goto('/chat');
+  await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+  await expect(page.getByRole('dialog')).toBeVisible();
+  await expect(
+    page.getByRole('button', { name: 'Explore a temporary chat' }),
+  ).toHaveCount(0);
+});
+
+for (const name of ['Free', 'Starter', 'Pro', 'Max']) {
+  test(`the ${name} subscription badge uses the actual tier and usage labels distinguish credits from messages`, async ({
+    page,
+  }) => {
+    await mockApi(page);
+    const code = name.toUpperCase();
+    await page.route('**/billing/me', (route) =>
+      route.fulfill({
+        json: {
+          plan: code === 'FREE' ? 'FREE' : 'PRO',
+          planCode: code,
+          planName: name,
+          subscription:
+            code === 'FREE'
+              ? null
+              : {
+                  id: 'sub',
+                  status: 'ACTIVE',
+                  currentPeriodEnd: '2099-10-01T00:00:00Z',
+                },
+          latestPayment: null,
+        },
+      }),
+    );
+    await page.route('**/workspace/usage', (route) =>
+      route.fulfill({
+        json: {
+          ...usage,
+          credits: { remaining: 12, limit: 100 },
+          allowances: usage.allowances.map((allowance) => ({
+            ...allowance,
+            dailyRemaining: 1,
+            creditCosts: { chat: 1, image_generation: null },
+          })),
+        },
+      }),
+    );
+    await page.goto('/chat');
+    await expect(page.locator('.workspace-topbar .plan-badge')).toHaveText(
+      name,
+    );
+    await expect(page.locator('.sidebar-plan .plan-badge')).toHaveText(name);
+    await expect(page.locator('#composer-status')).toContainText(
+      '1 credit per response · 1 message left today',
+    );
+    await expect(page.locator('#composer-status')).toContainText(
+      '12 credits left this month',
+    );
+    await page.setViewportSize({ width: 390, height: 844 });
+    await expect(page.locator('.workspace-topbar .plan-badge')).toBeVisible();
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBe(true);
+    if (name === 'Max')
+      await page.screenshot({
+        path: 'test-results/plan-badge-mobile.png',
+        fullPage: true,
+      });
+    await page.goto('/');
+    await expect(page.locator('.nav-actions .plan-badge')).toHaveText(name);
+  });
+}
 
 test('visitor signs in, sends with Auto, switches models, views usage, and opens test checkout', async ({
   page,

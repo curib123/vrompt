@@ -107,6 +107,8 @@ export class ChatService {
       throw new ForbiddenException(
         'This task is not included in your allowance.',
       );
+    if (input.feature === 'image_generation')
+      await this.files.assertImageCapacity(userId);
     if (input.content.length > policy.maxInputChars)
       throw new BadRequestException('Message exceeds your plan’s input limit.');
     const files = await this.files.forConversation(
@@ -372,7 +374,10 @@ export class ChatService {
                 : undefined,
               image: async (mimeType, base64) => {
                 consumed = true;
-                if (artifacts.length >= 4)
+                if (
+                  input.feature !== 'image_generation' ||
+                  artifacts.length >= 1
+                )
                   throw new ProviderFailure('OUTPUT_LIMIT', false);
                 const artifact = await this.files.saveGenerated(
                   userId,

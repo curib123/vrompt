@@ -12,7 +12,9 @@ export default function Page() {
       <section className="panel">
         <h2>Your first conversation</h2>
         <ol className="help-steps">
-          <li>Open a new chat and describe what you want to work on.</li>
+          <li>
+            Sign in, then open a new chat and describe what you want to work on.
+          </li>
           <li>Start with Auto, or choose a model available on your plan.</li>
           <li>
             Add supported files with Attach when your allowance includes files.
@@ -29,12 +31,20 @@ export default function Page() {
       <section className="panel">
         {[
           [
+            'What are the file and image limits?',
+            'Free includes text chat only. Starter allows one selected file per message; Pro and Max allow two, up to 5 MB each. Supported uploads are PDF, PNG, JPEG and UTF-8 TXT, Markdown or CSV, subject to model support and context limits. Total storage for uploads and generated images is 50 MB on Starter, 250 MB on Pro and 1 GB on Max, with file-count caps of 100, 500 and 2,000. Delete unused files to free space; storage does not reset monthly.',
+          ],
+          [
+            'Can I generate images or downloadable documents?',
+            'Pro and Max can request one image per response, up to 10 MB. Image requests use the displayed credit price and the selected model’s daily allowance; they are not unlimited. Downloadable PDF, DOCX and spreadsheet generation is not supported. Models can write text or code for you to copy, but do not execute code or browse the web here.',
+          ],
+          [
             'How does Auto choose a model?',
             'Auto considers the task, model capabilities, availability, and the routing policy for your plan. Every response identifies the model that answered.',
           ],
           [
             'Can I try a chat before signing in?',
-            'Temporary guest chat is available when enabled by the administrator. Sign in with Google or GitHub to save conversations and access your personal workspace. Guest messages are not automatically imported into a new account.',
+            'Sign in with Google or GitHub before using chat or any workspace tools. Your Free plan is available after sign-in. Public pages, including the landing page, pricing, help and legal pages, do not require an account.',
           ],
           [
             'How do projects and workflows work?',

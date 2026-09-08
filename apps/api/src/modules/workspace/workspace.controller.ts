@@ -250,8 +250,12 @@ export class WorkspaceAdminController {
         },
         orderBy: { displayOrder: 'asc' },
       }),
-      plans: await this.prisma.billingPlan.findMany(),
-      policies: await this.prisma.generationPolicy.findMany(),
+      plans: await this.prisma.billingPlan.findMany({
+        where: { code: { not: 'GUEST' } },
+      }),
+      policies: await this.prisma.generationPolicy.findMany({
+        where: { plan: { code: { not: 'GUEST' } } },
+      }),
     };
   }
   @Post('models') addModel(

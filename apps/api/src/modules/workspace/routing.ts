@@ -49,7 +49,7 @@ export class RoutingHealth {
   }
   failure(id: string, category: string, now = Date.now()) {
     if (
-      !/^(HTTP_(429|5\d\d)|NETWORK_ERROR|TIMEOUT|ATTEMPT_TIMEOUT|INTERRUPTED_STREAM|EMPTY_STREAM|PROVIDER_ERROR)$/.test(
+      !/^(HTTP_(429|5\d\d)|NETWORK_ERROR|TIMEOUT|ATTEMPT_TIMEOUT|INTERRUPTED_STREAM|EMPTY_STREAM|EMPTY_RESPONSE|PROVIDER_ERROR)$/.test(
         category,
       )
     )

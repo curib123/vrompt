@@ -499,7 +499,7 @@ export class BillingService {
       !plan ||
       !plan.isActive ||
       plan.originalPrice <= 0 ||
-      !plan.legacyPlan
+      plan.code === 'GUEST'
     ) {
       throw new ConflictException('This paid plan is not available.');
     }
@@ -978,7 +978,7 @@ export class BillingService {
       throw new Error('Missing checkout identity');
     const payment = await this.prisma.billingPayment.findFirst({
       where: { id: reference, externalCheckoutSessionId: resource.id },
-      include: { subscription: true },
+      include: { subscription: true, planConfig: true },
     });
     if (!payment || !payment.subscription)
       throw new Error('Unknown checkout session');
@@ -1016,10 +1016,15 @@ export class BillingService {
     }
     const gatewayPaymentId = gatewayPayment.id;
 
-    const periodDays = await this.settings.getNumber(
-      'billing.proPeriodDays',
-      this.config.get<number>('PAYMONGO_PRO_PERIOD_DAYS', 30),
-    );
+    const periodDays = payment.planConfig
+      ? this.planPeriodDays(
+          payment.planConfig.billingInterval,
+          payment.planConfig.intervalCount,
+        )
+      : await this.settings.getNumber(
+          'billing.proPeriodDays',
+          this.config.get<number>('PAYMONGO_PRO_PERIOD_DAYS', 30),
+        );
     const activatedAt = new Date();
     await this.prisma.$transaction(async (transaction) => {
       const updated = await transaction.billingPayment.updateMany({

@@ -18,6 +18,7 @@ import {
 } from '@/components/billing/plan-cards';
 import { Icon, type IconName } from '@/components/ui/icon';
 import { apiRequest, type Model } from '@/lib/api';
+import { PlanBadge } from '@/components/billing/plan-badge';
 
 export const starterTasks: {
   key: string;
@@ -112,10 +113,11 @@ export function Landing() {
           <a href="#pricing">Pricing</a>
         </nav>
         <div className="nav-actions">
+          <PlanBadge />
           <ThemeToggle />
-          <SignInButton className="nav-signin" />
+          {!user && <SignInButton className="nav-signin" />}
           <button className="primary-button" onClick={() => begin()}>
-            Start for Free <Icon name="arrow" />
+            {user ? 'Open workspace' : 'Start for Free'} <Icon name="arrow" />
           </button>
         </div>
       </header>

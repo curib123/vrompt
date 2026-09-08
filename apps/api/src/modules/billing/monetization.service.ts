@@ -274,6 +274,7 @@ export class MonetizationService {
   adminConfiguration() {
     return Promise.all([
       this.prisma.billingPlan.findMany({
+        where: { code: { not: 'GUEST' } },
         orderBy: { displayOrder: 'asc' },
         include: { limits: { include: { feature: true } } },
       }),

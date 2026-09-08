@@ -132,20 +132,6 @@ async function main() {
     models.push(model);
   }
 
-  const guest = await prisma.billingPlan.upsert({
-    where: { code: 'GUEST' },
-    update: {},
-    create: {
-      code: 'GUEST',
-      ...creditPlans.GUEST,
-      currency: 'USD',
-    },
-  });
-  await prisma.generationPolicy.upsert({
-    where: { planId_bucket: { planId: guest.id, bucket: 'AUTO' } },
-    update: {},
-    create: defaultCreditPolicy(guest.id, 'GUEST', models),
-  });
   for (const plan of plans) {
     const code = plan.code as (typeof publicPlanCodes)[number];
     const selections = [undefined, ...manualModelsForPlan(code, models)];

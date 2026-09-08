@@ -1,6 +1,57 @@
 import { PrismaService } from '../prisma/prisma.service';
 import { periods, QuotaService } from './quota.service';
 
+describe('subscription entitlements', () => {
+  it.each(['STARTER', 'PRO', 'MAX'])(
+    'loads %s privileges from the active subscription configuration',
+    async (code) => {
+      const plan = { id: `plan-${code}`, code };
+      const prisma = {
+        user: { findUnique: jest.fn().mockResolvedValue({ guestKey: null }) },
+        billingSubscription: {
+          findFirst: jest.fn().mockResolvedValue({ planConfigId: plan.id }),
+        },
+        billingPlan: { findUnique: jest.fn().mockResolvedValue(plan) },
+        generationPolicy: { findMany: jest.fn().mockResolvedValue([]) },
+      };
+      const quota = new QuotaService(prisma as unknown as PrismaService);
+      expect((await quota.policies('user')).plan).toEqual(plan);
+      expect(prisma.billingSubscription.findFirst).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: {
+            userId: 'user',
+            status: 'ACTIVE',
+            currentPeriodEnd: { gt: expect.any(Date) },
+          },
+        }),
+      );
+      expect(prisma.billingPlan.findUnique).toHaveBeenCalledWith({
+        where: { id: plan.id },
+      });
+      expect(prisma.generationPolicy.findMany).toHaveBeenCalledWith({
+        where: { planId: plan.id, enabled: true },
+        include: { model: true },
+      });
+    },
+  );
+
+  it('uses Free privileges when there is no unexpired active subscription', async () => {
+    const prisma = {
+      user: { findUnique: jest.fn().mockResolvedValue({ guestKey: null }) },
+      billingSubscription: { findFirst: jest.fn().mockResolvedValue(null) },
+      billingPlan: {
+        findUnique: jest.fn().mockResolvedValue({ id: 'free', code: 'FREE' }),
+      },
+      generationPolicy: { findMany: jest.fn().mockResolvedValue([]) },
+    };
+    const quota = new QuotaService(prisma as unknown as PrismaService);
+    expect((await quota.policies('user')).plan?.code).toBe('FREE');
+    expect(prisma.billingPlan.findUnique).toHaveBeenCalledWith({
+      where: { code: 'FREE' },
+    });
+  });
+});
+
 describe('usage balances', () => {
   beforeEach(() => {
     jest.useFakeTimers().setSystemTime(new Date('2026-09-08T12:00:00Z'));

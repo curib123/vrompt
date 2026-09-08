@@ -6,21 +6,38 @@ Implemented September 8, 2026. Amounts below are USD estimates, not reconciled p
 
 | Plan    | Monthly shared credits | Daily Auto messages | Access                                                                  |
 | ------- | ---------------------: | ------------------: | ----------------------------------------------------------------------- |
-| Guest   |                      3 |                   1 | Temporary Auto text chat; existing network limits also apply            |
 | Free    |                     30 |                   5 | Auto text chat; no manual models, files or image generation             |
 | Starter |                    100 |                  15 | Economical manual models, one file per message, 5 projects              |
 | Pro     |                    250 |                  50 | Auto, manual models, up to 2 files per message, priced image generation |
 | Max     |                    600 |                 100 | Pro models/tools, 100 projects, 150 workflows and higher concurrency    |
 
-The public subscriptions are Free, Starter, Pro and Max, in that order. Guest remains a temporary trial, outside subscription pricing. Local prices are **$0 / $4.99 / $9.99 / $19.99 monthly**, with modeled provider budgets of **$0.24 / $0.80 / $2.00 / $4.80** per calendar allowance. Prices and credits are editable in Admin. Only Gemini, ChatGPT (OpenAI API models), Claude and Mistral are offered. Groq has been retired from the catalog, manual selection and Auto routing; historical identities and ledger records are preserved. No Grok integration is enabled.
+The subscriptions are Free, Starter, Pro and Max, in that order. **Sign-in is required for all workspace use, including Free.** The guest controller and UI entry points have been removed; the old Guest plan and policies are disabled and excluded from administration. Historical identities and usage are retained. Public landing, catalog, help and legal pages remain accessible without signing in. Local prices are **$0 / $5.99 / $11.99 / $24.99 monthly**, with modeled provider budgets of **$0.24 / $0.80 / $2.00 / $4.80** per calendar allowance. Prices and credits are editable in Admin. Only Gemini, ChatGPT (OpenAI API models), Claude and Mistral are offered. Groq has been retired from the catalog, manual selection and Auto routing; historical identities and ledger records are preserved. No Grok integration is enabled.
 
-The revised prices increase from $2.99 / $5.99 / $14.99 while increasing paid credits from 40 / 100 / 300. The $4.99 entry point is a market-positioning choice, not proof of willingness to pay: [Poe's official purchase FAQ](https://help.poe.com/hc/en-us/articles/19945140063636-Poe-Purchases-FAQs) also lists plans starting at $4.99, with different features and allowances. Validate conversion and retention before further increases.
+The September 9 revision raises paid prices from $4.99 / $9.99 / $19.99 to $5.99 / $11.99 / $24.99 and retains 100 / 250 / 600 credits. Higher tiers retain a lower price per included credit. This is a starting price to validate with customers, not proof of willingness to pay: [Poe's official purchase FAQ](https://help.poe.com/hc/en-us/articles/19945140063636-Poe-Purchases-FAQs) also lists plans starting at $4.99, with different features and allowances. Validate conversion and retention before further increases.
 
 New development seeds use these defaults. `apply-credit-design.ts` makes a backup and refuses to run with live/pending subscriptions or reserved generations. Paid prices are preserved unless `--update-prices` is explicitly supplied; that flag requires USD plans. Changed prices/credits receive a pricing-history entry. Usage counters and history are preserved. Production needs a separate reviewed rollout for existing customers.
 
 All models share the monthly credit balance. A response also uses one message from its selected bucket's daily and monthly limits. Those model limits do not grant additional credits. Auto uses its own bucket. Reservations count immediately to prevent concurrent overspending. Successful or partially consumed responses charge the quoted credits; failures without known consumption release the reservation. Regeneration is a new request and is priced visibly.
 
-Daily limits reset at 00:00 UTC; monthly credits and monthly message limits reset on the first of the calendar month at 00:00 UTC. Unused monthly credits do not roll over. The UI displays local reset times. Guest network throttles use the existing rolling Redis windows.
+Daily limits reset at 00:00 UTC; monthly credits and monthly message limits reset on the first of the calendar month at 00:00 UTC. Unused monthly credits do not roll over. The UI displays local reset times.
+
+## Sign-in, subscription identity and usage labels
+
+Protected workspace pages show sign-in before mounting their tools. Backend workspace routes independently validate access tokens and reject historical guest identities; hiding a button is not authorization. Anonymous `/guest/*` endpoints no longer exist.
+
+Checkout stores the selected paid plan's `planConfigId` on the payment and subscription. It accepts configured paid tiers without a legacy enum mapping. A signed, matching paid webhook activates that subscription and uses the purchased plan's configured interval. Quotas, model access, projects and workflows resolve the active subscription's configuration; expiration returns the user to Free. The legacy account `PRO` enum only means paid access and must not be displayed as the actual tier. Plan badges and Billing share one authenticated `/billing/me` resource, refreshed on navigation, window focus and the access-expiry boundary. A failed lookup displays “Check plan” rather than guessing Free or Pro.
+
+“1 credit per response · 1 message left today” means the selected task costs one shared credit and the selected Auto/model bucket permits one more request before its daily reset. It does not mean only one monthly credit remains. Chat displays the remaining monthly credit balance separately; all three restrictions (daily requests, monthly requests and shared credits) must pass. Expensive models/images have higher quotes. Concurrent requests reserve credits atomically; unused reservations are released when no processing was consumed. A stopped or partially completed response may still count.
+
+Paid access currently requires a new checkout to renew. It does not charge a card automatically. Switching to another paid tier while access is active is blocked, and the UI explains when another tier becomes available. Instant upgrades, proration and automatic recurring billing are not implemented. Live gateway configuration and real payment-to-webhook verification remain required before selling access.
+
+## Upload, storage and capability enforcement
+
+Uploads and generated images share account storage: Starter 50 MB / 100 files, Pro 250 MB / 500 files, Max 1 GB / 2,000 files. Free has no upload or image-generation entitlement. Unknown plan codes fail closed for storage. These storage caps are defined in `attachment.service.ts`; they do not reset monthly. Byte and count checks run under a user-row lock when files are persisted, across conversations. Rejected writes are removed from disk. The server validates actual bytes, file signatures, ownership and per-request file counts; Starter selects one file per message, Pro/Max two, up to 5 MB each. PDF and image inputs additionally require model and adapter support. Context limits can reject a file even below the byte cap.
+
+Image generation admits one saved image per response, up to 10 MB, with a storage-capacity preflight before provider work and another check on persistence. Concurrent requests can fill storage after preflight, so persistence may still reject a generated image after billable work. Existing image credit prices and daily request limits apply; there is no extra free image allowance. Native downloadable document/spreadsheet generation and external web, code-execution, maps, computer-use and MCP tools are not implemented and are advertised as unavailable. Text/code output remains ordinary text generation.
+
+Auto filters the plan's model pool by enabled availability, provider credentials, health, required file/image capabilities, context and configured quality rules. It ranks eligible models by estimated cost, then limits attempts to the shared credit budget. Manual requests reject incompatible inputs rather than silently switching models. Empty provider responses now contribute to the health cooldown. Model capability metadata must still be validated when administrators add new model IDs; adapter checks cannot prove an arbitrary remote model's advertised capabilities. Provider integration tests use mocked responses; live model verification remains outstanding.
 
 ## Predictable prices and routing
 
@@ -57,15 +74,15 @@ Images require a verified `additionalPrices.maxImageOutputCostUsd` covering **al
 
 ## Economics and operational limits
 
-Each paid tier budgets less than 25% of its regular price for provider work under one fully consumed calendar allowance. This is provider-only contribution, not net margin.
+Each paid tier budgets less than 20% of its regular price for provider work under one fully consumed calendar allowance. This is provider-only contribution, not net margin.
 
 | Plan    |  Price | Modeled provider budget | Remaining before other costs | Provider-only contribution |
 | ------- | -----: | ----------------------: | ---------------------------: | -------------------------: |
-| Starter |  $4.99 |                   $0.80 |                        $4.19 |                      84.0% |
-| Pro     |  $9.99 |                   $2.00 |                        $7.99 |                      80.0% |
-| Max     | $19.99 |                   $4.80 |                       $15.19 |                      76.0% |
+| Starter |  $5.99 |                   $0.80 |                        $5.19 |                      86.6% |
+| Pro     | $11.99 |                   $2.00 |                        $9.99 |                      83.3% |
+| Max     | $24.99 |                   $4.80 |                       $20.19 |                      80.8% |
 
-As an illustrative operating scenario only, assume processing costs of 5% + $0.30 per payment and another $2 per paid account for hosting, operations and free-user subsidies. Those are planning assumptions, not PayMongo's quoted fees or measured operating costs. The remaining amounts would be $1.64 / $5.19 / $11.89. With two fully consumed calendar allowances in a billing period, they fall to $0.84 / $3.19 / $7.09. Replace these assumptions with actual costs; higher acquisition, refunds or subsidies can erase that contribution.
+As an illustrative operating scenario only, assume processing costs of 5% + $0.30 per payment and another $2 per paid account for hosting, operations and free-user subsidies. Those are planning assumptions, not PayMongo's quoted fees or measured operating costs. The remaining amounts would be $2.59 / $7.09 / $16.64. With two fully consumed calendar allowances in a billing period, they fall to $1.79 / $5.09 / $11.84. Replace these assumptions with actual costs; higher acquisition, refunds or subsidies can erase that contribution.
 
 Free's 30-credit envelope is $0.24/account/month. Under the current cheap pool and smaller limits, 30 successful maximum-size text requests model approximately $0.0553 or less; use the larger credit envelope for planning. Ten fully used free allowances therefore add a modeled $2.40 to provider costs. Unreported billable failures can add spend outside successful credit consumption. Do not count provider promotional free tiers as permanent margin.
 

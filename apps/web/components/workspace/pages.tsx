@@ -1,7 +1,6 @@
 'use client';
 import { PageHeading } from '@/components/ui/page-heading';
 import { ResourceState } from '@/components/ui/resource-state';
-import { useWorkspaceResource } from './use-workspace-resource';
 import { useAdminResource } from '@/components/admin/use-admin-resource';
 import { Icon } from '@/components/ui/icon';
 import { Suspense } from 'react';
@@ -18,6 +17,7 @@ import { useAuth } from '@/components/providers/auth-provider';
 import { useAuthDialog } from '@/components/providers/auth-dialog-provider';
 import { useFeedback } from '@/components/ui/feedback-modal';
 import { apiRequest } from '@/lib/api';
+import { useSubscription } from '@/components/providers/subscription-provider';
 
 export { Conversations, SavedPrompts } from './library';
 export { UsagePage } from './usage';
@@ -109,13 +109,6 @@ export function AdminAnalytics() {
   );
 }
 
-type Billing = {
-  plan: string;
-  planCode?: string;
-  planName?: string;
-  subscription: { id: string; status: string; currentPeriodEnd: string } | null;
-  latestPayment: { status: string; amount: number; currency: string } | null;
-};
 export function BillingPage() {
   return (
     <Suspense
@@ -136,8 +129,11 @@ function BillingContent() {
   const router = useRouter();
   const requestedPlan = useSearchParams().get('plan');
   const plans = usePlans();
-  const billingResource = useWorkspaceResource<Billing>('/billing/me');
+  const billingResource = useSubscription();
   const billing = billingResource.data;
+  const paidPlanActive =
+    billing?.subscription?.status === 'ACTIVE' &&
+    (billing.planCode ?? billing.plan) !== 'FREE';
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [selected, setSelected] = useState<string | null>(requestedPlan);
@@ -272,6 +268,7 @@ function BillingContent() {
           selected={selected}
           currentPlan={billing?.planCode ?? billing?.plan}
           checkoutAvailable={plans.data.checkoutAvailable}
+          paidPlanActive={paidPlanActive}
         />
       ) : (
         !plans.error && <p role="status">Loading current plans…</p>
@@ -285,6 +282,8 @@ function BillingContent() {
         </div>
       )}
       <p className="pricing-footnote">
+        {paidPlanActive &&
+          'You can choose a different paid plan when your current access period ends. '}
         Paid access is renewed by checkout. Your card is not automatically
         charged. Shared credits and individual model limits both apply.
       </p>

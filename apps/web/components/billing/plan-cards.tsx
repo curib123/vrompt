@@ -57,6 +57,7 @@ export function PlanCards({
   selected,
   currentPlan,
   checkoutAvailable = true,
+  paidPlanActive = false,
 }: {
   plans: PublicPlan[];
   onChoose: (plan: PublicPlan) => void;
@@ -64,6 +65,7 @@ export function PlanCards({
   selected?: string | null;
   currentPlan?: string;
   checkoutAvailable?: boolean;
+  paidPlanActive?: boolean;
 }) {
   return (
     <div className="pricing-grid">
@@ -94,7 +96,10 @@ export function PlanCards({
             <button
               className={free ? 'secondary-button' : 'primary-button'}
               onClick={() => onChoose(plan)}
-              disabled={busy || (!free && (current || !checkoutAvailable))}
+              disabled={
+                busy ||
+                (!free && (current || paidPlanActive || !checkoutAvailable))
+              }
             >
               {busy && selected === plan.id
                 ? 'Opening secure checkout…'
@@ -102,9 +107,11 @@ export function PlanCards({
                   ? 'Start for Free'
                   : current
                     ? 'Plan active'
-                    : !checkoutAvailable
-                      ? 'Checkout unavailable'
-                      : `Get ${plan.name}`}
+                    : paidPlanActive
+                      ? 'Available after current plan'
+                      : !checkoutAvailable
+                        ? 'Checkout unavailable'
+                        : `Get ${plan.name}`}
               <Icon name="arrow" />
             </button>
             <ul className="plan-features">

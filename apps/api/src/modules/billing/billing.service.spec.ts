@@ -82,8 +82,129 @@ function buildService(overrides: Record<string, unknown> = {}) {
       redis as never,
     ),
     prisma,
+    gateway,
   };
 }
+
+describe('configured paid tiers', () => {
+  it.each([
+    ['STARTER', 599],
+    ['PRO', 1199],
+    ['MAX', 2499],
+  ])(
+    'creates checkout for %s without depending on legacyPlan',
+    async (code, amount) => {
+      const { service, prisma, gateway } = buildService();
+      prisma.billingPlan = {
+        findUnique: jest.fn().mockResolvedValue({
+          id: `plan-${code}`,
+          code,
+          name: code,
+          originalPrice: amount,
+          currency: 'USD',
+          isActive: true,
+          legacyPlan: null,
+          billingInterval: 'MONTH',
+          intervalCount: 1,
+        }),
+      };
+      prisma.billingSubscription.updateMany = jest
+        .fn()
+        .mockResolvedValue({ count: 0 });
+      prisma.billingSubscription.create = jest
+        .fn()
+        .mockResolvedValue({ id: 'sub' });
+      prisma.billingPayment.findUnique = jest.fn().mockResolvedValue(null);
+      prisma.billingPayment.count = jest.fn().mockResolvedValue(0);
+      prisma.billingPayment.create = jest
+        .fn()
+        .mockResolvedValue({ id: 'payment' });
+      prisma.promotion = { findMany: jest.fn().mockResolvedValue([]) };
+      gateway.createCheckoutSession.mockResolvedValue({
+        id: 'checkout',
+        checkoutUrl: 'https://checkout.paymongo.com/test',
+      });
+      await service.createCheckout(
+        { id: 'user' } as never,
+        'test-request',
+        undefined,
+        String(code),
+      );
+      expect(prisma.billingSubscription.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          planConfigId: `plan-${code}`,
+          status: 'PENDING',
+        }),
+      });
+      expect(prisma.billingPayment.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          planConfigId: `plan-${code}`,
+          amount,
+          currency: 'USD',
+        }),
+      });
+      expect(gateway.createCheckoutSession).toHaveBeenCalledWith(
+        expect.objectContaining({
+          amount,
+          currency: 'USD',
+          description: `${code} access`,
+        }),
+      );
+    },
+  );
+  it.each(['STARTER', 'PRO', 'MAX'])(
+    'activates the purchased %s configuration and its configured period',
+    async (code) => {
+      const { service, prisma } = buildService();
+      prisma.billingPayment.findFirst.mockResolvedValue({
+        id: 'payment',
+        userId: 'user',
+        status: 'PENDING',
+        amount: 999,
+        currency: 'USD',
+        planConfigId: `plan-${code}`,
+        planConfig: { billingInterval: 'MONTH', intervalCount: 2 },
+        subscription: { id: 'sub', planConfigId: `plan-${code}` },
+      });
+      const event = {
+        data: {
+          id: 'event',
+          attributes: {
+            type: 'checkout_session.payment.paid',
+            livemode: false,
+            data: {
+              id: 'checkout',
+              attributes: {
+                reference_number: 'payment',
+                livemode: false,
+                payments: [
+                  {
+                    id: 'gateway-payment',
+                    attributes: {
+                      status: 'paid',
+                      amount: 999,
+                      currency: 'USD',
+                    },
+                  },
+                ],
+              },
+            },
+          },
+        },
+      };
+      const { raw, signature } = signedPayload(event, 'secret');
+      await service.handleWebhook(raw, signature);
+      const update = prisma.billingSubscription.update.mock.calls[0][0];
+      expect(update.where).toEqual({ id: 'sub' });
+      expect(update.data.status).toBe('ACTIVE');
+      expect(update.data.planConfigId).toBeUndefined(); // Activation must preserve the purchased tier.
+      expect(
+        update.data.currentPeriodEnd.getTime() -
+          update.data.currentPeriodStart.getTime(),
+      ).toBe(60 * 86400000);
+    },
+  );
+});
 
 describe('BillingService webhook security', () => {
   it('accepts the current raw-body HMAC signature format', async () => {

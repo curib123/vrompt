@@ -5,7 +5,6 @@ import { ProjectsService } from './projects.service';
 import { ProjectsController } from './projects.controller';
 import { WorkflowsService } from './workflows.service';
 import { WorkflowsController } from './workflows.controller';
-import { GuestController } from './guest.controller';
 import { EconomicsService } from './economics.service';
 import { AuthModule } from '../auth/auth.module';
 import { AttachmentService } from './attachment.service';
@@ -26,7 +25,6 @@ import {
     WorkspaceAdminController,
     ProjectsController,
     WorkflowsController,
-    GuestController,
   ],
   providers: [
     ProjectsService,

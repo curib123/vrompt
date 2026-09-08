@@ -216,6 +216,35 @@ export function rankModels(
 
 export function supportsCapability(model: AIModel, capability: string) {
   const states = (model.capabilityStates ?? {}) as Record<string, string>;
+  // These tools have no execution path in the chat adapters yet. Catalog flags
+  // alone must not advertise an integration or make Auto select it.
+  if (
+    [
+      'tools',
+      'web_search',
+      'code_execution',
+      'maps',
+      'computer_use',
+      'mcp',
+      'file_generation',
+    ].includes(capability)
+  )
+    return false;
+  if (
+    capability === 'files' &&
+    !['OPENAI', 'GOOGLE', 'ANTHROPIC'].includes(model.provider)
+  )
+    return false;
+  if (
+    capability === 'vision' &&
+    !['OPENAI', 'GOOGLE', 'ANTHROPIC', 'MISTRAL'].includes(model.provider)
+  )
+    return false;
+  if (
+    capability === 'image_generation' &&
+    !['OPENAI', 'GOOGLE', 'MISTRAL'].includes(model.provider)
+  )
+    return false;
   return (
     (capability !== 'image_generation' || imageOutputBudget(model) !== null) &&
     model.capabilities.includes(capability) &&
@@ -252,7 +281,7 @@ export class ModelRegistryService {
         capabilityStates: Object.fromEntries(
           m.capabilities.map((capability) => [
             capability,
-            capability === 'image_generation' && imageOutputBudget(m) === null
+            !supportsCapability(m, capability)
               ? 'UNAVAILABLE'
               : (configured[capability] ?? 'NATIVE_PROVIDER'),
           ]),

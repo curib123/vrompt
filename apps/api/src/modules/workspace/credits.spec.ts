@@ -10,6 +10,7 @@ import { supportsCapability } from './registry.service';
 const model = (input = 0.15, output = 0.6): AIModel =>
   ({
     id: 'model',
+    provider: 'GOOGLE',
     creditCost: 1,
     currency: 'USD',
     inputPrice: new Prisma.Decimal(input),
