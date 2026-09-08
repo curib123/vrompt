@@ -155,7 +155,6 @@ export function Workflows() {
           </p>
         </div>
         <div className="resource-header-meta" aria-label="Workflow summary">
-          <span className="resource-stat">{items.length} workflows</span>
           <button
             className="primary-button"
             disabled={
@@ -353,7 +352,7 @@ export function Workflows() {
               </button>
               <button className="primary-button" disabled={busy}>
                 {busy
-                  ? 'Saving?'
+                  ? 'Saving...'
                   : editing
                     ? 'Save changes'
                     : 'Create workflow'}
@@ -370,40 +369,42 @@ export function Workflows() {
           </form>
         </Modal>
 
-        <section className="panel workflow-run-panel">
-          <div className="resource-form-heading">
-            <div>
-              <p className="resource-eyebrow">Run a workflow</p>
-              <h2>Workflow input</h2>
+        {items.length > 0 && (
+          <section className="panel workflow-run-panel">
+            <div className="resource-form-heading">
+              <div>
+                <p className="resource-eyebrow">Run a workflow</p>
+                <h2>Workflow input</h2>
+              </div>
+              <span className="resource-form-hint">
+                Paste once, reuse anytime
+              </span>
             </div>
-            <span className="resource-form-hint">
-              Paste once, reuse anytime
-            </span>
-          </div>
-          <label>
-            Input for your workflow
-            <textarea
-              rows={9}
-              value={input}
-              maxLength={32000}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder="Paste a document, brief, or instructions for your workflow."
-            />
-          </label>
-          <p className="field-hint">
-            Choose a workflow below to run it with this input. Auto selects the
-            best available model for each step.
-          </p>
-          {running && (
-            <button
-              type="button"
-              className="secondary-button"
-              onClick={() => abort.current?.abort()}
-            >
-              Stop waiting
-            </button>
-          )}
-        </section>
+            <label>
+              Input for your workflow
+              <textarea
+                rows={9}
+                value={input}
+                maxLength={32000}
+                onChange={(e) => setInput(e.target.value)}
+                placeholder="Paste a document, brief, or instructions for your workflow."
+              />
+            </label>
+            <p className="field-hint">
+              Choose a workflow below to run it with this input. Auto selects
+              the best available model for each step.
+            </p>
+            {running && (
+              <button
+                type="button"
+                className="secondary-button"
+                onClick={() => abort.current?.abort()}
+              >
+                Stop waiting
+              </button>
+            )}
+          </section>
+        )}
       </div>
 
       <section
@@ -451,7 +452,7 @@ export function Workflows() {
                     disabled={busy || !w.enabled || !input.trim()}
                     onClick={() => void run(w)}
                   >
-                    {running === w.id ? 'Running?' : 'Run workflow'}
+                    {running === w.id ? 'Running...' : 'Run workflow'}
                   </button>
                   <button
                     type="button"

@@ -1,4 +1,5 @@
 'use client';
+import { PageHeading } from '@/components/ui/page-heading';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState, type FormEvent } from 'react';
@@ -57,15 +58,14 @@ export function Conversations() {
   }
   return (
     <div className="content-page">
-      <header className="page-heading">
-        <div>
-          <h1>Conversations</h1>
-          <p className="muted">Pick up where you left off.</p>
-        </div>
+      <PageHeading
+        title="Conversations"
+        description="Pick up where you left off."
+      >
         <Link href="/chat" className="primary-button">
           Start a chat
         </Link>
-      </header>
+      </PageHeading>
       <div className="list-toolbar">
         <input
           type="search"
@@ -95,7 +95,7 @@ export function Conversations() {
       </ResourceState>
       {!resource.loading &&
         resource.data?.map((item) => (
-          <div className="row" key={item.id}>
+          <div className="row library-item" key={item.id}>
             <div>
               <Link href={`/chat?id=${item.id}`}>
                 <strong>{item.title}</strong>
@@ -255,15 +255,14 @@ export function SavedPrompts() {
     ) ?? [];
   return (
     <div className="content-page">
-      <header className="page-heading">
-        <div>
-          <h1>Saved Prompts</h1>
-          <p className="muted">Reusable instructions, private to you.</p>
-        </div>
+      <PageHeading
+        title="Saved Prompts"
+        description="Reusable instructions, private to you."
+      >
         <button className="primary-button" onClick={() => edit('new')}>
           New prompt
         </button>
-      </header>
+      </PageHeading>
       <div className="list-toolbar">
         <input
           type="search"
@@ -293,7 +292,7 @@ export function SavedPrompts() {
       </ResourceState>
       {!resource.loading &&
         items.map((item) => (
-          <article className="row" key={item.id}>
+          <article className="row library-item" key={item.id}>
             <div>
               <h2>{item.title}</h2>
               <p className="muted prompt-preview">

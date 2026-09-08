@@ -1,5 +1,7 @@
 'use client';
 import { useState } from 'react';
+import { PageHeading } from '@/components/ui/page-heading';
+import { Pagination } from '@/components/ui/pagination';
 import { useAdminResource } from './use-admin-resource';
 type Entry = {
   id: string;
@@ -23,12 +25,10 @@ export function AdminAudit() {
   );
   return (
     <div className="content-page">
-      <p className="eyebrow">ACCOUNTABILITY</p>
-      <h1>Audit history</h1>
-      <p className="muted">
-        Review recorded changes to accounts, billing, settings, and model
-        routing.
-      </p>
+      <PageHeading
+        title="Audit history"
+        description="Review changes to accounts, billing, settings, and model routing."
+      />
       <form
         className="admin-toolbar"
         onSubmit={(e) => {
@@ -38,6 +38,7 @@ export function AdminAudit() {
         }}
       >
         <input
+          type="search"
           aria-label="Filter by administrator username"
           placeholder="Filter by exact administrator username…"
           maxLength={120}
@@ -45,24 +46,52 @@ export function AdminAudit() {
           onChange={(e) => setActor(e.target.value)}
         />
         <button className="secondary-button">Apply filter</button>
-        <button type="button" className="secondary-button" onClick={refresh}>
+        {(actor || query) && (
+          <button
+            type="button"
+            className="secondary-button"
+            onClick={() => {
+              setActor('');
+              setQuery('');
+              setPage(1);
+            }}
+          >
+            Clear filter
+          </button>
+        )}
+        <button
+          type="button"
+          className="secondary-button"
+          disabled={loading}
+          onClick={refresh}
+        >
           Refresh
         </button>
       </form>
       {error && (
         <p className="error-banner" role="alert">
-          {error}
+          {error}{' '}
+          <button className="secondary-button" onClick={refresh}>
+            Try again
+          </button>
         </p>
       )}
       <div className="panel">
-        <div className="table-wrap">
+        <p className="table-scroll-hint">Scroll sideways to see all columns.</p>
+        <div
+          className="table-wrap"
+          role="region"
+          aria-label="events"
+          tabIndex={0}
+        >
           <table className="data-table">
+            <caption className="sr-only">events</caption>
             <thead>
               <tr>
-                <th>Event</th>
-                <th>Actor</th>
-                <th>Recorded</th>
-                <th>Details</th>
+                <th scope="col">Event</th>
+                <th scope="col">Actor</th>
+                <th scope="col">Recorded</th>
+                <th scope="col">Details</th>
               </tr>
             </thead>
             <tbody>
@@ -106,27 +135,14 @@ export function AdminAudit() {
         ) : null}
       </div>
       {data && (
-        <div className="pagination-bar">
-          <span>
-            {data.total} events · Page {page}
-          </span>
-          <div>
-            <button
-              className="secondary-button"
-              disabled={loading || page === 1}
-              onClick={() => setPage(page - 1)}
-            >
-              Previous
-            </button>
-            <button
-              className="secondary-button"
-              disabled={loading || !data.hasNextPage}
-              onClick={() => setPage(page + 1)}
-            >
-              Next
-            </button>
-          </div>
-        </div>
+        <Pagination
+          page={page}
+          total={data.total}
+          noun="events"
+          loading={loading}
+          hasNextPage={data.hasNextPage}
+          onChange={setPage}
+        />
       )}
     </div>
   );

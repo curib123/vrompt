@@ -1,4 +1,7 @@
 'use client';
+import Link from 'next/link';
+import { PageHeading } from '@/components/ui/page-heading';
+import { ResourceState } from '@/components/ui/resource-state';
 import { useState, type FormEvent } from 'react';
 import { Modal } from '@/components/ui/modal';
 import { ProviderIcon } from '@/components/brand/provider-icon';
@@ -17,6 +20,7 @@ type RecordItem = Values & {
   bucket?: string;
 };
 type Configuration = {
+  creditDesign?: { providerUsdPerCredit: number };
   models: RecordItem[];
   plans: RecordItem[];
   policies: RecordItem[];
@@ -35,7 +39,7 @@ const modelFields: Field[] = [
   {
     key: 'provider',
     label: 'Provider',
-    options: ['OPENAI', 'GOOGLE', 'ANTHROPIC', 'MISTRAL', 'GROQ'],
+    options: ['OPENAI', 'GOOGLE', 'ANTHROPIC', 'MISTRAL'],
   },
   { key: 'providerModelId', label: 'Provider model ID' },
   { key: 'category', label: 'Category' },
@@ -76,7 +80,7 @@ const modelFields: Field[] = [
   },
   {
     key: 'creditCost',
-    label: 'Credits per generation',
+    label: 'Minimum credits per generation (provider costs may require more)',
     type: 'number',
     min: 1,
     max: 100000,
@@ -308,6 +312,7 @@ const defaults: Record<Kind, Values> = {
 };
 
 function Editor({
+  onBusyChange,
   kind,
   item,
   config,
@@ -320,6 +325,7 @@ function Editor({
   config: Configuration;
   accessToken: string;
   onSaved: () => void;
+  onBusyChange: (busy: boolean) => void;
   onClose: () => void;
 }) {
   const fields =
@@ -385,6 +391,7 @@ function Editor({
           routing: JSON.parse(advanced),
         });
       setBusy(true);
+      onBusyChange(true);
       const path =
         kind === 'plan'
           ? '/admin/billing/plans'
@@ -406,12 +413,30 @@ function Editor({
       );
     } finally {
       setBusy(false);
+      onBusyChange(false);
     }
   }
   const selected = (key: string) => (values[key] as string[]) ?? [];
+  const providerBudget =
+    config.creditDesign &&
+    Number(values.monthlyCredits) * config.creditDesign.providerUsdPerCredit;
   return (
     <form onSubmit={save} className="config-editor">
       <fieldset disabled={busy}>
+        {kind === 'plan' &&
+          providerBudget !== undefined &&
+          Number.isFinite(providerBudget) && (
+            <p className="muted" role="status">
+              Monthly provider budget: US${providerBudget.toFixed(2)} per fully
+              used allowance.
+              {values.currency === 'USD' &&
+              values.billingInterval === 'MONTH' &&
+              Number(values.intervalCount ?? 1) === 1 &&
+              Number(values.originalPrice) > 0
+                ? ` That leaves US$${(Number(values.originalPrice) / 100 - providerBudget).toFixed(2)} at the regular monthly price, before payment fees, hosting, refunds, promotions and free-user costs.`
+                : 'Fund free allowances from your operating budget; compare paid prices in the same currency and period.'}
+            </p>
+          )}
         {kind === 'policy' && (
           <div className="form-grid">
             <label>
@@ -640,8 +665,8 @@ function Editor({
             {kind === 'plan'
               ? 'Optional feature limits as JSON: featureKey, featureName, resetPeriod (DAILY or MONTHLY), and limit. Generation allowances are configured separately below.'
               : kind === 'policy'
-                ? 'Configure attempt timeouts, maximum attempts, quality, cost weight, and task rules. The server validates these settings before saving.'
-                : 'Optional cache pricing as JSON, for example {"cacheWriteInputPrice": 0}.'}
+                ? 'Set creditCost for Auto chat and imageCreditCost for images, plus timeouts, maximum attempts, quality and routing rules. All Auto attempts must fit within the shared credit budget.'
+                : 'Optional cacheWriteInputPrice (USD per million tokens). Image tasks require maxImageOutputCostUsd: a verified USD cap covering all output and tool charges per request.'}
           </p>
           <textarea
             aria-label="Advanced configuration"
@@ -673,12 +698,19 @@ export function AdminRegistry({ plans = false }: { plans?: boolean }) {
     '/admin/workspace/configuration',
   );
   const planResource = useAdminResource<{ plans: RecordItem[] }>(
-    '/admin/billing/configuration',
+    plans ? '/admin/billing/configuration' : null,
   );
   const [editing, setEditing] = useState<{ kind: Kind; item?: RecordItem }>();
   const [notice, setNotice] = useState('');
+  const [query, setQuery] = useState('');
+  const [saving, setSaving] = useState(false);
   const config = resource.data;
   const planItems = planResource.data?.plans;
+  const visibleItems = (plans ? planItems : config?.models)?.filter((item) =>
+    `${item.name ?? ''} ${item.displayName ?? ''} ${item.provider ?? ''} ${item.providerModelId ?? ''}`
+      .toLowerCase()
+      .includes(query.trim().toLowerCase()),
+  );
   // Normalize nested feature records from the billing API into its write DTO.
   function editPlan(plan: RecordItem) {
     const limits = (
@@ -706,18 +738,22 @@ export function AdminRegistry({ plans = false }: { plans?: boolean }) {
   }
   return (
     <div className="content-page">
-      <p className="eyebrow">WORKSPACE CONFIGURATION</p>
-      <h1>{plans ? 'Plans & allowances' : 'Models & routing'}</h1>
-      <p className="muted">
-        {plans
-          ? 'Set subscription pricing, workspace capacity, and generation allowances for each plan.'
-          : 'Manage model availability, capabilities, costs, and selection. Provider credentials stay on the server.'}
-      </p>
-      {(resource.error || (plans && planResource.error)) && (
-        <p className="error-banner" role="alert">
-          {resource.error || planResource.error}
-        </p>
-      )}
+      <PageHeading
+        title={plans ? 'Plans & allowances' : 'Models & routing'}
+        description={
+          plans
+            ? 'Set subscription pricing, workspace capacity, and generation allowances.'
+            : 'Manage model availability, capabilities, costs, and fallback models.'
+        }
+      />
+      <ResourceState
+        loading={resource.loading || planResource.loading}
+        error={resource.error || planResource.error}
+        onRetry={() => {
+          resource.refresh();
+          planResource.refresh();
+        }}
+      />
       {notice && (
         <p className="success-banner" role="status">
           {notice}
@@ -741,13 +777,24 @@ export function AdminRegistry({ plans = false }: { plans?: boolean }) {
           Refresh
         </button>
       </div>
-      {resource.loading && (
-        <p role="status" className="muted">
-          Loading configuration…
-        </p>
-      )}
+      <div className="list-toolbar">
+        <input
+          type="search"
+          aria-label={plans ? 'Search plans' : 'Search models'}
+          placeholder={
+            plans ? 'Search plans' : 'Search model names or providers'
+          }
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+        />
+        {query && (
+          <button className="secondary-button" onClick={() => setQuery('')}>
+            Clear search
+          </button>
+        )}
+      </div>
       <div className="panel">
-        {(plans ? planItems : config?.models)?.map((item) => (
+        {visibleItems?.map((item) => (
           <div className="row" key={item.id}>
             <div className="registry-name">
               {!plans && <ProviderIcon provider={item.provider ?? ''} />}
@@ -779,65 +826,94 @@ export function AdminRegistry({ plans = false }: { plans?: boolean }) {
             </div>
           </div>
         ))}
-        {!(plans ? planItems : config?.models)?.length && !resource.loading && (
-          <p className="muted">
-            No {plans ? 'plans' : 'models'} configured yet.
-          </p>
-        )}
+        {!visibleItems?.length &&
+          !resource.loading &&
+          !planResource.loading &&
+          !resource.error &&
+          !planResource.error && (
+            <p className="muted">
+              {query
+                ? 'No results match your search. Try a different name or clear the search.'
+                : `No ${plans ? 'plans' : 'models'} configured yet.`}
+            </p>
+          )}
       </div>
-      <div className="admin-toolbar">
-        <h2>Generation allowances</h2>
-        <button
-          className="secondary-button"
-          disabled={!config?.plans.length}
-          onClick={() => setEditing({ kind: 'policy' })}
-        >
-          + Add allowance
-        </button>
-      </div>
-      <div className="panel">
-        {config?.policies.map((policy) => (
-          <div className="row" key={policy.id}>
-            <div>
-              <strong>
-                {config.plans.find((plan) => plan.id === policy.planId)?.name ??
-                  'Plan'}{' '}
-                ·{' '}
-                {policy.bucket === 'AUTO'
-                  ? 'Auto'
-                  : (config.models.find((model) => model.id === policy.bucket)
-                      ?.displayName ?? 'Model')}
-              </strong>
-              <p className="muted">
-                {String(policy.dailyLimit)} daily ·{' '}
-                {String(policy.monthlyLimit)} monthly ·{' '}
-                {policy.enabled ? 'Enabled' : 'Disabled'}
-              </p>
-            </div>
+      {plans ? (
+        <>
+          <div className="admin-toolbar" id="generation-allowances">
+            <h2>Generation allowances & routing</h2>
             <button
               className="secondary-button"
-              onClick={() => setEditing({ kind: 'policy', item: policy })}
+              disabled={!config?.plans.length}
+              onClick={() => setEditing({ kind: 'policy' })}
             >
-              Edit allowance
+              + Add allowance
             </button>
           </div>
-        ))}
-        {!config?.policies.length && (
-          <p className="muted">
-            Add a policy to give a plan access to Auto or a specific model.
-          </p>
-        )}
-      </div>
+          <div className="panel">
+            {config?.policies.map((policy) => (
+              <div className="row" key={policy.id}>
+                <div>
+                  <strong>
+                    {config.plans.find((plan) => plan.id === policy.planId)
+                      ?.name ?? 'Plan'}{' '}
+                    ·{' '}
+                    {policy.bucket === 'AUTO'
+                      ? 'Auto'
+                      : (config.models.find(
+                          (model) => model.id === policy.bucket,
+                        )?.displayName ?? 'Model')}
+                  </strong>
+                  <p className="muted">
+                    {String(policy.dailyLimit)} daily ·{' '}
+                    {String(policy.monthlyLimit)} monthly ·{' '}
+                    {policy.enabled ? 'Enabled' : 'Disabled'}
+                  </p>
+                </div>
+                <button
+                  className="secondary-button"
+                  onClick={() => setEditing({ kind: 'policy', item: policy })}
+                >
+                  Edit allowance
+                </button>
+              </div>
+            ))}
+            {config && !config.policies.length && (
+              <p className="muted">
+                Add a policy to give a plan access to Auto or a specific model.
+              </p>
+            )}
+          </div>
+        </>
+      ) : (
+        <section className="panel row">
+          <div>
+            <h2>Plan access & Auto routing</h2>
+            <p className="muted">
+              Manage generation limits and Auto model pools in one place.
+            </p>
+          </div>
+          <Link
+            className="secondary-button"
+            href="/admin/plans#generation-allowances"
+          >
+            Manage allowances & routing
+          </Link>
+        </section>
+      )}
       <Modal
         open={Boolean(editing)}
         title={`${editing?.item ? 'Edit' : 'Add'} ${editing?.kind ?? 'configuration'}`}
         description="Changes are validated and saved to the workspace configuration."
-        onClose={() => setEditing(undefined)}
+        onClose={() => {
+          if (!saving) setEditing(undefined);
+        }}
         className="max-w-3xl"
       >
         {editing && config && (
           <Editor
             key={`${editing.kind}-${editing.item?.id ?? 'new'}`}
+            onBusyChange={setSaving}
             kind={editing.kind}
             item={editing.item}
             config={config}

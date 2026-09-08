@@ -9,6 +9,8 @@ services:
       CHOKIDAR_USEPOLLING: 'true'
       CHOKIDAR_INTERVAL: '1000'
       NEXT_DIST_DIR: .next-docker
+    volumes:
+      - vrompt-web-next:/workspace/apps/web/.next-docker
 
   vrompt-api:
     build:
@@ -35,3 +37,6 @@ services:
     volumes:
       - .:/workspace
       - vrompt-node-modules:/workspace/node_modules
+
+volumes:
+  vrompt-web-next:

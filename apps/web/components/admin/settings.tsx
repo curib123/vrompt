@@ -1,4 +1,5 @@
 'use client';
+import { PageHeading } from '@/components/ui/page-heading';
 import { useState } from 'react';
 import { apiRequest } from '@/lib/api';
 import { useSiteSettings } from '@/components/providers/site-settings-provider';
@@ -77,7 +78,6 @@ function SettingEditor({
     } catch (e) {
       const message = (e as Error).message;
       setError(message);
-      alert({ tone: 'error', title: 'Could not save setting', message });
     } finally {
       setBusy(false);
     }
@@ -162,14 +162,23 @@ export function AdminSettings() {
     useAdminResource<Setting[]>('/admin/settings');
   const { refresh: refreshBrand } = useSiteSettings();
   const [notice, setNotice] = useState('');
+  const groups = [...new Set(data?.map((setting) => setting.group) ?? [])];
   return (
     <div className="content-page">
-      <p className="eyebrow">MAKE IT YOURS</p>
-      <h1>Workspace settings</h1>
-      <p className="muted">
-        Manage branding, announcements, registration, and the prompts your users
-        start with.
-      </p>
+      <PageHeading
+        title="Workspace settings"
+        description="Manage branding, announcements, registration, and starter prompts."
+      />
+      {data && (
+        <nav className="settings-sections" aria-label="Settings sections">
+          {groups.map((group, index) => (
+            <a key={group} href={'#settings-' + index}>
+              {group}
+            </a>
+          ))}
+          <a href="#admin-password">Password</a>
+        </nav>
+      )}
       {error && (
         <p role="alert" className="error-banner">
           {error} <button onClick={refresh}>Try again</button>
@@ -186,8 +195,12 @@ export function AdminSettings() {
         </p>
       )}
       {data &&
-        [...new Set(data.map((setting) => setting.group))].map((group) => (
-          <section className="settings-group" key={group}>
+        groups.map((group, index) => (
+          <section
+            className="settings-group"
+            id={'settings-' + index}
+            key={group}
+          >
             <h2>{group}</h2>
             <div className="panel">
               {data
@@ -198,7 +211,7 @@ export function AdminSettings() {
                     setting={setting}
                     accessToken={accessToken!}
                     onSaved={() => {
-                      setNotice('Settings saved.');
+                      setNotice('');
                       refresh();
                       void refreshBrand().catch(() =>
                         setNotice(
@@ -211,7 +224,9 @@ export function AdminSettings() {
             </div>
           </section>
         ))}
-      <AdminPassword />
+      <section id="admin-password" className="settings-group">
+        <AdminPassword />
+      </section>
     </div>
   );
 }

@@ -55,9 +55,19 @@ export function Modal({
 
       const focusable = Array.from(
         dialogRef.current.querySelectorAll<HTMLElement>(
-          'button, a[href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+          'button, a[href], input, select, textarea, summary, [tabindex]:not([tabindex="-1"])',
         ),
-      ).filter((element) => !element.hasAttribute('disabled'));
+      ).filter((element) => {
+        if (
+          element.matches(':disabled') ||
+          element.closest('[hidden], [inert]')
+        )
+          return false;
+        const closedDetails = element.closest('details:not([open])');
+        return (
+          !closedDetails || element === closedDetails.querySelector('summary')
+        );
+      });
       const first = focusable[0];
       const last = focusable[focusable.length - 1];
 

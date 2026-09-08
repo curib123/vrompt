@@ -18,6 +18,7 @@ import type { Request, Response } from 'express';
 import { PrismaService } from '../prisma/prisma.service';
 import { RedisService } from '../common/redis.service';
 import { ChatService } from './chat.service';
+import { autoCredits } from './credits';
 import { SendMessageDto } from './workspace.dto';
 import { TooManyRequestsException } from '../../common/exceptions/too-many-requests.exception';
 import { AccessTokenGuard } from '../auth/guards/access-token.guard';
@@ -54,6 +55,10 @@ export class GuestController implements OnModuleInit, OnModuleDestroy {
     const policy = plan?.generationPolicies[0];
     return {
       enabled: Boolean(plan?.isActive && policy),
+      creditCosts: {
+        chat: policy ? autoCredits(policy) : null,
+        image_generation: null,
+      },
       dailyLimit: policy?.dailyLimit ?? 0,
       monthlyLimit: policy?.monthlyLimit ?? 0,
     };

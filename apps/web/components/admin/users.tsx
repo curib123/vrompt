@@ -5,6 +5,8 @@ import { Modal } from '@/components/ui/modal';
 import { useFeedback } from '@/components/ui/feedback-modal';
 import { Icon } from '@/components/ui/icon';
 import { apiRequest } from '@/lib/api';
+import { PageHeading } from '@/components/ui/page-heading';
+import { Pagination } from '@/components/ui/pagination';
 import { useAdminResource } from './use-admin-resource';
 
 type User = {
@@ -38,7 +40,6 @@ export function AdminUsers() {
   const [editing, setEditing] = useState<User | 'new' | null>(null);
   const [busy, setBusy] = useState(false);
   const [formError, setFormError] = useState('');
-  const [notice, setNotice] = useState('');
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!editing || busy) return;
@@ -69,7 +70,6 @@ export function AdminUsers() {
         },
       );
       setEditing(null);
-      setNotice('Account changes saved.');
       refresh();
       alert({
         tone: 'success',
@@ -86,9 +86,21 @@ export function AdminUsers() {
   }
   return (
     <div className="content-page">
-      <p className="eyebrow">PEOPLE & ACCESS</p>
-      <h1>Users</h1>
-      <p className="muted">Manage user accounts and administrator access.</p>
+      <PageHeading
+        title="Users"
+        description="Manage user accounts and administrator access."
+      >
+        <button
+          type="button"
+          className="primary-button"
+          onClick={() => {
+            setFormError('');
+            setEditing('new');
+          }}
+        >
+          <Icon name="plus" /> Add admin
+        </button>
+      </PageHeading>
       <form
         className="admin-toolbar"
         onSubmit={(e) => {
@@ -98,6 +110,7 @@ export function AdminUsers() {
         }}
       >
         <input
+          type="search"
           aria-label="Search users"
           placeholder="Search name or email…"
           maxLength={120}
@@ -105,7 +118,7 @@ export function AdminUsers() {
           onChange={(e) => setQuery(e.target.value)}
         />
         <button className="secondary-button" aria-label="Search">
-          <Icon name="search" />
+          <Icon name="search" /> Search
         </button>
         <select
           aria-label="Filter role"
@@ -119,37 +132,43 @@ export function AdminUsers() {
           <option value="USER">Users</option>
           <option value="ADMIN">Admins</option>
         </select>
-        <button
-          type="button"
-          className="primary-button"
-          onClick={() => {
-            setFormError('');
-            setEditing('new');
-          }}
-        >
-          <Icon name="plus" /> Add admin
-        </button>
+        {(query || search || role) && (
+          <button
+            type="button"
+            className="secondary-button"
+            onClick={() => {
+              setQuery('');
+              setSearch('');
+              setRole('');
+              setPage(1);
+            }}
+          >
+            Clear filters
+          </button>
+        )}
       </form>
-      {notice && (
-        <p role="status" className="success-banner">
-          {notice}
-        </p>
-      )}
       {error && (
         <p role="alert" className="error-banner">
           {error} <button onClick={refresh}>Try again</button>
         </p>
       )}
       <div className="panel">
-        <div className="table-wrap">
+        <p className="table-scroll-hint">Scroll sideways to see all columns.</p>
+        <div
+          className="table-wrap"
+          role="region"
+          aria-label="accounts"
+          tabIndex={0}
+        >
           <table className="data-table">
+            <caption className="sr-only">accounts</caption>
             <thead>
               <tr>
-                <th>Account</th>
-                <th>Role</th>
-                <th>Status</th>
-                <th>Joined</th>
-                <th>
+                <th scope="col">Account</th>
+                <th scope="col">Role</th>
+                <th scope="col">Status</th>
+                <th scope="col">Joined</th>
+                <th scope="col">
                   <span className="sr-only">Actions</span>
                 </th>
               </tr>
@@ -174,6 +193,7 @@ export function AdminUsers() {
                     <td>
                       <button
                         className="secondary-button"
+                        aria-label={`Manage ${user.username}`}
                         disabled={user.status === 'DELETED'}
                         onClick={() => {
                           setFormError('');
@@ -197,27 +217,14 @@ export function AdminUsers() {
         ) : null}
       </div>
       {data && (
-        <div className="pagination-bar">
-          <span>
-            {data.total} accounts · Page {page}
-          </span>
-          <div>
-            <button
-              className="secondary-button"
-              disabled={loading || page === 1}
-              onClick={() => setPage(page - 1)}
-            >
-              Previous
-            </button>
-            <button
-              className="secondary-button"
-              disabled={loading || !data.hasNextPage}
-              onClick={() => setPage(page + 1)}
-            >
-              Next
-            </button>
-          </div>
-        </div>
+        <Pagination
+          page={page}
+          total={data.total}
+          noun="accounts"
+          loading={loading}
+          hasNextPage={data.hasNextPage}
+          onChange={setPage}
+        />
       )}
       <Modal
         open={Boolean(editing)}

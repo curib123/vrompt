@@ -1,4 +1,5 @@
 'use client';
+import { PageHeading } from '@/components/ui/page-heading';
 import Link from 'next/link';
 import { useAdminResource } from './use-admin-resource';
 type Payment = {
@@ -28,18 +29,17 @@ export function AdminBilling() {
   const error = overview.error || payments.error || failures.error;
   return (
     <div className="content-page">
-      <p className="eyebrow">SUBSCRIPTIONS & PAYMENTS</p>
-      <h1>Billing operations</h1>
-      <p className="muted">
-        Monitor payments and investigate webhook failures. Amounts retain each
-        payment’s currency.
-      </p>
+      <PageHeading
+        title="Billing operations"
+        description="Monitor recent payments and investigate payment processing failures."
+      />
       <div className="admin-toolbar">
         <Link className="primary-button" href="/admin/plans">
           Manage plans & allowances
         </Link>
         <button
           className="secondary-button"
+          disabled={overview.loading || payments.loading || failures.loading}
           onClick={() => {
             overview.refresh();
             payments.refresh();
@@ -72,14 +72,21 @@ export function AdminBilling() {
       <h2>Recent payments</h2>
       <p className="muted">The latest 100 payments.</p>
       <div className="panel">
-        <div className="table-wrap">
+        <p className="table-scroll-hint">Scroll sideways to see all columns.</p>
+        <div
+          className="table-wrap"
+          role="region"
+          aria-label="Recent payments"
+          tabIndex={0}
+        >
           <table className="data-table">
+            <caption className="sr-only">Recent payments</caption>
             <thead>
               <tr>
-                <th>Customer</th>
-                <th>Amount</th>
-                <th>Status</th>
-                <th>Date</th>
+                <th scope="col">Customer</th>
+                <th scope="col">Amount</th>
+                <th scope="col">Status</th>
+                <th scope="col">Date</th>
               </tr>
             </thead>
             <tbody>

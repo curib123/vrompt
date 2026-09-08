@@ -79,6 +79,15 @@ export class MonetizationService {
             plan.intervalCount,
           ),
           monthlyCredits: plan.monthlyCredits,
+          maxProjects: plan.maxProjects,
+          maxWorkflows: plan.maxWorkflows,
+          maxFiles: Math.max(
+            0,
+            ...plan.generationPolicies.map((policy) => policy.maxFiles),
+          ),
+          imageGeneration: plan.generationPolicies.some((policy) =>
+            policy.allowedFeatures.includes('image_generation'),
+          ),
           manualModelCount: plan.generationPolicies.filter(
             (policy) => policy.modelId,
           ).length,

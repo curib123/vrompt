@@ -18,9 +18,10 @@ describe('Auto orchestration', () => {
       maxOutput: 1000,
       routingCostScore: new Prisma.Decimal(cost),
       routingPriority: 0,
-      inputPrice: new Prisma.Decimal(1),
-      outputPrice: new Prisma.Decimal(1),
-      cachedInputPrice: new Prisma.Decimal(1),
+      creditCost: 1,
+      inputPrice: new Prisma.Decimal(0.1),
+      outputPrice: new Prisma.Decimal(0.4),
+      cachedInputPrice: new Prisma.Decimal(0.01),
       additionalPrices: {},
       currency: 'USD',
     }) as AIModel;
@@ -80,7 +81,7 @@ describe('Auto orchestration', () => {
     const controller = new AbortController();
     const run = (
       mode: 'AUTO' | 'MANUAL' = 'AUTO',
-      retry: { regenerateMessageId?: string } = {},
+      retry: { regenerateMessageId?: string; maxCredits?: number } = {},
     ) =>
       service.generate(
         'user',
@@ -228,6 +229,36 @@ describe('Auto orchestration', () => {
     s.quota.reserve.mockRejectedValue(new Error('quota exhausted'));
     await expect(s.run()).rejects.toThrow('quota exhausted');
     expect(s.stream).not.toHaveBeenCalled();
+  });
+  it('rejects a stale credit quote before reserving or contacting a provider', async () => {
+    const s = setup();
+    Object.assign(s.policy, { bucket: 'first', modelId: 'first' });
+    s.models[0]!.outputPrice = new Prisma.Decimal(100);
+    await expect(s.run('MANUAL', { maxCredits: 1 })).rejects.toThrow(
+      'credit price has changed',
+    );
+    expect(s.quota.reserve).not.toHaveBeenCalled();
+    expect(s.stream).not.toHaveBeenCalled();
+  });
+  it('charges the manual model cost even when a client omits its quote', async () => {
+    const s = setup();
+    Object.assign(s.policy, { bucket: 'first', modelId: 'first' });
+    s.models[0]!.outputPrice = new Prisma.Decimal(100);
+    await s.run('MANUAL');
+    expect(s.quota.reserve).toHaveBeenCalledWith(
+      'user',
+      'request',
+      expect.any(String),
+      s.policy,
+      13,
+    );
+  });
+  it('does not call an expensive Auto pool or reserve credits when it exceeds the budget', async () => {
+    const s = setup();
+    for (const model of s.models) model.outputPrice = new Prisma.Decimal(100);
+    await expect(s.run()).rejects.toThrow('No model fits the credit budget');
+    expect(s.stream).not.toHaveBeenCalled();
+    expect(s.quota.reserve).not.toHaveBeenCalled();
   });
 });
 

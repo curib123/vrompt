@@ -150,34 +150,54 @@ export function Landing() {
               Start free. Upgrade when you need more.
             </div>
           </div>
-          <div className="hero-hub">
+          <aside className="hero-hub" aria-labelledby="hub-title">
             <div className="hub-caption">
-              <span className="eyebrow">YOUR AI, ALL TOGETHER</span>
-              <span className="hub-dot" />
+              <span className="eyebrow">SPACE FOR YOUR NEXT IDEA</span>
+              <span className="hub-caption-line" aria-hidden="true" />
             </div>
-            <div className="hub-brand">
-              <BrandMark className="brand-symbol" />
-              <strong>{siteName}</strong>
-              <span>One workspace. More possibilities.</span>
+            <div className="hub-intro">
+              <h2 id="hub-title">
+                Good ideas.
+                <br />
+                <em>More ways forward.</em>
+              </h2>
+              <p>
+                From your first draft to your next discovery. Start with the
+                right AI.
+              </p>
             </div>
-            <div className="hub-providers">
+            <a className="hub-auto" href="#how-auto-works">
+              <span className="hub-auto-copy">
+                <span className="hub-auto-title">
+                  <strong>Let Auto choose</strong>
+                  <span className="hub-recommended">Recommended</span>
+                </span>
+                <small>A model selected to suit your task.</small>
+              </span>
+              <Icon name="arrow" />
+            </a>
+            <div className="hub-divider">
+              <span>Or explore the models</span>
+            </div>
+            <nav className="hub-providers" aria-label="Explore AI providers">
               {brands.map(([key, name]) => (
-                <a href="#models" key={key}>
+                <a
+                  href="#models"
+                  key={key}
+                  aria-label={`Explore ${name} models`}
+                >
                   <ProviderIcon provider={key} />
                   <strong>{name}</strong>
+                  <span className="hub-provider-arrow" aria-hidden="true">
+                    ↗
+                  </span>
                 </a>
               ))}
-            </div>
-            <div className="hub-auto">
-              <ProviderIcon provider="auto" />
-              <span>
-                <strong>Auto — Recommended</strong>
-                <small>The right model for the task at hand</small>
-              </span>
-              <Icon name="check" />
-            </div>
-            <p>Prefer a specific model? Switch manually anytime.</p>
-          </div>
+            </nav>
+            <p className="hub-note">
+              One conversation. A choice of perspectives.
+            </p>
+          </aside>
         </section>
 
         <section className="provider-strip" aria-labelledby="providers-title">

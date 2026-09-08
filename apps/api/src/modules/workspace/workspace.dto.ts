@@ -8,6 +8,9 @@ import {
   MaxLength,
   MinLength,
   ArrayMaxSize,
+  IsInt,
+  Min,
+  Max,
 } from 'class-validator';
 export class ConversationDto {
   @IsOptional() @IsUUID() projectId?: string | null;
@@ -20,6 +23,7 @@ export class SavedPromptDto {
   @IsString() @MinLength(1) @MaxLength(100000) content!: string;
 }
 export class SendMessageDto {
+  @IsOptional() @IsInt() @Min(1) @Max(100000) maxCredits?: number;
   @IsOptional() @IsIn(['chat', 'image_generation']) feature?:
     'chat' | 'image_generation';
   @IsUUID() requestId!: string;

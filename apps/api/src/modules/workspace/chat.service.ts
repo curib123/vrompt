@@ -25,6 +25,12 @@ import { AttachmentService } from './attachment.service';
 import { SendMessageDto } from './workspace.dto';
 import { estimateContext, RouteSettings, textTokens } from './routing';
 import { relevantContext } from './context';
+import {
+  affordableCandidates,
+  autoCredits,
+  modelCredits,
+  PROVIDER_USD_PER_CREDIT,
+} from './credits';
 
 @Injectable()
 export class ChatService {
@@ -48,16 +54,29 @@ export class ChatService {
       .filter(
         (m) => m.manualAvailable && policies.some((p) => p.modelId === m.id),
       )
-      .map((m) => ({
-        id: m.id,
-        provider: m.provider,
-        displayName: m.displayName,
-        description: m.description,
-        capabilities: m.capabilities,
-        capabilityStates: m.capabilityStates,
-        reasoningLevels: m.reasoningLevels,
-        defaultReasoningLevel: m.defaultReasoningLevel,
-      }));
+      .map((m) => {
+        const policy = policies.find((p) => p.modelId === m.id)!;
+        return {
+          id: m.id,
+          provider: m.provider,
+          displayName: m.displayName,
+          description: m.description,
+          capabilities: m.capabilities,
+          capabilityStates: m.capabilityStates,
+          reasoningLevels: m.reasoningLevels,
+          defaultReasoningLevel: m.defaultReasoningLevel,
+          creditCosts: {
+            chat: policy.allowedFeatures.includes('chat')
+              ? modelCredits(m, policy)
+              : null,
+            image_generation:
+              policy.allowedFeatures.includes('image_generation') &&
+              supportsCapability(m, 'image_generation')
+                ? modelCredits(m, policy, 'image_generation')
+                : null,
+          },
+        };
+      });
   }
   async generate(
     userId: string,
@@ -228,7 +247,7 @@ export class ChatService {
           'No suitable Auto model is available for this request.',
         );
     }
-    const original = candidates[0]!;
+    let original = candidates[0]!;
     if (original.fallbackId && input.mode === 'AUTO')
       candidates = [
         original,
@@ -237,16 +256,30 @@ export class ChatService {
           (m) => m.id !== original.id && m.id !== original.fallbackId,
         ),
       ];
-    candidates = candidates.slice(
-      0,
+    candidates =
       input.mode === 'AUTO'
-        ? Math.max(1, Math.min(5, routing.maxAttempts ?? 3))
-        : 1,
-    );
+        ? affordableCandidates(candidates, policy, input.feature)
+        : candidates.slice(0, 1);
+    if (!candidates.length)
+      throw new ServiceUnavailableException(
+        'No model fits the credit budget for this task. Choose another model or try again later.',
+      );
+    original = candidates[0]!;
     const fingerprint = createHash('sha256')
       .update(JSON.stringify({ conversationId, input }))
       .digest('hex');
-    const creditUnits = Math.max(...candidates.map((m) => m.creditCost ?? 1));
+    const creditUnits =
+      input.mode === 'AUTO'
+        ? autoCredits(policy, input.feature)
+        : modelCredits(original, policy, input.feature);
+    if (creditUnits === null)
+      throw new ServiceUnavailableException(
+        'Pricing for this task is not available yet.',
+      );
+    if (input.maxCredits !== undefined && creditUnits > input.maxCredits)
+      throw new BadRequestException(
+        'The credit price has changed. Refresh your model selection before sending.',
+      );
     await this.quota.reserve(
       userId,
       input.requestId,
@@ -509,6 +542,7 @@ export class ChatService {
       reasoningTokens: usage.reasoning,
       providerUsage: usage.raw as Prisma.InputJsonValue,
       pricingSnapshot: {
+        providerBudgetPerCreditUsd: PROVIDER_USD_PER_CREDIT,
         creditCost: model.creditCost ?? 1,
         input: model.inputPrice.toString(),
         cached: model.cachedInputPrice.toString(),

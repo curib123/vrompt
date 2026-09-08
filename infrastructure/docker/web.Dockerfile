@@ -1,4 +1,4 @@
-FROM node:20-bookworm-slim AS dependencies
+FROM node:22-bookworm-slim AS dependencies
 
 WORKDIR /workspace
 
@@ -25,7 +25,7 @@ ENV NEXT_PUBLIC_SITE_URL=${NEXT_PUBLIC_SITE_URL}
 
 RUN npm run build --workspace @vrompt/web
 
-FROM node:20-bookworm-slim AS production
+FROM node:22-bookworm-slim AS production
 
 ENV NODE_ENV=production
 ENV HOSTNAME=0.0.0.0

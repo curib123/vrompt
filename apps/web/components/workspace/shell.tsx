@@ -52,7 +52,6 @@ export function WorkspaceShell({
   const pathname = usePathname();
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [logoutError, setLogoutError] = useState('');
   const { announcement } = useSiteSettings();
   const menuButton = useRef<HTMLButtonElement>(null);
   const sidebar = useRef<HTMLElement>(null);
@@ -83,10 +82,16 @@ export function WorkspaceShell({
         first.focus();
       }
     }
+    const desktop = window.matchMedia('(min-width: 761px)');
+    const closeOnDesktop = () => {
+      if (desktop.matches) setOpen(false);
+    };
+    desktop.addEventListener('change', closeOnDesktop);
     window.addEventListener('keydown', keydown);
     return () => {
       document.body.style.overflow = previousOverflow;
       window.removeEventListener('keydown', keydown);
+      desktop.removeEventListener('change', closeOnDesktop);
     };
   }, [open]);
   if (isLoading)
@@ -145,20 +150,6 @@ export function WorkspaceShell({
       <a className="skip-link" href="#workspace-content">
         Skip to content
       </a>
-      <header className="mobile-workspace-header">
-        <button
-          ref={menuButton}
-          aria-controls="workspace-navigation"
-          aria-label="Toggle navigation"
-          aria-expanded={open}
-          onClick={() => setOpen(!open)}
-        >
-          <Icon name="menu" />
-        </button>
-        <Link aria-label="Vrompt home" href="/">
-          <BrandLockup compact />
-        </Link>
-      </header>
       {open && (
         <button
           className="sidebar-scrim"
@@ -174,109 +165,120 @@ export function WorkspaceShell({
         <Link aria-label="Vrompt home" className="workspace-brand" href="/">
           <BrandLockup compact />
         </Link>
-        <p className="eyebrow">
-          {admin ? 'ADMINISTRATION' : 'YOUR AI WORKSPACE'}
-        </p>
         <nav aria-label={admin ? 'Administration' : 'Workspace'}>
-          {links.map(([href, label]) => (
-            <Link
-              key={href}
-              href={href as Route}
-              onClick={(event) => {
-                setOpen(false);
-                if (
-                  href === '/chat' &&
-                  !event.ctrlKey &&
-                  !event.metaKey &&
-                  !event.shiftKey &&
-                  !event.altKey
-                ) {
-                  event.preventDefault();
-                  router.push(`/chat?new=${crypto.randomUUID()}`);
+          {links.map(([href, label], index) => (
+            <div key={href}>
+              {(index === 0 || index === (admin ? 4 : 5)) && (
+                <p className="navigation-group-label">
+                  {index === 0
+                    ? admin
+                      ? 'Manage workspace'
+                      : 'Create & organize'
+                    : admin
+                      ? 'Operations'
+                      : 'Your account'}
+                </p>
+              )}
+              <Link
+                key={href}
+                href={href as Route}
+                onClick={(event) => {
+                  setOpen(false);
+                  if (
+                    href === '/chat' &&
+                    !event.ctrlKey &&
+                    !event.metaKey &&
+                    !event.shiftKey &&
+                    !event.altKey
+                  ) {
+                    event.preventDefault();
+                    router.push(`/chat?new=${crypto.randomUUID()}`);
+                  }
+                }}
+                aria-current={
+                  pathname === href ||
+                  (href !== '/admin' && pathname.startsWith(href + '/'))
+                    ? 'page'
+                    : undefined
                 }
-              }}
-              className={
-                href === (admin ? '/admin/users' : '/usage')
-                  ? 'navigation-section-start'
-                  : undefined
-              }
-              aria-current={pathname === href ? 'page' : undefined}
-            >
-              <Icon name={navigationIcons[href] ?? 'grid'} />
-              {label}
-            </Link>
+              >
+                <Icon name={navigationIcons[href] ?? 'grid'} />
+                {label}
+              </Link>
+            </div>
           ))}
         </nav>
         <div className="sidebar-bottom">
           <Link href="/docs">
             <Icon name="help" /> Help & getting started
           </Link>
-          <div
-            id="account-actions"
-            popover="auto"
-            className="account-menu"
-            onClick={(event) => event.currentTarget.hidePopover()}
-          >
-            {user && (
-              <Link href={admin ? '/admin/settings' : '/settings'}>
-                <Icon name="settings" /> Settings
-              </Link>
-            )}
-            {user && (
-              <Link href={admin ? '/admin/billing' : '/billing'}>
-                <Icon name="card" />{' '}
-                {admin ? 'Billing operations' : 'Manage subscription'}
-              </Link>
-            )}
-            <button onClick={toggleTheme}>
-              <Icon name="sun" /> Change theme
-            </button>
-            {user && (
-              <button
-                onClick={async () => {
-                  const accepted = await confirm({
-                    title: 'Sign out?',
-                    message:
-                      'Your saved workspace stays private and will be available when you sign in again.',
-                    confirmLabel: 'Sign out',
-                  });
-                  if (!accepted) return;
-                  setLogoutError('');
-                  try {
-                    await logout();
-                  } catch (error) {
-                    const message =
-                      error instanceof Error
-                        ? error.message
-                        : 'Unable to sign out. Please retry.';
-                    setLogoutError(message);
-                    alert({
-                      tone: 'error',
-                      title: 'Could not sign out',
-                      message,
-                    });
-                  }
-                }}
-              >
-                <Icon name="logout" /> Sign out
-              </button>
-            )}
-          </div>
-          {logoutError && (
-            <p role="alert" className="error-banner">
-              {logoutError}
-            </p>
-          )}
           {!user && <SignInButton>Sign in to save your work</SignInButton>}
-          <Link href="/">About Vrompt</Link>
         </div>
       </aside>
+      <div
+        id="account-actions"
+        popover="auto"
+        className="account-menu"
+        onClick={(event) => event.currentTarget.hidePopover()}
+      >
+        <button onClick={toggleTheme}>
+          <Icon name="sun" /> Change theme
+        </button>
+        {user && (
+          <button
+            onClick={async () => {
+              const accepted = await confirm({
+                title: 'Sign out?',
+                message:
+                  'Your saved workspace stays private and will be available when you sign in again.',
+                confirmLabel: 'Sign out',
+              });
+              if (!accepted) return;
+              try {
+                await logout();
+              } catch (error) {
+                const message =
+                  error instanceof Error
+                    ? error.message
+                    : 'Unable to sign out. Please retry.';
+                alert({
+                  tone: 'error',
+                  title: 'Could not sign out',
+                  message,
+                });
+              }
+            }}
+          >
+            <Icon name="logout" /> Sign out
+          </button>
+        )}
+      </div>
+
       <main className="workspace-main" id="workspace-content" tabIndex={-1}>
         <header className="workspace-topbar">
+          <button
+            className="workspace-menu-toggle"
+            ref={menuButton}
+            aria-controls="workspace-navigation"
+            aria-label="Toggle navigation"
+            aria-expanded={open}
+            onClick={() => setOpen(!open)}
+          >
+            <Icon name="menu" />
+          </button>
           <div className="workspace-topbar-title">
             <span className="eyebrow">
               {admin ? 'Administration' : 'Workspace'}
             </span>
+            <strong>
+              {pathname === '/chat'
+                ? 'Chat'
+                : (links.find(
+                    ([href]) =>
+                      pathname === href ||
+                      (href !== '/admin' && pathname.startsWith(href + '/')),
+                  )?.[1] ?? 'Workspace')}
+            </strong>
           </div>
           <div className="workspace-topbar-actions">
             <button

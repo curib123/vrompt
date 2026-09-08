@@ -8,6 +8,7 @@ import {
 import { GenerationPolicy, GenerationStatus, Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { TooManyRequestsException } from '../../common/exceptions/too-many-requests.exception';
+import { autoCredits, modelCredits } from './credits';
 
 export function periods(now = new Date()) {
   return {
@@ -81,6 +82,7 @@ export class QuotaService implements OnModuleInit, OnModuleDestroy {
     const policies = plan
       ? await this.prisma.generationPolicy.findMany({
           where: { planId: plan.id, enabled: true },
+          include: { model: true },
         })
       : [];
     return { plan, subscription, policies };
@@ -246,6 +248,16 @@ export class QuotaService implements OnModuleInit, OnModuleDestroy {
     const counters = await this.prisma.usageCounter.findMany({
       where: { userId, periodStart: { in: [p.day, p.month] } },
     });
+    const creditCounter = counters.find(
+      (counter) =>
+        counter.bucket === 'CREDITS' &&
+        counter.period === 'MONTHLY' &&
+        +counter.periodStart === +p.month,
+    );
+    const creditLimit = Math.max(
+      0,
+      (plan?.monthlyCredits ?? 0) + (creditCounter?.extra ?? 0),
+    );
     return {
       plan: plan?.name ?? 'Free',
       features: {
@@ -254,13 +266,14 @@ export class QuotaService implements OnModuleInit, OnModuleDestroy {
         maxWorkflowSteps: plan?.maxWorkflowSteps ?? 0,
       },
       credits: {
-        limit: plan?.monthlyCredits ?? 0,
+        limit: creditLimit,
+        used: creditCounter?.used ?? 0,
+        reserved: creditCounter?.reserved ?? 0,
         remaining: Math.max(
           0,
-          (plan?.monthlyCredits ?? 0) +
-            (counters.find((c) => c.bucket === 'CREDITS')?.extra ?? 0) -
-            (counters.find((c) => c.bucket === 'CREDITS')?.used ?? 0) -
-            (counters.find((c) => c.bucket === 'CREDITS')?.reserved ?? 0),
+          creditLimit -
+            (creditCounter?.used ?? 0) -
+            (creditCounter?.reserved ?? 0),
         ),
       },
       resets: { daily: p.nextDay, monthly: p.nextMonth },
@@ -279,6 +292,29 @@ export class QuotaService implements OnModuleInit, OnModuleDestroy {
         );
         return {
           bucket: policy.bucket,
+          creditCosts: {
+            chat: !policy.allowedFeatures.includes('chat')
+              ? null
+              : policy.bucket === 'AUTO'
+                ? autoCredits(policy)
+                : policy.model
+                  ? modelCredits(policy.model, policy)
+                  : null,
+            image_generation: !policy.allowedFeatures.includes(
+              'image_generation',
+            )
+              ? null
+              : policy.bucket === 'AUTO'
+                ? autoCredits(policy, 'image_generation')
+                : policy.model
+                  ? modelCredits(policy.model, policy, 'image_generation')
+                  : null,
+          },
+          modelName:
+            policy.bucket === 'AUTO'
+              ? 'Auto'
+              : (policy.model?.displayName ?? null),
+          provider: policy.model?.provider ?? null,
           allowedFeatures: policy.allowedFeatures,
           dailyLimit: policy.dailyLimit + (daily?.extra ?? 0),
           monthlyLimit: policy.monthlyLimit + (monthly?.extra ?? 0),

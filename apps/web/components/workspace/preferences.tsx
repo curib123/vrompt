@@ -1,4 +1,5 @@
 'use client';
+import { PageHeading } from '@/components/ui/page-heading';
 import { useEffect, useState, type FormEvent } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/components/providers/auth-provider';
@@ -17,7 +18,8 @@ export function UserPreferences() {
   const [preferences, setPreferences] = useState<Preferences>();
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
-  const [notice, setNotice] = useState('');
+  const [saved, setSaved] = useState<Preferences>();
+  const [revision, setRevision] = useState(0);
   useEffect(() => {
     if (!accessToken) return;
     const controller = new AbortController();
@@ -25,27 +27,28 @@ export function UserPreferences() {
       accessToken,
       signal: controller.signal,
     })
-      .then(setPreferences)
+      .then((value) => {
+        setPreferences(value);
+        setSaved(value);
+      })
       .catch((e: Error) => {
         if (!controller.signal.aborted) setError(e.message);
       });
     return () => controller.abort();
-  }, [accessToken]);
+  }, [accessToken, revision]);
   async function save(e: FormEvent) {
     e.preventDefault();
     if (!preferences || busy) return;
     setBusy(true);
     setError('');
-    setNotice('');
     try {
-      setPreferences(
-        await apiRequest<Preferences>('/workspace/preferences', {
-          accessToken: accessToken!,
-          method: 'PATCH',
-          body: JSON.stringify({ ...preferences, defaultModelId: null }),
-        }),
-      );
-      setNotice('Your preferences are saved.');
+      const updated = await apiRequest<Preferences>('/workspace/preferences', {
+        accessToken: accessToken!,
+        method: 'PATCH',
+        body: JSON.stringify({ ...preferences, defaultModelId: null }),
+      });
+      setPreferences(updated);
+      setSaved(updated);
       alert({
         tone: 'success',
         title: 'Preferences saved',
@@ -54,26 +57,30 @@ export function UserPreferences() {
     } catch (e) {
       const message = (e as Error).message;
       setError(message);
-      alert({ tone: 'error', title: 'Could not save preferences', message });
     } finally {
       setBusy(false);
     }
   }
   return (
     <div className="content-page">
-      <p className="eyebrow">YOUR WORKSPACE, YOUR WAY</p>
-      <h1>Settings</h1>
-      <p className="muted">
-        A few small adjustments for a more personal workspace.
-      </p>
+      <PageHeading
+        title="Settings"
+        description="Manage your profile, chat behavior, and appearance."
+      />
       {error && (
         <p className="error-banner" role="alert">
-          {error}
-        </p>
-      )}
-      {notice && (
-        <p className="success-banner" role="status">
-          {notice}
+          {error}{' '}
+          {!preferences && (
+            <button
+              className="secondary-button"
+              onClick={() => {
+                setError('');
+                setRevision((v) => v + 1);
+              }}
+            >
+              Try again
+            </button>
+          )}
         </p>
       )}
       <section className="panel">
@@ -103,7 +110,7 @@ export function UserPreferences() {
               />
             </label>
             <p className="muted">
-              Every new chat starts with Auto ? Recommended. Choose a model in
+              Every new chat starts with Auto (recommended). Choose a model in
               the chat whenever you need one.
             </p>
             <label>
@@ -127,7 +134,14 @@ export function UserPreferences() {
               </select>
             </label>
             <div>
-              <button className="primary-button" disabled={busy}>
+              <button
+                className="primary-button"
+                disabled={
+                  busy ||
+                  !preferences.displayName.trim() ||
+                  JSON.stringify(preferences) === JSON.stringify(saved)
+                }
+              >
                 {busy ? 'Saving…' : 'Save preferences'}
               </button>
             </div>

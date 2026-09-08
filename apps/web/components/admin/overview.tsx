@@ -1,4 +1,6 @@
 'use client';
+import { PageHeading } from '@/components/ui/page-heading';
+import { ResourceState } from '@/components/ui/resource-state';
 import Link from 'next/link';
 import { useAdminResource } from './use-admin-resource';
 type System = {
@@ -13,17 +15,22 @@ export function OperationsOverview() {
   const system = useAdminResource<System>('/admin/system');
   return (
     <div className="content-page">
-      <p className="eyebrow">ADMINISTRATION</p>
-      <h1>A clear view of your workspace.</h1>
-      <p className="muted">
-        Manage your models, support your users, and keep everything running
-        smoothly.
-      </p>
-      {(dashboard.error || system.error) && (
-        <p className="error-banner" role="alert">
-          {dashboard.error || system.error}
-        </p>
-      )}
+      <PageHeading
+        title="Overview"
+        description="Monitor workspace activity and service health."
+      >
+        <Link className="primary-button" href="/admin/users">
+          Manage users
+        </Link>
+      </PageHeading>
+      <ResourceState
+        loading={dashboard.loading}
+        error={dashboard.error || system.error}
+        onRetry={() => {
+          dashboard.refresh();
+          system.refresh();
+        }}
+      />
       <div className="feature-grid">
         {[
           ['users', 'Active accounts'],
@@ -43,6 +50,7 @@ export function OperationsOverview() {
         <h2>Service health</h2>
         <button
           className="secondary-button"
+          disabled={dashboard.loading || system.loading}
           onClick={() => {
             dashboard.refresh();
             system.refresh();
@@ -119,9 +127,6 @@ export function OperationsOverview() {
         </Link>
         <Link className="secondary-button" href="/admin/settings">
           Workspace settings
-        </Link>
-        <Link className="secondary-button" href="/admin/users">
-          Manage users
         </Link>
       </div>
     </div>

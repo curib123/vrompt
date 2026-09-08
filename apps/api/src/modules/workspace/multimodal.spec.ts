@@ -22,6 +22,50 @@ const response = (events: unknown[]) =>
 
 describe('Multimodal provider delivery', () => {
   afterEach(() => jest.restoreAllMocks());
+  it('uses bounded image input detail for GPT-4o mini', async () => {
+    const fetch = jest
+      .spyOn(global, 'fetch')
+      .mockResolvedValue(response([{ type: 'response.completed' }]));
+    await new OpenAIProvider().stream(
+      { ...model, providerModelId: 'gpt-4o-mini' },
+      [{ role: 'user', content: 'Describe this' }],
+      [
+        {
+          name: 'image.png',
+          mimeType: 'image/png',
+          data: Buffer.from(png, 'base64'),
+        },
+      ],
+      512,
+      new AbortController().signal,
+      jest.fn(),
+      emptyUsage(),
+    );
+    const body = JSON.parse(fetch.mock.calls[0]![1]!.body as string);
+    expect(body.input[0].content[1].detail).toBe('low');
+    expect(body.max_output_tokens).toBe(512);
+  });
+  it('does not request hidden image output during a Gemini text chat', async () => {
+    const fetch = jest
+      .spyOn(global, 'fetch')
+      .mockResolvedValue(
+        response([{ candidates: [{ finishReason: 'STOP' }] }]),
+      );
+    await new GoogleProvider().stream(
+      model,
+      [{ role: 'user', content: 'Hello' }],
+      [],
+      512,
+      new AbortController().signal,
+      jest.fn(),
+      emptyUsage(),
+    );
+    const body = JSON.parse(fetch.mock.calls[0]![1]!.body as string);
+    expect(body.generationConfig).toMatchObject({
+      maxOutputTokens: 512,
+      responseModalities: ['TEXT'],
+    });
+  });
   it('requests the OpenAI image tool and delivers image-only output', async () => {
     const fetch = jest.spyOn(global, 'fetch').mockResolvedValue(
       response([

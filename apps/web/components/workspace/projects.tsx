@@ -89,7 +89,6 @@ export function Projects() {
           </p>
         </div>
         <div className="resource-header-meta" aria-label="Project summary">
-          <span className="resource-stat">{items.length} projects</span>
           <button
             className="primary-button"
             onClick={() => {
@@ -206,11 +205,16 @@ export function Projects() {
             )}
             <div className="row-actions resource-form-actions">
               <button disabled={busy} className="primary-button">
-                {busy ? 'Saving?' : editing ? 'Save changes' : 'Create project'}
+                {busy
+                  ? 'Saving...'
+                  : editing
+                    ? 'Save changes'
+                    : 'Create project'}
               </button>
               {
                 <button
                   type="button"
+                  disabled={busy}
                   onClick={() => {
                     setEditorOpen(false);
                     setEditing(undefined);
@@ -239,11 +243,21 @@ export function Projects() {
                 {filteredItems.length} shown
               </span>
               <input
+                type="search"
                 aria-label="Search Projects"
                 placeholder="Search projects"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
               />
+              {query && (
+                <button
+                  type="button"
+                  className="secondary-button"
+                  onClick={() => setQuery('')}
+                >
+                  Clear search
+                </button>
+              )}
             </div>
           </div>
           <div className="resource-card-list">

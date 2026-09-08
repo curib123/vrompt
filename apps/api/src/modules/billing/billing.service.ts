@@ -163,7 +163,9 @@ export class BillingService {
       openSubscription?.status === BillingSubscriptionStatus.ACTIVE &&
       openSubscription.currentPeriodEnd > now
     ) {
-      throw new ConflictException('Vrompt Pro is already active');
+      throw new ConflictException(
+        'A paid plan is already active. You can choose another plan when the current access period ends.',
+      );
     }
     const pendingPayment = openSubscription?.payments[0];
     if (pendingPayment?.status === BillingPaymentStatus.PENDING) {

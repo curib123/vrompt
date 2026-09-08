@@ -25,6 +25,7 @@ import { ProjectsService } from './projects.service';
 import { EconomicsService } from './economics.service';
 import { ChatService } from './chat.service';
 import { QuotaService } from './quota.service';
+import { PROVIDER_USD_PER_CREDIT } from './credits';
 import { AttachmentService } from './attachment.service';
 import { ModelRegistryService } from './registry.service';
 import {
@@ -242,7 +243,11 @@ export class WorkspaceAdminController {
   ) {}
   @Get('configuration') async configuration() {
     return {
+      creditDesign: { providerUsdPerCredit: PROVIDER_USD_PER_CREDIT },
       models: await this.prisma.aIModel.findMany({
+        where: {
+          provider: { in: ['OPENAI', 'GOOGLE', 'ANTHROPIC', 'MISTRAL'] },
+        },
         orderBy: { displayOrder: 'asc' },
       }),
       plans: await this.prisma.billingPlan.findMany(),

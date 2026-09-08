@@ -8,6 +8,7 @@ import Joi from 'joi';
 import { PrismaService } from '../prisma/prisma.service';
 import { ProviderRegistry } from './providers';
 import { RoutingHealth } from './routing';
+import { imageOutputBudget } from './credits';
 
 const money = Joi.number().min(0).max(1000000).required();
 const integer = (max: number) =>
@@ -32,7 +33,7 @@ const reasoningLevels = ['low', 'medium', 'high', 'xhigh'];
 export const modelSchema = Joi.object({
   creditCost: integer(100000).default(1),
   provider: Joi.string()
-    .valid('OPENAI', 'GOOGLE', 'ANTHROPIC', 'MISTRAL', 'GROQ')
+    .valid('OPENAI', 'GOOGLE', 'ANTHROPIC', 'MISTRAL')
     .required(),
   providerModelId: Joi.string()
     .pattern(/^[a-zA-Z0-9._:/-]+$/)
@@ -72,6 +73,7 @@ export const modelSchema = Joi.object({
   outputPrice: money,
   additionalPrices: Joi.object({
     cacheWriteInputPrice: Joi.number().min(0).max(1000000),
+    maxImageOutputCostUsd: Joi.number().greater(0).max(1000),
   }).default({}),
   currency: Joi.string().valid('USD').default('USD'),
   maxContext: integer(10000000),
@@ -106,6 +108,8 @@ export const policySchema = Joi.object({
   ratePerMinute: integer(120),
   enabled: Joi.boolean().default(true),
   routing: Joi.object({
+    creditCost: Joi.number().integer().min(1).max(100000).default(1),
+    imageCreditCost: Joi.number().integer().min(1).max(100000),
     allowedModelIds: Joi.array()
       .items(Joi.string().uuid())
       .unique()
@@ -213,6 +217,7 @@ export function rankModels(
 export function supportsCapability(model: AIModel, capability: string) {
   const states = (model.capabilityStates ?? {}) as Record<string, string>;
   return (
+    (capability !== 'image_generation' || imageOutputBudget(model) !== null) &&
     model.capabilities.includes(capability) &&
     (states[capability] ?? 'NATIVE_PROVIDER') !== 'UNAVAILABLE'
   );
@@ -234,6 +239,7 @@ export class ModelRegistryService {
       await this.prisma.aIModel.findMany({
         where: {
           enabled: true,
+          provider: { in: ['OPENAI', 'GOOGLE', 'ANTHROPIC', 'MISTRAL'] },
           effectiveFrom: { lte: now },
           OR: [{ effectiveUntil: null }, { effectiveUntil: { gt: now } }],
         },
@@ -246,7 +252,9 @@ export class ModelRegistryService {
         capabilityStates: Object.fromEntries(
           m.capabilities.map((capability) => [
             capability,
-            configured[capability] ?? 'NATIVE_PROVIDER',
+            capability === 'image_generation' && imageOutputBudget(m) === null
+              ? 'UNAVAILABLE'
+              : (configured[capability] ?? 'NATIVE_PROVIDER'),
           ]),
         ),
         available: !m.maintenance && this.providers.get(m.provider).available(),

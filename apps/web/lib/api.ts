@@ -60,6 +60,7 @@ export async function apiRequest<T>(
   return body as T;
 }
 export type Model = {
+  creditCosts?: { chat: number | null; image_generation: number | null };
   available?: boolean;
   autoAvailable?: boolean;
   id: string;
@@ -99,7 +100,12 @@ export type ChatFile = {
 };
 export type SavedPrompt = { id: string; title: string; content: string };
 export type Usage = {
-  credits?: { limit: number; remaining: number };
+  credits?: {
+    limit: number;
+    remaining: number;
+    used?: number;
+    reserved?: number;
+  };
   features?: {
     projects: boolean;
     workflows: boolean;
@@ -108,7 +114,10 @@ export type Usage = {
   plan: string;
   resets: { daily: string; monthly: string };
   allowances: {
+    creditCosts?: { chat: number | null; image_generation: number | null };
     bucket: string;
+    modelName?: string | null;
+    provider?: string | null;
     allowedFeatures: string[];
     dailyRemaining: number;
     monthlyRemaining: number;

@@ -16,10 +16,10 @@ import {
 import { GeneratedImage } from './generated-image';
 import type { Project } from './projects';
 import { BrandMark } from '@/components/brand/brand-mark';
-import { ProviderIcon } from '@/components/brand/provider-icon';
+import { providerNames } from '@/components/brand/provider-icon';
 import { useSiteSettings } from '@/components/providers/site-settings-provider';
 import { Icon } from '@/components/ui/icon';
-import { useFeedback } from '@/components/ui/feedback-modal';
+import { Modal } from '@/components/ui/modal';
 import { starterTasks } from '@/components/brand/landing';
 import type { Preferences } from './preferences';
 import { SignInButton } from '@/components/providers/auth-dialog-provider';
@@ -30,12 +30,8 @@ function availableCapabilities(model?: Model) {
     (capability) => model.capabilityStates?.[capability] !== 'UNAVAILABLE',
   );
 }
-function capabilityLabel(capability: string) {
-  return capability.replaceAll('_', ' ');
-}
 export function Chat() {
   const { accessToken, user } = useAuth();
-  const { alert } = useFeedback();
   const { settings } = useSiteSettings();
   const router = useRouter();
   const params = useSearchParams();
@@ -57,7 +53,7 @@ export function Chat() {
   const [selected, setSelected] = useState('AUTO');
   const [messages, setMessages] = useState<Message[]>([]);
   const [files, setFiles] = useState<ChatFile[]>([]);
-  const [recent, setRecent] = useState<Conversation[]>([]);
+  const [optionsOpen, setOptionsOpen] = useState(false);
   const [prompts, setPrompts] = useState<SavedPrompt[]>([]);
   const [usage, setUsage] = useState<Usage>();
   const [text, setText] = useState('');
@@ -75,6 +71,7 @@ export function Chat() {
   );
   const bottom = useRef<HTMLDivElement>(null);
   const upload = useRef<HTMLInputElement>(null);
+  const composer = useRef<HTMLTextAreaElement>(null);
   const allowance = usage?.allowances.find((a) => a.bucket === selected);
   const chatAvailable =
     catalog !== null &&
@@ -84,6 +81,30 @@ export function Chat() {
           (model) => model.available !== false && model.autoAvailable !== false,
         )
       : models.some((model) => model.id === selected));
+  const allowanceExhausted =
+    allowance?.dailyRemaining === 0 ||
+    allowance?.monthlyRemaining === 0 ||
+    usage?.credits?.remaining === 0;
+  const creditPrice = allowance?.creditCosts
+    ? allowance.creditCosts[feature]
+    : 1;
+  const canAfford = (price: number | null) =>
+    price !== null && (!usage?.credits || usage.credits.remaining >= price);
+  const canSend =
+    chatAvailable &&
+    Boolean(allowance) &&
+    !allowanceExhausted &&
+    canAfford(creditPrice);
+  const canAttach = Boolean(accessToken && allowance?.maxFiles);
+  const canGenerateImage =
+    allowance?.allowedFeatures?.includes('image_generation') &&
+    (!allowance.creditCosts ||
+      allowance.creditCosts.image_generation !== null) &&
+    (selected === 'AUTO' ||
+      availableCapabilities(
+        models.find((model) => model.id === selected),
+      ).includes('image_generation'));
+  const activeProject = projects.find((project) => project.id === projectId);
   useEffect(() => {
     const controller = new AbortController();
     void apiRequest<Model[]>('/catalog/models', { signal: controller.signal })
@@ -99,16 +120,14 @@ export function Chat() {
   async function refresh() {
     if (!accessToken) return;
     const options = { accessToken };
-    const [m, u, p, r] = await Promise.all([
+    const [m, u, p] = await Promise.all([
       apiRequest<Model[]>('/workspace/models', options),
       apiRequest<Usage>('/workspace/usage', options),
       apiRequest<SavedPrompt[]>('/workspace/saved-prompts', options),
-      apiRequest<Conversation[]>('/workspace/conversations', options),
     ]);
     setModels(m);
     setUsage(u);
     setPrompts(p);
-    setRecent(r);
   }
   useEffect(() => {
     if (!accessToken) {
@@ -116,6 +135,7 @@ export function Chat() {
         enabled: boolean;
         dailyLimit: number;
         monthlyLimit: number;
+        creditCosts?: { chat: number | null; image_generation: number | null };
       }>('/guest/configuration')
         .then((g) =>
           setUsage({
@@ -125,6 +145,7 @@ export function Chat() {
               ? [
                   {
                     bucket: 'AUTO',
+                    creditCosts: g.creditCosts,
                     allowedFeatures: ['chat'],
                     dailyLimit: g.dailyLimit,
                     dailyRemaining: g.dailyLimit,
@@ -166,6 +187,7 @@ export function Chat() {
       previousView.current = view;
     }
     setFeature('chat');
+    setOptionsOpen(false);
     setSelectionNotice('');
     const inserted = sessionStorage.getItem('vrompt-insert-prompt');
     // Synchronize a prompt handed off through browser session storage.
@@ -259,10 +281,21 @@ export function Chat() {
     return c.id;
   }
   async function send(regenerate?: Message) {
+    const requestFeature = regenerate
+      ? regenerate.artifacts?.length
+        ? 'image_generation'
+        : 'chat'
+      : feature;
+    const requestCredits = allowance?.creditCosts
+      ? allowance.creditCosts[requestFeature]
+      : 1;
     if (
       abort.current ||
       busy ||
       !chatAvailable ||
+      !allowance ||
+      allowanceExhausted ||
+      !canAfford(requestCredits) ||
       (!text.trim() && !regenerate)
     )
       return;
@@ -289,9 +322,8 @@ export function Chat() {
             requestId: crypto.randomUUID(),
             content,
             attachmentIds: selectedFiles,
-            feature: regenerate?.artifacts?.length
-              ? 'image_generation'
-              : feature,
+            feature: requestFeature,
+            maxCredits: requestCredits,
             mode: selected === 'AUTO' ? 'AUTO' : 'MANUAL',
             ...(selected !== 'AUTO' ? { modelId: selected } : {}),
             ...(regenerate ? { regenerateMessageId: regenerate.id } : {}),
@@ -382,7 +414,6 @@ export function Chat() {
         const message =
           e instanceof Error ? e.message : 'Unable to send message.';
         setError(message);
-        alert({ tone: 'error', title: 'Message could not be sent', message });
       }
     } finally {
       if (version !== viewVersion.current) return;
@@ -404,7 +435,7 @@ export function Chat() {
     }
   }
   async function attach(file?: File) {
-    if (!file || !accessToken || busy) return;
+    if (!file || !accessToken || busy || !canAttach) return;
     setError('');
     try {
       const conversationId = await ensureConversation();
@@ -419,44 +450,15 @@ export function Chat() {
     } catch (e) {
       const message = e instanceof Error ? e.message : 'Upload failed.';
       setError(message);
-      alert({ tone: 'error', title: 'File could not be uploaded', message });
     }
   }
   return (
-    <div className={`chat-page ${!messages.length ? 'chat-is-new' : ''}`}>
-      <header className="chat-toolbar">
-        <div className="chat-toolbar-title">
-          <span className="eyebrow">YOUR WORKSPACE</span>
-          <strong>{id ? title : 'New chat'}</strong>
-        </div>
-        <div className="chat-model-picker">
-          <select
-            aria-label="Choose AI model"
-            value={selected}
-            disabled={busy}
-            onChange={(e) => {
-              modelChosenByUser.current = true;
-              setSelectionNotice('');
-              setSelected(e.target.value);
-              setFeature('chat');
-            }}
-          >
-            <option value="AUTO">Auto — Recommended</option>
-            {[...new Set(models.map((m) => m.provider))].map((provider) => (
-              <optgroup key={provider} label={provider}>
-                {models
-                  .filter((m) => m.provider === provider)
-                  .map((m) => (
-                    <option key={m.id} value={m.id}>
-                      {m.displayName}
-                    </option>
-                  ))}
-              </optgroup>
-            ))}
-          </select>
-        </div>
-        <span className="muted">{usage?.plan ?? 'Your workspace'}</span>
-      </header>
+    <div className="chat-page" data-empty={messages.length === 0}>
+      {id && (
+        <header className="chat-conversation-header">
+          <h1>{title}</h1>
+        </header>
+      )}
       {selectionNotice && (
         <div className="service-notice">
           <div>
@@ -485,160 +487,21 @@ export function Chat() {
           </div>
         </div>
       )}
-      <details className="chat-options">
-        <summary>
-          <Icon name="settings" /> Conversation options
-        </summary>
-        {accessToken ? (
-          <div className="chat-toolbar">
-            <label>
-              Project{' '}
-              <select
-                disabled={busy}
-                value={projectId}
-                onChange={async (e) => {
-                  const next = e.target.value;
-                  try {
-                    if (id)
-                      await apiRequest(`/workspace/conversations/${id}`, {
-                        accessToken,
-                        method: 'PATCH',
-                        body: JSON.stringify({ projectId: next || null }),
-                      });
-                    setProjectId(next);
-                  } catch (e) {
-                    setError((e as Error).message);
-                  }
-                }}
-              >
-                <option value="">Personal workspace</option>
-                {projects
-                  .filter((p) => !p.archived)
-                  .map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name}
-                    </option>
-                  ))}
-              </select>
-            </label>
-          </div>
-        ) : (
-          <p className="usage-hint">
-            Temporary chat ·{' '}
-            <SignInButton>Sign in to continue and save</SignInButton>
-          </p>
-        )}
-        <div className="chat-toolbar">
-          <label>
-            Task{' '}
-            <select
-              aria-label="Choose task"
-              value={feature}
-              disabled={busy}
-              onChange={(e) =>
-                setFeature(e.target.value as 'chat' | 'image_generation')
-              }
-            >
-              <option value="chat">Chat</option>
-              <option
-                value="image_generation"
-                disabled={
-                  !allowance?.allowedFeatures?.includes('image_generation') ||
-                  (selected !== 'AUTO' &&
-                    !availableCapabilities(
-                      models.find((m) => m.id === selected),
-                    ).includes('image_generation'))
-                }
-              >
-                Generate image
-              </option>
-            </select>
-          </label>
-          <span className="muted">
-            {selected === 'AUTO'
-              ? 'Auto selects a model that supports this task.'
-              : availableCapabilities(models.find((m) => m.id === selected))
-                  .map(capabilityLabel)
-                  .join(', ')}
-          </span>
-        </div>
-      </details>
       <div className="chat-scroll">
         {!messages.length ? (
-          <section className="chat-welcome">
-            <BrandMark className="welcome-mark" />
-            <p className="eyebrow">ONE WORKSPACE. MORE POSSIBILITIES.</p>
-            <h1>
+          <section className="chat-intro" aria-labelledby="chat-greeting">
+            <BrandMark className="chat-intro-mark" />
+            <h1 id="chat-greeting">
               {user
                 ? `Hello, ${preferences?.displayName || user.username}.`
-                : 'A little help. A lot of possibility.'}
+                : 'How can I help?'}
             </h1>
-            <p className="muted">
-              The right AI for <span className="teal-text">every task.</span>
-            </p>
-            <div className="chat-section-label">
-              <span>Choose how you want to work</span>
-              <small>Auto is recommended</small>
-            </div>
-            <div className="available-models">
-              <button
-                className={`model-choice ${selected === 'AUTO' ? 'selected' : ''}`}
-                disabled={busy}
-                onClick={() => {
-                  modelChosenByUser.current = true;
-                  setSelectionNotice('');
-                  setSelected('AUTO');
-                  setFeature('chat');
-                }}
-              >
-                <ProviderIcon provider="auto" />
-                <span>
-                  <strong>Auto</strong>
-                  <small>Best for your task</small>
-                </span>
-              </button>
-              {models.map((model) => (
-                <button
-                  className={`model-choice ${selected === model.id ? 'selected' : ''}`}
-                  key={model.id}
-                  disabled={busy}
-                  onClick={() => {
-                    modelChosenByUser.current = true;
-                    setSelectionNotice('');
-                    setSelected(model.id);
-                    setFeature('chat');
-                  }}
-                >
-                  <ProviderIcon provider={model.provider} />
-                  <span>
-                    <strong>{model.displayName}</strong>
-                    <small>
-                      {model.description || model.provider.toLowerCase()}
-                    </small>
-                    {Object.entries(model.capabilityStates ?? {}).length >
-                      0 && (
-                      <small>
-                        {Object.entries(model.capabilityStates ?? {})
-                          .filter(([, state]) => state !== 'UNAVAILABLE')
-                          .map(
-                            ([capability, state]) =>
-                              `${state === 'VROMPT' ? 'Vrompt' : 'Native'}: ${capabilityLabel(capability)}`,
-                          )
-                          .join(' · ')}
-                      </small>
-                    )}
-                  </span>
-                </button>
-              ))}
-            </div>
-            <div className="chat-section-label quick-label">
-              <span>Start with a task</span>
-              <small>Pick a shortcut or write your own prompt below</small>
-            </div>
-            <div className="task-cards">
+            <p>Ask a question or start with an idea.</p>
+            <div className="chat-starters" aria-label="Prompt suggestions">
               {starterTasks.map((task) => (
                 <button
                   key={task.key}
+                  title={task.detail}
                   onClick={() => {
                     setText(
                       String(
@@ -646,40 +509,17 @@ export function Chat() {
                           `Help me ${task.title.toLowerCase()}.`,
                       ),
                     );
-                    document
-                      .querySelector<HTMLTextAreaElement>('.composer textarea')
-                      ?.focus();
+                    composer.current?.focus();
                   }}
                 >
-                  <span className={`task-icon ${task.key}`}>
-                    <Icon name={task.icon} />
-                  </span>
-                  <span>
-                    <strong>{task.title}</strong>
-                    <small>{task.detail}</small>
-                  </span>
-                  <span className="task-arrow">↗</span>
+                  <Icon name={task.icon} />
+                  <span>{task.title}</span>
                 </button>
               ))}
             </div>
-            {recent.length > 0 && (
-              <div className="panel">
-                <p className="eyebrow">CONTINUE A CONVERSATION</p>
-                {recent.slice(0, 3).map((c) => (
-                  <button
-                    className="row"
-                    key={c.id}
-                    onClick={() => router.push(`/chat?id=${c.id}`)}
-                  >
-                    {c.title} →
-                  </button>
-                ))}
-              </div>
-            )}
           </section>
         ) : (
           <>
-            <p className="eyebrow">{title}</p>
             {messages.map((m) => (
               <article className={`message ${m.role}`} key={m.id}>
                 <p className="message-label">
@@ -696,7 +536,13 @@ export function Chat() {
                         : 'No response completed.')}
                 </pre>
                 {m.role === 'user' && (
-                  <button disabled={busy} onClick={() => setText(m.content)}>
+                  <button
+                    disabled={busy}
+                    onClick={() => {
+                      setText(m.content);
+                      composer.current?.focus();
+                    }}
+                  >
                     Edit as new message
                   </button>
                 )}
@@ -721,12 +567,39 @@ export function Chat() {
                       </button>
                     )}
                     <button
-                      disabled={busy || !accessToken}
+                      aria-label={
+                        m.status === 'SUCCEEDED'
+                          ? 'Regenerate'
+                          : 'Retry response'
+                      }
+                      disabled={
+                        busy ||
+                        !accessToken ||
+                        !chatAvailable ||
+                        !allowance ||
+                        allowanceExhausted ||
+                        !canAfford(
+                          allowance.creditCosts
+                            ? allowance.creditCosts[
+                                m.artifacts?.length
+                                  ? 'image_generation'
+                                  : 'chat'
+                              ]
+                            : 1,
+                        )
+                      }
+                      title={
+                        allowance?.creditCosts
+                          ? `Retry: ${allowance.creditCosts[m.artifacts?.length ? 'image_generation' : 'chat'] ?? 'unavailable'} credits`
+                          : undefined
+                      }
                       onClick={() => void send(m)}
                     >
                       {m.status === 'SUCCEEDED'
                         ? 'Regenerate'
                         : 'Retry response'}
+                      {allowance?.creditCosts &&
+                        ` · ${allowance.creditCosts[m.artifacts?.length ? 'image_generation' : 'chat'] ?? 'Unavailable'} credits`}
                     </button>
                     {!['SUCCEEDED', 'RESERVED'].includes(m.status) && (
                       <span>{m.status.toLowerCase()}</span>
@@ -746,12 +619,28 @@ export function Chat() {
             {selected !== 'AUTO' && (
               <button
                 onClick={() => {
+                  modelChosenByUser.current = true;
                   setSelected('AUTO');
+                  setFeature('chat');
                   setError('');
                 }}
               >
-                Use recommended alternative
+                Switch to Auto
               </button>
+            )}
+          </div>
+        )}
+        {(feature === 'image_generation' || activeProject) && (
+          <div className="composer-context">
+            {feature === 'image_generation' && (
+              <span>
+                <Icon name="cube" /> Generate image
+              </span>
+            )}
+            {activeProject && (
+              <span>
+                <Icon name="folder" /> {activeProject.name}
+              </span>
             )}
           </div>
         )}
@@ -799,8 +688,14 @@ export function Chat() {
             </span>
           ))}
           <textarea
+            ref={composer}
             aria-label="Message"
-            placeholder="What would you like to work on?"
+            aria-describedby="composer-status"
+            placeholder={
+              feature === 'image_generation'
+                ? 'Describe the image you want to create…'
+                : 'Message Vrompt…'
+            }
             value={text}
             disabled={busy}
             onChange={(e) => setText(e.target.value)}
@@ -811,7 +706,7 @@ export function Chat() {
                     item.kind === 'file' && item.type.startsWith('image/'),
                 )
                 ?.getAsFile();
-              if (image) {
+              if (image && canAttach) {
                 e.preventDefault();
                 void attach(image);
               }
@@ -829,7 +724,40 @@ export function Chat() {
             }}
           />
           <div className="composer-controls">
-            <div>
+            <select
+              className="composer-model"
+              aria-label="Choose AI model"
+              value={selected}
+              disabled={busy}
+              onChange={(e) => {
+                modelChosenByUser.current = true;
+                setSelectionNotice('');
+                setSelected(e.target.value);
+                setFeature('chat');
+              }}
+            >
+              <option value="AUTO">Auto — Recommended</option>
+              {[...new Set(models.map((model) => model.provider))].map(
+                (provider) => (
+                  <optgroup
+                    key={provider}
+                    label={providerNames[provider.toLowerCase()] ?? provider}
+                  >
+                    {models
+                      .filter((model) => model.provider === provider)
+                      .map((model) => (
+                        <option key={model.id} value={model.id}>
+                          {model.displayName}
+                          {model.creditCosts?.chat != null
+                            ? ` · ${model.creditCosts.chat} ${model.creditCosts.chat === 1 ? 'credit' : 'credits'}`
+                            : ''}
+                        </option>
+                      ))}
+                  </optgroup>
+                ),
+              )}
+            </select>
+            <div className="composer-actions">
               <input
                 type="file"
                 hidden
@@ -840,65 +768,177 @@ export function Chat() {
                   e.target.value = '';
                 }}
               />
-              <button
-                aria-label="Attach a file"
-                disabled={busy || !accessToken || !allowance?.maxFiles}
-                onClick={() => upload.current?.click()}
-              >
-                <Icon name="attach" /> Attach
-              </button>
-              <select
-                aria-label="Insert saved prompt"
-                value=""
-                onChange={(e) =>
-                  setText(
-                    (old) =>
-                      `${old}${old ? '\n' : ''}${prompts.find((p) => p.id === e.target.value)?.content ?? ''}`,
-                  )
-                }
-              >
-                <option value="">Saved Prompts</option>
-                {prompts.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.title}
-                  </option>
-                ))}
-              </select>
+              {canAttach && (
+                <button
+                  className="composer-attach"
+                  aria-label="Attach a file"
+                  title="Attach a file"
+                  disabled={busy}
+                  onClick={() => upload.current?.click()}
+                >
+                  <Icon name="attach" />
+                </button>
+              )}
+              {accessToken && (
+                <button
+                  className="composer-options-button"
+                  aria-label="Chat options"
+                  aria-haspopup="dialog"
+                  disabled={busy}
+                  onClick={() => setOptionsOpen(true)}
+                >
+                  <Icon name="settings" /> <span>Options</span>
+                </button>
+              )}
+              {busy ? (
+                <button
+                  className="secondary-button"
+                  onClick={() => abort.current?.abort()}
+                >
+                  Stop
+                </button>
+              ) : (
+                <button
+                  className="primary-button"
+                  disabled={!canSend || !text.trim()}
+                  onClick={() => void send()}
+                >
+                  Send <Icon name="arrow" />
+                </button>
+              )}
             </div>
-            {busy ? (
-              <button
-                className="secondary-button"
-                onClick={() => abort.current?.abort()}
-              >
-                Stop
-              </button>
-            ) : (
-              <button
-                className="primary-button"
-                disabled={
-                  !chatAvailable ||
-                  !text.trim() ||
-                  !allowance ||
-                  allowance.dailyRemaining === 0 ||
-                  allowance.monthlyRemaining === 0 ||
-                  usage?.credits?.remaining === 0
-                }
-                onClick={() => void send()}
-              >
-                Send ↑
-              </button>
-            )}
           </div>
         </div>
-        <p className="usage-hint">
-          {usage?.credits &&
-            `${usage.credits.remaining} credits remaining this month · `}
-          {allowance
-            ? `${allowance.dailyRemaining} / ${allowance.dailyLimit} remaining today · ${allowance.monthlyRemaining} / ${allowance.monthlyLimit} this month`
-            : 'No allowance is configured for this selection.'}{' '}
-          · AI can make mistakes.
-        </p>
+        <div className="composer-footer" id="composer-status">
+          <span>
+            {catalog === null && !catalogError
+              ? 'Loading models…'
+              : allowanceExhausted
+                ? 'You’ve reached your usage limit.'
+                : usage && !allowance
+                  ? 'This model isn’t included in your plan.'
+                  : allowance
+                    ? creditPrice === null
+                      ? 'Pricing for this task is not available yet.'
+                      : !canAfford(creditPrice)
+                        ? `This response needs ${creditPrice} credits. You have ${usage?.credits?.remaining ?? 0}.`
+                        : `${creditPrice} ${creditPrice === 1 ? 'credit' : 'credits'} per response · ${allowance.dailyRemaining} messages left today`
+                    : 'Checking your allowance…'}
+            {accessToken && <Link href="/usage">View usage</Link>}
+          </span>
+          <span className="composer-keyboard-hint">
+            {preferences?.sendOnEnter === false
+              ? 'Use Send to submit'
+              : 'Enter to send · Shift + Enter for a new line'}
+          </span>
+        </div>
+        {!accessToken && (
+          <p className="chat-guest-note">
+            Temporary chat.{' '}
+            <SignInButton>Sign in to save your conversations</SignInButton>
+          </p>
+        )}
       </div>
+      <Modal
+        open={optionsOpen}
+        onClose={() => setOptionsOpen(false)}
+        title="Chat options"
+        description="Choose a task, organize this chat, or reuse a saved prompt."
+        className="chat-options-dialog"
+      >
+        <div className="chat-option-fields">
+          <label>
+            Task
+            <select
+              aria-label="Choose task"
+              value={feature}
+              disabled={busy}
+              onChange={(e) =>
+                setFeature(e.target.value as 'chat' | 'image_generation')
+              }
+            >
+              <option value="chat">Chat</option>
+              <option value="image_generation" disabled={!canGenerateImage}>
+                Generate image
+              </option>
+            </select>
+            {!canGenerateImage && (
+              <small>
+                Image generation is unavailable for this model or plan.
+              </small>
+            )}
+          </label>
+          <label>
+            Project
+            <select
+              value={projectId}
+              disabled={busy}
+              onChange={async (e) => {
+                const next = e.target.value;
+                try {
+                  if (id)
+                    await apiRequest(`/workspace/conversations/${id}`, {
+                      accessToken: accessToken!,
+                      method: 'PATCH',
+                      body: JSON.stringify({ projectId: next || null }),
+                    });
+                  setProjectId(next);
+                } catch (e) {
+                  setError((e as Error).message);
+                  setOptionsOpen(false);
+                }
+              }}
+            >
+              <option value="">Personal workspace</option>
+              {projects
+                .filter(
+                  (project) => !project.archived || project.id === projectId,
+                )
+                .map((project) => (
+                  <option
+                    key={project.id}
+                    value={project.id}
+                    disabled={project.archived}
+                  >
+                    {project.name}
+                    {project.archived ? ' (archived)' : ''}
+                  </option>
+                ))}
+            </select>
+          </label>
+          <label>
+            Saved prompt
+            <select
+              aria-label="Insert saved prompt"
+              value=""
+              disabled={!prompts.length || busy}
+              onChange={(e) => {
+                const prompt = prompts.find(
+                  (prompt) => prompt.id === e.target.value,
+                );
+                if (!prompt) return;
+                setText((old) => `${old}${old ? '\n' : ''}${prompt.content}`);
+                setOptionsOpen(false);
+                requestAnimationFrame(() => composer.current?.focus());
+              }}
+            >
+              <option value="">
+                {prompts.length
+                  ? 'Choose a saved prompt'
+                  : 'No saved prompts yet'}
+              </option>
+              {prompts.map((prompt) => (
+                <option key={prompt.id} value={prompt.id}>
+                  {prompt.title}
+                </option>
+              ))}
+            </select>
+            {!prompts.length && (
+              <Link href="/saved-prompts">Create a saved prompt</Link>
+            )}
+          </label>
+        </div>
+      </Modal>
     </div>
   );
 }

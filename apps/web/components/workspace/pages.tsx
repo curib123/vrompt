@@ -1,4 +1,8 @@
 'use client';
+import { PageHeading } from '@/components/ui/page-heading';
+import { ResourceState } from '@/components/ui/resource-state';
+import { useWorkspaceResource } from './use-workspace-resource';
+import { useAdminResource } from '@/components/admin/use-admin-resource';
 import { Icon } from '@/components/ui/icon';
 import { Suspense } from 'react';
 import {
@@ -8,95 +12,17 @@ import {
 } from '@/components/billing/plan-cards';
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/components/providers/auth-provider';
 import { useAuthDialog } from '@/components/providers/auth-dialog-provider';
 import { useFeedback } from '@/components/ui/feedback-modal';
-import { apiRequest, type Usage, type Model } from '@/lib/api';
+import { apiRequest } from '@/lib/api';
 
 export { Conversations, SavedPrompts } from './library';
-export function UsagePage() {
-  const { accessToken } = useAuth();
-  const [usage, setUsage] = useState<Usage>();
-  const [models, setModels] = useState<Model[]>([]);
-  const [error, setError] = useState('');
-  useEffect(() => {
-    if (!accessToken) return;
-    void Promise.all([
-      apiRequest<Usage>('/workspace/usage', { accessToken }),
-      apiRequest<Model[]>('/workspace/models', { accessToken }),
-    ])
-      .then(([u, m]) => {
-        setUsage(u);
-        setModels(m);
-      })
-      .catch((e) => setError(e.message));
-  }, [accessToken]);
-  return (
-    <div className="content-page">
-      <h1>Your usage</h1>
-      {usage?.credits && (
-        <p>
-          {usage.credits.remaining} / {usage.credits.limit} monthly credits
-          remaining
-        </p>
-      )}
-      <p className="muted">
-        All models share monthly credits. Daily and monthly generation limits
-        also apply.
-      </p>
-      {error && (
-        <p className="error-banner" role="alert">
-          {error}
-        </p>
-      )}
-      {usage?.allowances.map((a) => (
-        <section className="panel" key={a.bucket}>
-          <h2>
-            {a.bucket === 'AUTO'
-              ? 'Auto'
-              : (models.find((m) => m.id === a.bucket)?.displayName ??
-                'Model allowance')}
-          </h2>
-          <div className="row">
-            <span>Today</span>
-            <strong>
-              {a.dailyRemaining} / {a.dailyLimit} remaining
-            </strong>
-          </div>
-          <div className="row">
-            <span>This month</span>
-            <strong>
-              {a.monthlyRemaining} / {a.monthlyLimit} remaining
-            </strong>
-          </div>
-          <p className="muted">
-            Up to {a.maxFiles} files · {Math.round(a.maxFileBytes / 1000000)} MB
-            per file
-          </p>
-        </section>
-      ))}
-      {usage && (
-        <p className="muted">
-          Daily reset: {new Date(usage.resets.daily).toLocaleString()}
-          <br />
-          Monthly reset: {new Date(usage.resets.monthly).toLocaleString()}
-          <br />
-          Both allowances must remain available. A stopped response may count
-          when processing has already occurred.
-        </p>
-      )}
-      <Link href="/billing" className="primary-button">
-        Manage subscription & extra usage
-      </Link>
-    </div>
-  );
-}
+export { UsagePage } from './usage';
 export function AdminAnalytics() {
-  const { accessToken } = useAuth();
-  const [error, setError] = useState('');
-  const [data, setData] = useState<{
+  const resource = useAdminResource<{
     costs: {
       provider: string;
       modelName: string;
@@ -113,23 +39,25 @@ export function AdminAnalytics() {
       margin: number | null;
     }[];
     note: string;
-  }>();
-  useEffect(() => {
-    if (accessToken)
-      void apiRequest<typeof data>('/admin/workspace/analytics', {
-        accessToken,
-      })
-        .then(setData)
-        .catch((e: Error) => setError(e.message));
-  }, [accessToken]);
+  }>('/admin/workspace/analytics');
+  const data = resource.data;
   return (
     <div className="content-page">
-      <h1>Costs & revenue</h1>
-      {error && (
-        <p className="error-banner" role="alert">
-          {error}
+      <PageHeading
+        title="Costs & revenue"
+        description="Review revenue and AI costs over the last 30 days, separated by currency."
+      />
+      <ResourceState
+        {...resource}
+        onRetry={resource.refresh}
+        empty={Boolean(data && !data.costs.length && !data.contribution.length)}
+      >
+        <h2>No activity recorded yet</h2>
+        <p>
+          Revenue and provider costs will appear after payments or generations
+          are recorded.
         </p>
-      )}
+      </ResourceState>
       <div className="feature-grid">
         {data?.contribution.map((item) => (
           <section className="panel" key={item.currency}>
@@ -156,24 +84,26 @@ export function AdminAnalytics() {
         Last 30 days. Provider costs are tracked separately from customer-facing
         generations.
       </p>
-      <section className="panel">
-        <div className="row">
-          <strong>Active subscriptions</strong>
-          <span>{data?.activeSubscriptions ?? '—'}</span>
-        </div>
-        {data?.costs.map((c, i) => (
-          <div className="row" key={`${c.provider}-${c.modelName}-${i}`}>
-            <span>
-              {c.provider} · {c.modelName}
-              <br />
-              <small>{c._count} records</small>
-            </span>
-            <span>
-              {c.currency} {Number(c._sum.estimatedCost ?? 0).toFixed(4)}
-            </span>
+      {data && (
+        <section className="panel">
+          <div className="row">
+            <strong>Active subscriptions</strong>
+            <span>{data?.activeSubscriptions ?? '—'}</span>
           </div>
-        ))}
-      </section>
+          {data?.costs.map((c, i) => (
+            <div className="row" key={`${c.provider}-${c.modelName}-${i}`}>
+              <span>
+                {c.provider} · {c.modelName}
+                <br />
+                <small>{c._count} records</small>
+              </span>
+              <span>
+                {c.currency} {Number(c._sum.estimatedCost ?? 0).toFixed(4)}
+              </span>
+            </div>
+          ))}
+        </section>
+      )}
       <p className="muted">{data?.note}</p>
     </div>
   );
@@ -206,24 +136,12 @@ function BillingContent() {
   const router = useRouter();
   const requestedPlan = useSearchParams().get('plan');
   const plans = usePlans();
-  const [billing, setBilling] = useState<Billing>();
+  const billingResource = useWorkspaceResource<Billing>('/billing/me');
+  const billing = billingResource.data;
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [selected, setSelected] = useState<string | null>(requestedPlan);
   const [code, setCode] = useState('');
-  useEffect(() => {
-    if (!accessToken) return;
-    const controller = new AbortController();
-    void apiRequest<Billing>('/billing/me', {
-      accessToken,
-      signal: controller.signal,
-    })
-      .then(setBilling)
-      .catch((e) => {
-        if (!controller.signal.aborted) setError(e.message);
-      });
-    return () => controller.abort();
-  }, [accessToken]);
   async function checkout(plan: PublicPlan) {
     if (!plan.priceCentavos) {
       if (user) router.push('/chat');
@@ -280,9 +198,11 @@ function BillingContent() {
   }
   return (
     <div className="content-page billing-content">
-      <p className="eyebrow">YOUR PLAN, YOUR PACE</p>
-      <h1>Make room for more.</h1>
-      <p className="muted">One account. One plan. More ways to work with AI.</p>
+      <PageHeading
+        title="Billing"
+        description="Review your current plan and compare available upgrades."
+      />
+      <ResourceState {...billingResource} onRetry={billingResource.refresh} />
       {billing && (
         <section className="panel current-plan-panel">
           <div>

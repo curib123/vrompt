@@ -128,6 +128,11 @@ export class OpenAIProvider implements AIProvider {
           f.mimeType.startsWith('image/')
             ? {
                 type: 'input_image',
+                // GPT-4o mini's automatic image tiling can greatly exceed the
+                // chat estimate. Low detail has a fixed 2,833-token image cost.
+                ...(model.providerModelId === 'gpt-4o-mini'
+                  ? { detail: 'low' }
+                  : {}),
                 image_url: `data:${f.mimeType};base64,${f.data.toString('base64')}`,
               }
             : f.mimeType === 'text/plain'
@@ -247,7 +252,7 @@ export class GoogleProvider implements AIProvider {
           maxOutputTokens: maxOutput,
           ...(options?.feature === 'image_generation'
             ? { responseModalities: ['TEXT', 'IMAGE'] }
-            : {}),
+            : { responseModalities: ['TEXT'] }),
         },
       },
       signal,
@@ -484,7 +489,8 @@ export class MistralProvider implements AIProvider {
 
 export class GroqProvider implements AIProvider {
   available() {
-    return Boolean(process.env.GROQ_API_KEY?.trim());
+    // Retained for historical ledger compatibility; no longer offered.
+    return false;
   }
   async stream(
     model: AIModel,

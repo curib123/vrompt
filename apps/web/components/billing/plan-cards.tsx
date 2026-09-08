@@ -12,6 +12,10 @@ export type PublicPlan = {
   currency: string;
   billingPeriod: string;
   monthlyCredits?: number;
+  maxFiles?: number;
+  imageGeneration?: boolean;
+  maxProjects?: number;
+  maxWorkflows?: number;
   manualModelCount?: number;
   allowances?: { bucket: string; dailyLimit: number; monthlyLimit: number }[];
   features: {
@@ -115,13 +119,7 @@ export function PlanCards({
               {auto && (
                 <li>
                   <Icon name="check" />
-                  {auto.dailyLimit.toLocaleString()} Auto requests per day
-                </li>
-              )}
-              {auto && (
-                <li>
-                  <Icon name="check" />
-                  {auto.monthlyLimit.toLocaleString()} Auto requests per month
+                  Up to {auto.dailyLimit.toLocaleString()} Auto requests per day
                 </li>
               )}
               {plan.monthlyCredits !== undefined && (
@@ -131,12 +129,41 @@ export function PlanCards({
                   month
                 </li>
               )}
+              {Boolean(plan.manualModelCount) && (
+                <li>
+                  <Icon name="check" />
+                  {plan.manualModelCount} models with manual selection
+                </li>
+              )}
               <li>
                 <Icon name="check" />
-                {plan.manualModelCount
-                  ? `${plan.manualModelCount} models with manual selection`
-                  : 'Automatic model selection'}
+                Credit prices vary by model and task
               </li>
+              {Boolean(plan.maxFiles) && (
+                <li>
+                  <Icon name="check" />
+                  Up to {plan.maxFiles} {plan.maxFiles === 1 ? 'file' : 'files'}{' '}
+                  per message
+                </li>
+              )}
+              {plan.imageGeneration && (
+                <li>
+                  <Icon name="check" />
+                  Image generation with credits
+                </li>
+              )}
+              {Boolean(plan.maxProjects) && (
+                <li>
+                  <Icon name="check" />
+                  Up to {plan.maxProjects} projects
+                </li>
+              )}
+              {Boolean(plan.maxWorkflows) && (
+                <li>
+                  <Icon name="check" />
+                  Up to {plan.maxWorkflows} workflows
+                </li>
+              )}
               {plan.features.map((feature, index) => (
                 <li key={`${feature.key}-${index}`}>
                   <Icon name="check" />
