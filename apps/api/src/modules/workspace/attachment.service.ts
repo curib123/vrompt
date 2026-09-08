@@ -98,6 +98,34 @@ export class AttachmentService {
     if (!file) throw new NotFoundException('File not found');
     return file;
   }
+  async assertDocumentCapacity(userId: string) {
+    const { plan, policies } = await this.quota.policies(userId);
+    if (!policies.some((p) => p.maxFiles > 0 && p.allowedFeatures.includes('chat')))
+      throw new BadRequestException('Downloadable files require a paid plan with file access.');
+    await this.checkStorage(this.prisma, userId, 100_000, plan?.code);
+  }
+  async saveDocument(userId: string, conversationId: string, content: string, format: 'txt' | 'md' | 'csv') {
+    await this.assertDocumentCapacity(userId);
+    const data = Buffer.from(content.replace(/^```[^\n]*\n([\s\S]*?)\n```\s*$/, '$1'), 'utf8');
+    if (!data.length || data.length > 100_000)
+      throw new BadRequestException('Generated document exceeds the 100 KB limit.');
+    const { plan } = await this.quota.policies(userId);
+    const key = randomUUID();
+    await mkdir(this.root, { recursive: true });
+    await writeFile(resolve(this.root, key), data, { flag: 'wx', mode: 0o600 });
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+        await tx.$queryRaw`SELECT id FROM "User" WHERE id = ${userId}::uuid FOR UPDATE`;
+        await this.checkStorage(tx, userId, data.length, plan?.code);
+        if (!(await tx.conversation.findFirst({ where: { id: conversationId, userId } })))
+          throw new NotFoundException('Conversation not found');
+        return tx.attachment.create({ data: {
+          id: key, storageKey: key, userId, conversationId, generated: true,
+          name: `document.${format}`, mimeType: 'text/plain', size: data.length,
+        }, select: { id: true, name: true, mimeType: true, size: true } });
+      });
+    } catch (error) { await unlink(resolve(this.root, key)); throw error; }
+  }
   async saveGenerated(
     userId: string,
     conversationId: string,

@@ -25,6 +25,7 @@ import { AttachmentService } from './attachment.service';
 import { SendMessageDto } from './workspace.dto';
 import { estimateContext, RouteSettings, textTokens } from './routing';
 import { relevantContext } from './context';
+import { detectTask } from './task-intent';
 import {
   affordableCandidates,
   autoCredits,
@@ -86,6 +87,13 @@ export class ChatService {
     emit: (event: unknown) => void,
   ) {
     const conversation = await this.owned(userId, conversationId);
+    const intent = detectTask(input.content);
+    const requestedFeature = input.feature ?? intent.feature;
+    const document = requestedFeature === 'file_generation';
+    const feature = document ? 'chat' : requestedFeature;
+    const fileFormat = input.fileFormat ?? ('fileFormat' in intent ? intent.fileFormat : 'md');
+    if (document && 'unsupportedFormat' in intent)
+      throw new BadRequestException('Choose TXT, Markdown or CSV. PDF, DOCX and XLSX exports are not supported yet.');
     const { policies, subscription, plan } = await this.quota.policies(userId);
     const project = conversation.projectId
       ? await this.prisma.project.findFirst({
@@ -103,12 +111,16 @@ export class ChatService {
       throw new ForbiddenException(
         'This selection is not included in your plan.',
       );
-    if (!policy.allowedFeatures.includes(input.feature ?? 'chat'))
+    if (!policy.allowedFeatures.includes(feature ?? 'chat'))
       throw new ForbiddenException(
         'This task is not included in your allowance.',
       );
-    if (input.feature === 'image_generation')
+    if (feature === 'image_generation')
       await this.files.assertImageCapacity(userId);
+    if (document) {
+      if (policy.maxFiles < 1) throw new ForbiddenException('Downloadable files are not included in this selection.');
+      await this.files.assertDocumentCapacity(userId);
+    }
     if (input.content.length > policy.maxInputChars)
       throw new BadRequestException('Message exceeds your plan’s input limit.');
     const files = await this.files.forConversation(
@@ -163,6 +175,7 @@ export class ChatService {
         )
       : '';
     const messages = [
+      ...(document ? [{ role: 'system', content: `Return only the requested document content in ${fileFormat} format. Do not include a download link, surrounding code fences or claims that you saved a file. The application will save your output as a downloadable file. Do not execute code.` }] : []),
       ...(project
         ? [
             {
@@ -199,7 +212,7 @@ export class ChatService {
       );
     const capabilities = [
       'text',
-      ...(input.feature === 'image_generation' ? ['image_generation'] : []),
+      ...(feature === 'image_generation' ? ['image_generation'] : []),
       ...(files.some((f) => f.mimeType.startsWith('image/')) ? ['vision'] : []),
       ...(files.some((f) => f.mimeType === 'application/pdf') ? ['files'] : []),
     ];
@@ -210,7 +223,7 @@ export class ChatService {
           files.some((f) => f.mimeType === 'application/pdf')
         ) &&
         !(
-          input.feature === 'image_generation' &&
+          feature === 'image_generation' &&
           !['OPENAI', 'GOOGLE', 'MISTRAL'].includes(m.provider)
         ),
     );
@@ -260,7 +273,7 @@ export class ChatService {
       ];
     candidates =
       input.mode === 'AUTO'
-        ? affordableCandidates(candidates, policy, input.feature)
+        ? affordableCandidates(candidates, policy, feature)
         : candidates.slice(0, 1);
     if (!candidates.length)
       throw new ServiceUnavailableException(
@@ -272,8 +285,8 @@ export class ChatService {
       .digest('hex');
     const creditUnits =
       input.mode === 'AUTO'
-        ? autoCredits(policy, input.feature)
-        : modelCredits(original, policy, input.feature);
+        ? autoCredits(policy, feature)
+        : modelCredits(original, policy, feature);
     if (creditUnits === null)
       throw new ServiceUnavailableException(
         'Pricing for this task is not available yet.',
@@ -368,14 +381,14 @@ export class ChatService {
             },
             usage,
             {
-              feature: input.feature,
+              feature: feature,
               reasoningLevel: supportsCapability(model, 'reasoning')
                 ? model.defaultReasoningLevel
                 : undefined,
               image: async (mimeType, base64) => {
                 consumed = true;
                 if (
-                  input.feature !== 'image_generation' ||
+                  feature !== 'image_generation' ||
                   artifacts.length >= 1
                 )
                   throw new ProviderFailure('OUTPUT_LIMIT', false);
@@ -392,8 +405,13 @@ export class ChatService {
           );
           if (!text.trim() && !artifacts.length)
             throw new ProviderFailure('EMPTY_RESPONSE');
-          if (input.feature === 'image_generation' && !artifacts.length)
+          if (feature === 'image_generation' && !artifacts.length)
             throw new ProviderFailure('NO_IMAGE_RETURNED', false);
+          if (document) {
+            const artifact = await this.files.saveDocument(userId, conversationId, text, fileFormat);
+            artifacts.push(artifact);
+            emit({ type: 'artifact', artifact });
+          }
           attemptStatus = 'SUCCEEDED';
           status = 'SUCCEEDED';
           consumed = true;
@@ -429,7 +447,7 @@ export class ChatService {
         } finally {
           clearTimeout(timer);
           if (
-            input.feature === 'image_generation' ||
+            feature === 'image_generation' ||
             (model.provider === 'GOOGLE' &&
               model.capabilities.includes('image_generation'))
           )
@@ -455,7 +473,7 @@ export class ChatService {
               errorCategory,
               creditUnits,
               {
-                requestedFeature: input.feature ?? 'chat',
+                requestedFeature: feature ?? 'chat',
                 generatedArtifacts: artifacts.length,
               },
             ),

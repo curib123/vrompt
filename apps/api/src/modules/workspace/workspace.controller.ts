@@ -32,11 +32,16 @@ import {
   ConversationDto,
   SavedPromptDto,
   SendMessageDto,
+  TaskIntentDto,
 } from './workspace.dto';
+import { detectTask } from './task-intent';
 
 @Controller('workspace')
 @UseGuards(AccessTokenGuard)
 export class WorkspaceController {
+  @Post('task-intent') taskIntent(@Body() input: TaskIntentDto) {
+    return detectTask(input.content);
+  }
   constructor(
     private readonly prisma: PrismaService,
     private readonly chat: ChatService,
