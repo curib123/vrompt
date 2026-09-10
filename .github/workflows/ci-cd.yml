@@ -59,7 +59,7 @@ jobs:
       - run: npm test --workspace @vrompt/web
       - run: npm run test:e2e --workspace @vrompt/api
       - name: Install Playwright browser
-        run: npx playwright install --with-deps chromium
+        run: npm exec --workspace @vrompt/web playwright install --with-deps chromium
       - name: Run web end-to-end tests
         env:
           START_E2E_SERVER: 'true'
