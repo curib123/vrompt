@@ -1,5 +1,32 @@
 import * as Joi from 'joi';
 
+const commaSeparatedHttpOrigins = Joi.string()
+  .custom((value: string, helpers) => {
+    const origins = value
+      .split(',')
+      .map((origin) => origin.trim())
+      .filter(Boolean);
+
+    if (!origins.length) return helpers.error('any.invalid');
+
+    for (const origin of origins) {
+      try {
+        const parsed = new URL(origin);
+        if (!['http:', 'https:'].includes(parsed.protocol)) {
+          return helpers.error('any.invalid');
+        }
+        if (parsed.origin !== origin.replace(/\/$/, '')) {
+          return helpers.error('any.invalid');
+        }
+      } catch {
+        return helpers.error('any.invalid');
+      }
+    }
+
+    return origins.join(',');
+  }, 'comma-separated HTTP(S) origins')
+  .default('http://localhost:3000');
+
 export function validateEnvironment(configuration: Record<string, unknown>) {
   const { error, value } = envValidationSchema.validate(configuration, {
     abortEarly: false,
@@ -36,7 +63,7 @@ export const envValidationSchema = Joi.object({
   ORACLE_PORT: Joi.number().port().default(22),
   VROMPT_DOMAIN: Joi.string().hostname().allow('').default(''),
   VROMPT_PUBLIC_URL: Joi.string().uri().allow('').default(''),
-  WEB_ORIGIN: Joi.string().uri().default('http://localhost:3000'),
+  WEB_ORIGIN: commaSeparatedHttpOrigins,
   JWT_ACCESS_SECRET: Joi.string()
     .min(32)
     .when('NODE_ENV', {
