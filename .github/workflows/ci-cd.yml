@@ -3,7 +3,7 @@ name: Vrompt CI/CD
 on:
   pull_request:
   push:
-    branches: [development, production]
+    branches: [main, development, production]
 
 concurrency:
   group: vrompt-${{ github.workflow }}-${{ github.ref }}
