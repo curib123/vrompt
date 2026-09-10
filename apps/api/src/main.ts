@@ -2,7 +2,7 @@ import { Logger, ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
-import express from 'express';
+import type { NextFunction, Request, Response } from 'express';
 
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { RequestLoggingInterceptor } from './common/interceptors/request-logging.interceptor';
@@ -45,11 +45,7 @@ async function bootstrap() {
     httpServer.set('trust proxy', 1);
   }
   httpServer.use(
-    (
-      _request: express.Request,
-      response: express.Response,
-      next: express.NextFunction,
-    ) => {
+    (_request: Request, response: Response, next: NextFunction) => {
       response.setHeader('X-Content-Type-Options', 'nosniff');
       response.setHeader('X-Frame-Options', 'DENY');
       response.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');

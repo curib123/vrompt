@@ -20,7 +20,7 @@
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./test/jest-e2e.json",
-    "clean": "Remove-Item -Recurse -Force dist,coverage -ErrorAction SilentlyContinue",
+    "clean": "node -e \"const fs=require('fs'); for (const p of ['dist','coverage']) fs.rmSync(p,{recursive:true,force:true})\"",
     "prisma:format": "prisma format --schema prisma/schema.prisma",
     "prisma:generate": "prisma generate --schema prisma/schema.prisma",
     "prisma:migrate": "prisma migrate dev --schema prisma/schema.prisma",
