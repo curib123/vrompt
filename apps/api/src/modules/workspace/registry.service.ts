@@ -3,16 +3,23 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { AIModel, GenerationPolicy, Prisma } from '@prisma/client';
+import {
+  AIModel,
+  GenerationPolicy,
+  ModelProvider,
+  Prisma,
+} from '@prisma/client';
 import Joi from 'joi';
 import { PrismaService } from '../prisma/prisma.service';
 import { ProviderRegistry } from './providers';
 import { RoutingHealth } from './routing';
 import { imageOutputBudget } from './credits';
+import { providerSupportsCapability } from './provider-capabilities';
 
 const money = Joi.number().min(0).max(1000000).required();
 const integer = (max: number) =>
   Joi.number().integer().min(1).max(max).required();
+const supportedProviders = Object.values(ModelProvider);
 const capabilityNames = [
   'text',
   'vision',
@@ -33,7 +40,7 @@ const reasoningLevels = ['low', 'medium', 'high', 'xhigh'];
 export const modelSchema = Joi.object({
   creditCost: integer(100000).default(1),
   provider: Joi.string()
-    .valid('OPENAI', 'GOOGLE', 'ANTHROPIC', 'MISTRAL')
+    .valid(...supportedProviders)
     .required(),
   providerModelId: Joi.string()
     .pattern(/^[a-zA-Z0-9._:/-]+$/)
@@ -230,21 +237,7 @@ export function supportsCapability(model: AIModel, capability: string) {
     ].includes(capability)
   )
     return false;
-  if (
-    capability === 'files' &&
-    !['OPENAI', 'GOOGLE', 'ANTHROPIC'].includes(model.provider)
-  )
-    return false;
-  if (
-    capability === 'vision' &&
-    !['OPENAI', 'GOOGLE', 'ANTHROPIC', 'MISTRAL'].includes(model.provider)
-  )
-    return false;
-  if (
-    capability === 'image_generation' &&
-    !['OPENAI', 'GOOGLE', 'MISTRAL'].includes(model.provider)
-  )
-    return false;
+  if (!providerSupportsCapability(model.provider, capability)) return false;
   return (
     (capability !== 'image_generation' || imageOutputBudget(model) !== null) &&
     model.capabilities.includes(capability) &&
@@ -268,7 +261,7 @@ export class ModelRegistryService {
       await this.prisma.aIModel.findMany({
         where: {
           enabled: true,
-          provider: { in: ['OPENAI', 'GOOGLE', 'ANTHROPIC', 'MISTRAL'] },
+          provider: { in: supportedProviders },
           effectiveFrom: { lte: now },
           OR: [{ effectiveUntil: null }, { effectiveUntil: { gt: now } }],
         },
@@ -294,11 +287,12 @@ export class ModelRegistryService {
     const data = validate<ModelInput>(modelSchema, input);
     if (
       Array.isArray(data.capabilities) &&
-      data.capabilities.includes('image_generation') &&
-      !['OPENAI', 'GOOGLE', 'MISTRAL'].includes(data.provider)
+      data.capabilities.some(
+        (capability) => !providerSupportsCapability(data.provider, capability),
+      )
     )
       throw new BadRequestException(
-        'Image generation is currently integrated for OpenAI, Google and Mistral only.',
+        'One or more configured capabilities are not integrated for this provider.',
       );
     const modelReasoningLevels = data.reasoningLevels ?? ['low'];
     const defaultReasoningLevel = data.defaultReasoningLevel ?? 'low';
